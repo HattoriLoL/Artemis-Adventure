@@ -85,28 +85,35 @@
   {
    "lado": "baixo",
    "ret": [
-    182,
-    190,
-    38,
-    50
+	182,
+	190,
+	38,
+	50
    ]
   },
   {
    "lado": "cima",
    "ret": [
-    182,
-    8,
-    38,
-    40
+	182,
+	8,
+	38,
+	40
    ],
    "trancada": true,
    "luz": [
-    200,
-    12
+	200,
+	12
    ]
   }
  ],
  "tarefas": [
+{
+	"id":"paneis",
+	"x": 200,
+	"y": 66,
+	"texto": "CLEAN THE SOLAR PANELS",
+	"minigame":"res://cenas/minigame_paineis.tscn"
+},
   {
    "id": "baterias",
    "x": 295,
