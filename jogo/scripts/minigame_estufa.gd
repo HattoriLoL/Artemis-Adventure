@@ -47,17 +47,17 @@ const TRILHO := Rect2(42, 29, 10, 121)          # onde o jato e a gota andam
 const BARRA := Rect2(55, 29, 4, 121)            # medidor de crescimento
 
 # --- jogo (mexa aqui para deixar mais fácil ou mais difícil)
-const ALT_JATO := 30.0                          # altura do jato, em pixels (maior = mais fácil)
+const ALT_JATO := 34.0                          # altura do jato, em pixels (maior = mais fácil)
 const SUBIDA := 340.0                           # aceleração para cima segurando, px/s²
 const GRAVIDADE := 300.0                        # aceleração para baixo soltando, px/s²
 const VEL_MAX := 130.0                          # velocidade máxima do jato, px/s
 const QUIQUE := 0.6                             # quanto o jato quica no fundo (0 = não quica)
 const QUIQUE_MIN := 20.0                        # abaixo dessa velocidade ele só para (senão treme no fundo)
 const T_IMPACTO := 0.2                          # duração do respingo e do achatamento ao bater no fundo
-const VEL_GOTA := 48.0                          # velocidade da gota, px/s
-const TROCA_GOTA := Vector2(0.5, 1.3)           # a gota escolhe um novo destino a cada 0,5 a 1,3 s
-const ENCHE := 0.11                             # crescimento por segundo com a gota no jato
-const ESVAZIA := 0.09                           # crescimento perdido por segundo com a gota fora
+const VEL_GOTA := 44.0                          # velocidade da gota, px/s
+const TROCA_GOTA := Vector2(0.6, 1.4)           # a gota escolhe um novo destino a cada 0,6 a 1,4 s
+const ENCHE := 0.105                            # crescimento por segundo com a gota no jato
+const ESVAZIA := 0.075                          # crescimento perdido por segundo com a gota fora
 const COMECO := 0.3                             # crescimento no começo de cada rodada
 const TENTATIVAS := 3
 
