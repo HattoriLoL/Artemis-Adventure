@@ -123,7 +123,8 @@
    "id": "distribuicao",
    "x": 318,
    "y": 136,
-   "texto": "BALANCE THE POWER"
+   "texto": "BALANCE THE POWER",
+   "minigame": "res://cenas/minigame_distribuicao.tscn"
   },
   {
    "id": "tanques",
