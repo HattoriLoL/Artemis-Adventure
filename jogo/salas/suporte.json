@@ -136,7 +136,8 @@
    "id": "oxigenio",
    "x": 276,
    "y": 70,
-   "texto": "ADJUST THE OXYGEN"
+   "texto": "BALANCE THE AIR",
+   "minigame": "res://cenas/minigame_oxigenio.tscn"
   }
  ],
  "inicio": [
