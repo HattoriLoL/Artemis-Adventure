@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://o3dv8717elqu"]
+
+[ext_resource type="Script" uid="uid://dvm45miflc7m1" path="res://scripts/minigame_calibrate_batt.gd" id="1_3jscf"]
+
+[node name="MinigameCalibrateBatt" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_3jscf")
