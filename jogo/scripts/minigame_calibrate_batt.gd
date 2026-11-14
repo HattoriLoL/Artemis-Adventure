@@ -16,7 +16,7 @@ const LARGURA_FAIXA := 24.0              # igual à largura do nó Faixa
 const VELOCIDADES := [70.0, 95.0, 160.0] # velocidade do ponteiro em cada bateria (pixels por segundo)
 const TEMPO_ERRO := 0.3                  # quanto tempo a barra fica vermelha depois de um erro
 
-var demo := true                        # o jogo coloca true no modo demo: o minigame se resolve sozinho
+var demo := false                        # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var bateria := 0                         # bateria atual: 0, 1 ou 2
 var ponteiro_x := 0.0
 var sentido := 1.0                       # 1 = indo para a direita, -1 = voltando
