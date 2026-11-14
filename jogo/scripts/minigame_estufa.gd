@@ -51,7 +51,9 @@ const ALT_JATO := 30.0                          # altura do jato, em pixels (mai
 const SUBIDA := 340.0                           # aceleração para cima segurando, px/s²
 const GRAVIDADE := 300.0                        # aceleração para baixo soltando, px/s²
 const VEL_MAX := 130.0                          # velocidade máxima do jato, px/s
-const QUIQUE := 0.35                            # quanto o jato quica no fundo (0 = não quica)
+const QUIQUE := 0.6                             # quanto o jato quica no fundo (0 = não quica)
+const QUIQUE_MIN := 20.0                        # abaixo dessa velocidade ele só para (senão treme no fundo)
+const T_IMPACTO := 0.2                          # duração do respingo e do achatamento ao bater no fundo
 const VEL_GOTA := 48.0                          # velocidade da gota, px/s
 const TROCA_GOTA := Vector2(0.5, 1.3)           # a gota escolhe um novo destino a cada 0,5 a 1,3 s
 const ENCHE := 0.11                             # crescimento por segundo com a gota no jato
@@ -75,6 +77,8 @@ var t_estado := 0.0
 var aviso := ""
 var cor_aviso := BRANCO
 var t_aviso := 0.0
+var t_impacto := 0.0                            # > 0 logo depois de o jato bater no fundo
+var forca_impacto := 0.0                        # 0 a 1: quão forte foi a batida (velocidade / VEL_MAX)
 
 
 func _ready() -> void:
@@ -96,6 +100,7 @@ func _input(ev: InputEvent) -> void:
 func _process(delta: float) -> void:
 	t += delta
 	t_aviso = maxf(0.0, t_aviso - delta)
+	t_impacto = maxf(0.0, t_impacto - delta)
 	if estado == "jogando":
 		segurando = _quer_subir()
 		_mover_jato(delta)
@@ -137,8 +142,13 @@ func _mover_jato(delta: float) -> void:
 	var fundo := TRILHO.size.y - ALT_JATO
 	if jato_y > fundo:
 		jato_y = fundo
-		jato_v = -jato_v * QUIQUE
-	if jato_y < 0.0:
+		if jato_v > QUIQUE_MIN:                     # bateu no fundo: quica, achata e respinga
+			forca_impacto = clampf(jato_v / VEL_MAX, 0.0, 1.0)
+			t_impacto = T_IMPACTO
+			jato_v = -jato_v * QUIQUE
+		else:
+			jato_v = 0.0                            # devagar demais: só para, sem ficar tremendo
+	if jato_y < 0.0:                                # no topo para seco, sem quicar
 		jato_y = 0.0
 		jato_v = 0.0
 
@@ -259,10 +269,22 @@ func _trilho() -> void:
 	draw_rect(r, NOITE)
 	# jato (o que o jogador controla): azul quando a gota está dentro
 	var dentro := _gota_no_jato() and estado == "jogando"
-	var jato := Rect2(r.position.x + 1, r.position.y + roundf(jato_y), r.size.x - 2, ALT_JATO)
+	var k := t_impacto / T_IMPACTO                  # 1 na batida, 0 quando o efeito acaba
+	var achata := roundf(2.0 * forca_impacto * k)   # o jato encolhe até 2 px por um instante, com a base fixa
+	var jato := Rect2(r.position.x + 1, r.position.y + roundf(jato_y) + achata, r.size.x - 2, ALT_JATO - achata)
 	draw_rect(jato, AGUA if dentro else CINZA_ESC)
 	draw_rect(Rect2(jato.position, Vector2(jato.size.x, 1)), AGUA_BRILHO if dentro else CINZA)
 	draw_rect(Rect2(jato.position.x, jato.end.y - 1, jato.size.x, 1), AGUA_BRILHO if dentro else CINZA)
+	# respingo: gotinhas saindo para os dois lados da base do trilho, num arco curto
+	if t_impacto > 0.0 and forca_impacto > 0.25:
+		var p := 1.0 - k
+		var base := Vector2(r.position.x + r.size.x / 2.0, r.end.y - 2)
+		for lado in [-1, 1]:
+			for n in 2:
+				var dx: float = lado * (3.0 + p * (4.0 + n * 3.0))
+				var dy := -sin(p * PI) * (3.0 + n * 2.0) * forca_impacto
+				var pos := (base + Vector2(dx, dy)).round()
+				draw_rect(Rect2(pos, Vector2.ONE), AGUA_BRILHO if n == 0 else AGUA_CLARA)
 	# gota (o alvo)
 	var g := Vector2(r.position.x + r.size.x / 2.0, r.position.y + roundf(gota_y))
 	draw_rect(Rect2(g.x - 1, g.y - 3, 2, 1), AGUA_BRILHO)
