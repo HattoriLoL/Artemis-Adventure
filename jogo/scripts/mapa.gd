@@ -253,6 +253,9 @@ func _usar(tf: Dictionary) -> void:
 	if tf["id"] == "suporte/gas":
 		abrir_minigame("res://cenas/minigame_swap_co2.tscn", tf)
 		return
+	if tf["id"] == "suporte/oxigenio":
+		abrir_minigame("res://cenas/minigame_oxigenio.tscn", tf)
+		return
 	_concluir_tarefa(tf)
 
 
