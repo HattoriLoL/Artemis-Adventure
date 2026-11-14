@@ -5,8 +5,8 @@
   400,
   240
  ],
- "titulo": "ABRIGO BLINDADO",
- "concluida": "ABRIGO PRONTO",
+ "titulo": "SHIELDED SHELTER",
+ "concluida": "SHELTER READY",
  "solidos": [
   [
    0,
@@ -124,7 +124,7 @@
    "id": "blindagem",
    "x": 246,
    "y": 144,
-   "texto": "REFORCAR A BLINDAGEM"
+   "texto": "REINFORCE THE SHIELDING"
   }
  ],
  "inicio": [
