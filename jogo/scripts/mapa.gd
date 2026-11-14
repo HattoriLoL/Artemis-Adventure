@@ -22,8 +22,6 @@ var jogador: CharacterBody2D
 var hud: Control
 var camada_ui: CanvasLayer
 var em_minigame := false
-var dia_atual := 1
-var dia_plantio := 0
 var aviso := ""
 var t_aviso := 0.0
 var demo := false
@@ -72,7 +70,7 @@ func _ready() -> void:
 		portas.append(porta)
 	_navegacao()
 	_interface()
-	_avisar("BASE LUNAR")
+	_avisar("LUNAR BASE")
 
 
 func _entradas() -> void:
@@ -224,7 +222,7 @@ func _process(delta: float) -> void:
 		for p in portas:
 			if p.trancada() and p.perto(jogador.global_position):
 				p.negar()
-				_avisar(str(p.dados.get("aviso", "PORTA TRANCADA")))
+				_avisar(str(p.dados.get("aviso", "DOOR LOCKED")))
 	hud.queue_redraw()
 
 
@@ -252,28 +250,33 @@ func _iniciar_minigame_estufa(tf: Dictionary) -> void:
 	mg.demo = demo
 	camada_ui.add_child(mg)
 	mg.terminou.connect(func():
-		mg.queue_free()
-		em_minigame = false
-		hud.visible = true
-		jogador.set_physics_process(true)
-		dia_plantio = dia_atual
+		_fechar_minigame(mg)
 		_concluir_tarefa(tf)
 	)
+	# fechou no X ou no Esc: volta ao jogo sem concluir a tarefa
+	mg.cancelou.connect(func(): _fechar_minigame(mg))
+
+
+func _fechar_minigame(mg: Control) -> void:
+	mg.queue_free()
+	em_minigame = false
+	hud.visible = true
+	jogador.set_physics_process(true)
 
 
 func _concluir_tarefa(tf: Dictionary) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
 	marcas[tf["id"]].visible = false
-	_avisar("FEITO: " + str(tf["texto"]))
+	_avisar("DONE: " + str(tf["texto"]))
 	var sala: String = tf["sala"]
 	var faltam := tarefas.filter(func(x): return x["sala"] == sala and not feitas.has(x["id"]))
 	if faltam.is_empty():
 		await get_tree().create_timer(1.2).timeout
-		_avisar(str(salas[sala]["dados"].get("concluida", "SALA EM DIA")))
+		_avisar(str(salas[sala]["dados"].get("concluida", "ROOM DONE")))
 	if feitas.size() == tarefas.size():
 		await get_tree().create_timer(2.4).timeout
-		_avisar("BASE EM ORDEM")
+		_avisar("BASE SECURED")
 		t_aviso = 999.0
 		_demo_fim()
 
@@ -290,7 +293,7 @@ func _interagir(it: Dictionary) -> void:
 		tw.tween_property(self, "escuro", 0.0, 0.8)
 		await tw.finished
 		dormindo = false
-		_avisar("DESCANSADO")
+		_avisar("RESTED")
 		_demo_fim()
 
 
@@ -359,7 +362,7 @@ func _demo_fim() -> void:
 # ---------------------------------------------------------------- interface
 func _desenha_hud() -> void:
 	var lista := []
-	var titulo := "TUNEL"
+	var titulo := "TUNNEL"
 	if sala_atual != "":
 		titulo = str(salas[sala_atual]["dados"].get("titulo", sala_atual))
 		lista = tarefas.filter(func(x): return x["sala"] == sala_atual)

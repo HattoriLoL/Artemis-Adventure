@@ -5,8 +5,8 @@
   400,
   240
  ],
- "titulo": "ESTUFA",
- "concluida": "PLANTAS EM DIA",
+ "titulo": "GREENHOUSE",
+ "concluida": "PLANTS HEALTHY",
  "solidos": [
   [
    0,
@@ -172,7 +172,7 @@
    "id": "regar",
    "x": 192,
    "y": 120,
-   "texto": "REGAR AS PLANTAS"
+   "texto": "WATER THE PLANTS"
   }
  ],
  "inicio": [
