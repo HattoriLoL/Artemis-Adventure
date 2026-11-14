@@ -6,7 +6,7 @@
   240
  ],
  "titulo": "HABITAT",
- "concluida": "HABITAT EM ORDEM",
+ "concluida": "HABITAT IN ORDER",
  "solidos": [
   [
    0,
@@ -88,13 +88,14 @@
    "id": "refeicao",
    "x": 87,
    "y": 70,
-   "texto": "PREPARAR A REFEICAO"
+   "texto": "PREPARE A MEAL"
   },
   {
    "id": "agua",
    "x": 270,
    "y": 72,
-   "texto": "ABASTECER A AGUA"
+   "texto": "REFILL THE WATER",
+   "minigame": "res://cenas/minigame_agua.tscn"
   }
  ],
  "inicio": [
@@ -106,7 +107,7 @@
    "id": "cama",
    "x": 136,
    "y": 168,
-   "texto": "DORMIR",
+   "texto": "SLEEP",
    "acao": "dormir"
   }
  ]

@@ -5,6 +5,7 @@ extends Node2D
 
 const Fonte = preload("res://scripts/fonte.gd")
 const Porta = preload("res://scripts/porta.gd")
+const MenuPausa = preload("res://scripts/menu_pausa.gd")
 const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
@@ -20,6 +21,9 @@ var portas := []
 var marcas := {}
 var jogador: CharacterBody2D
 var hud: Control
+var camada_ui: CanvasLayer
+var em_minigame := false
+var quadro_fechou_minigame := -1   # o Esc que fecha o minigame não pode abrir o menu de pausa no mesmo quadro
 var aviso := ""
 var t_aviso := 0.0
 var demo := false
@@ -68,12 +72,12 @@ func _ready() -> void:
 		portas.append(porta)
 	_navegacao()
 	_interface()
-	_avisar("BASE LUNAR")
+	_avisar("LUNAR BASE")
 
 
 func _entradas() -> void:
 	var m := {"esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT], "cima": [KEY_W, KEY_UP],
-		"baixo": [KEY_S, KEY_DOWN], "andar": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
+		"baixo": [KEY_S, KEY_DOWN], "correr": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
 	for acao in m:
 		if InputMap.has_action(acao):
 			continue
@@ -111,7 +115,7 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		_ret(corpo, r, pos)
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
-			"pos": pos + Vector2(tf["x"], tf["y"])}
+			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", ""))}
 		tarefas.append(item)
 		var m := Polygon2D.new()                     # seta amarela pulando sobre a tarefa (como no Among Us)
 		m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
@@ -138,8 +142,9 @@ func _jogador() -> void:
 	cam.limit_top = 0
 	cam.limit_right = int(mapa["tamanho"][0])
 	cam.limit_bottom = int(mapa["tamanho"][1])
-	cam.position_smoothing_enabled = true
-	cam.position_smoothing_speed = 6.0
+	# câmera presa no astronauta, sem suavização: com a suavização, câmera e astronauta caíam em frações de pixel
+	# diferentes e o arredondamento fazia o astronauta tremer 1 px na tela (ver physics_interpolation no projeto)
+	cam.position_smoothing_enabled = false
 	cam.offset = Vector2(0, -14)
 	jogador.add_child(cam)
 	cam.make_current()
@@ -161,12 +166,19 @@ func _navegacao() -> void:
 
 
 func _interface() -> void:
-	var cl := CanvasLayer.new()
-	add_child(cl)
+	camada_ui = CanvasLayer.new()
+	add_child(camada_ui)
 	hud = Control.new()
 	hud.size = Vector2(320, 180)
 	hud.draw.connect(_desenha_hud)
-	cl.add_child(hud)
+	camada_ui.add_child(hud)
+	var menu := MenuPausa.new()                    # Esc; fica por último na árvore para ver o Esc antes do minigame
+	menu.mapa = self
+	add_child(menu)
+
+
+func pode_pausar() -> bool:
+	return not em_minigame and not fim and Engine.get_process_frames() != quadro_fechou_minigame
 
 
 func _avisar(txt: String) -> void:
@@ -210,7 +222,7 @@ func _process(delta: float) -> void:
 	var it := _perto(interacoes, usadas)
 	if demo:
 		_demo(delta)
-	if dormindo:
+	if dormindo or em_minigame:
 		pass
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
@@ -220,7 +232,7 @@ func _process(delta: float) -> void:
 		for p in portas:
 			if p.trancada() and p.perto(jogador.global_position):
 				p.negar()
-				_avisar(str(p.dados.get("aviso", "PORTA TRANCADA")))
+				_avisar(str(p.dados.get("aviso", "DOOR LOCKED")))
 	hud.queue_redraw()
 
 
@@ -232,18 +244,59 @@ func _tarefa(id: String) -> Dictionary:
 
 
 func _usar(tf: Dictionary) -> void:
+	if tf.get("minigame", "") != "":
+		abrir_minigame(tf["minigame"], tf)
+		return
+	if tf["id"] == "estufa/regar":
+		abrir_minigame("res://cenas/minigame_estufa.tscn", tf)
+		return
+	if tf["id"] == "suporte/gas":
+		abrir_minigame("res://cenas/minigame_swap_co2.tscn", tf)
+		return
+	_concluir_tarefa(tf)
+
+
+## Abre um minigame por cima do jogo. Com `tf` vazio (aba DEV do menu de pausa), terminar não conclui tarefa nenhuma.
+func abrir_minigame(caminho: String, tf := {}) -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var cena_mg: PackedScene = load(caminho)
+	var mg: Control = cena_mg.instantiate()
+	mg.demo = demo
+	camada_ui.add_child(mg)
+	mg.terminou.connect(func():
+		_fechar_minigame(mg)
+		if not tf.is_empty():
+			_concluir_tarefa(tf)
+	)
+	# fechou no X ou no Esc: volta ao jogo sem concluir a tarefa
+	if mg.has_signal("cancelou"):
+		mg.cancelou.connect(func(): _fechar_minigame(mg))
+
+
+func _fechar_minigame(mg: Control) -> void:
+	mg.queue_free()
+	em_minigame = false
+	quadro_fechou_minigame = Engine.get_process_frames()
+	hud.visible = true
+	jogador.set_physics_process(true)
+
+
+func _concluir_tarefa(tf: Dictionary) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
 	marcas[tf["id"]].visible = false
-	_avisar("FEITO: " + str(tf["texto"]))
+	_avisar("DONE: " + str(tf["texto"]))
 	var sala: String = tf["sala"]
 	var faltam := tarefas.filter(func(x): return x["sala"] == sala and not feitas.has(x["id"]))
 	if faltam.is_empty():
 		await get_tree().create_timer(1.2).timeout
-		_avisar(str(salas[sala]["dados"].get("concluida", "SALA EM DIA")))
+		_avisar(str(salas[sala]["dados"].get("concluida", "ROOM DONE")))
 	if feitas.size() == tarefas.size():
 		await get_tree().create_timer(2.4).timeout
-		_avisar("BASE EM ORDEM")
+		_avisar("BASE SECURED")
 		t_aviso = 999.0
 		_demo_fim()
 
@@ -260,7 +313,7 @@ func _interagir(it: Dictionary) -> void:
 		tw.tween_property(self, "escuro", 0.0, 0.8)
 		await tw.finished
 		dormindo = false
-		_avisar("DESCANSADO")
+		_avisar("RESTED")
 		_demo_fim()
 
 
@@ -281,7 +334,7 @@ func _proximo_alvo() -> Dictionary:
 
 
 func _demo(delta: float) -> void:
-	if fim:
+	if fim or em_minigame:
 		return
 	var alvo := _proximo_alvo()
 	if alvo.is_empty():
@@ -329,7 +382,7 @@ func _demo_fim() -> void:
 # ---------------------------------------------------------------- interface
 func _desenha_hud() -> void:
 	var lista := []
-	var titulo := "TUNEL"
+	var titulo := "TUNNEL"
 	if sala_atual != "":
 		titulo = str(salas[sala_atual]["dados"].get("titulo", sala_atual))
 		lista = tarefas.filter(func(x): return x["sala"] == sala_atual)

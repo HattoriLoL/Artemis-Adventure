@@ -18,6 +18,11 @@ config/name="Artemis Outpost"
 run/main_scene="res://cenas/mapa.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+Opcoes="*res://scripts/opcoes.gd"
+Prints="*res://scripts/prints.gd"
+
 [display]
 
 window/size/viewport_width=320
@@ -26,6 +31,10 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
 window/stretch/scale_mode="integer"
+
+[physics]
+
+common/physics_interpolation=true
 
 [rendering]
 

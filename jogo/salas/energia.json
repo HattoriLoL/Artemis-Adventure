@@ -5,8 +5,8 @@
   400,
   240
  ],
- "titulo": "SALA DE ENERGIA",
- "concluida": "ENERGIA RESTABELECIDA",
+ "titulo": "POWER ROOM",
+ "concluida": "POWER RESTORED",
  "solidos": [
   [
    0,
@@ -118,25 +118,26 @@
    "id": "baterias",
    "x": 295,
    "y": 66,
-   "texto": "TROCAR AS BATERIAS"
+   "texto": "CALIBRATE THE BATTERIES",
+   "minigame": "res://cenas/minigame_calibrate_batt.tscn"
   },
   {
    "id": "terminal",
    "x": 62,
    "y": 106,
-   "texto": "REINICIAR O TERMINAL"
+   "texto": "RESTART THE TERMINAL"
   },
   {
    "id": "distribuicao",
    "x": 318,
    "y": 136,
-   "texto": "AJUSTAR A DISTRIBUICAO"
+   "texto": "BALANCE THE POWER"
   },
   {
    "id": "tanques",
    "x": 100,
    "y": 128,
-   "texto": "CONFERIR OS TANQUES"
+   "texto": "CHECK THE TANKS"
   }
  ],
  "inicio": [

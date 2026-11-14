@@ -5,8 +5,8 @@
   400,
   240
  ],
- "titulo": "SUPORTE A VIDA",
- "concluida": "AR E AGUA EM DIA",
+ "titulo": "LIFE SUPPORT",
+ "concluida": "AIR AND WATER OK",
  "solidos": [
   [
    0,
@@ -124,19 +124,19 @@
    "id": "algas",
    "x": 108,
    "y": 120,
-   "texto": "CUIDAR DAS ALGAS"
+   "texto": "TEND THE ALGAE"
   },
   {
    "id": "gas",
    "x": 298,
    "y": 118,
-   "texto": "CONFERIR OS TANQUES DE GAS"
+   "texto": "SWAP THE CO2 FILTER"
   },
   {
    "id": "oxigenio",
    "x": 276,
    "y": 70,
-   "texto": "AJUSTAR O OXIGENIO"
+   "texto": "ADJUST THE OXYGEN"
   }
  ],
  "inicio": [
