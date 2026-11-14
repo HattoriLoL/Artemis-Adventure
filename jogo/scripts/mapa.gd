@@ -5,6 +5,7 @@ extends Node2D
 
 const Fonte = preload("res://scripts/fonte.gd")
 const Porta = preload("res://scripts/porta.gd")
+const MenuPausa = preload("res://scripts/menu_pausa.gd")
 const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
@@ -22,6 +23,7 @@ var jogador: CharacterBody2D
 var hud: Control
 var camada_ui: CanvasLayer
 var em_minigame := false
+var quadro_fechou_minigame := -1   # o Esc que fecha o minigame não pode abrir o menu de pausa no mesmo quadro
 var aviso := ""
 var t_aviso := 0.0
 var demo := false
@@ -75,7 +77,7 @@ func _ready() -> void:
 
 func _entradas() -> void:
 	var m := {"esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT], "cima": [KEY_W, KEY_UP],
-		"baixo": [KEY_S, KEY_DOWN], "andar": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
+		"baixo": [KEY_S, KEY_DOWN], "correr": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
 	for acao in m:
 		if InputMap.has_action(acao):
 			continue
@@ -113,7 +115,7 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		_ret(corpo, r, pos)
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
-			"pos": pos + Vector2(tf["x"], tf["y"])}
+			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", ""))}
 		tarefas.append(item)
 		var m := Polygon2D.new()                     # seta amarela pulando sobre a tarefa (como no Among Us)
 		m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
@@ -170,6 +172,13 @@ func _interface() -> void:
 	hud.size = Vector2(320, 180)
 	hud.draw.connect(_desenha_hud)
 	camada_ui.add_child(hud)
+	var menu := MenuPausa.new()                    # Esc; fica por último na árvore para ver o Esc antes do minigame
+	menu.mapa = self
+	add_child(menu)
+
+
+func pode_pausar() -> bool:
+	return not em_minigame and not fim and Engine.get_process_frames() != quadro_fechou_minigame
 
 
 func _avisar(txt: String) -> void:
@@ -235,32 +244,42 @@ func _tarefa(id: String) -> Dictionary:
 
 
 func _usar(tf: Dictionary) -> void:
+	if tf.get("minigame", "") != "":
+		abrir_minigame(tf["minigame"], tf)
+		return
 	if tf["id"] == "estufa/regar":
-		_iniciar_minigame_estufa(tf)
+		abrir_minigame("res://cenas/minigame_estufa.tscn", tf)
+		return
+	if tf["id"] == "suporte/gas":
+		abrir_minigame("res://cenas/minigame_swap_co2.tscn", tf)
 		return
 	_concluir_tarefa(tf)
 
 
-func _iniciar_minigame_estufa(tf: Dictionary) -> void:
+## Abre um minigame por cima do jogo. Com `tf` vazio (aba DEV do menu de pausa), terminar não conclui tarefa nenhuma.
+func abrir_minigame(caminho: String, tf := {}) -> void:
 	em_minigame = true
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
-	var cena_mg: PackedScene = load("res://cenas/minigame_estufa.tscn")
+	var cena_mg: PackedScene = load(caminho)
 	var mg: Control = cena_mg.instantiate()
 	mg.demo = demo
 	camada_ui.add_child(mg)
 	mg.terminou.connect(func():
 		_fechar_minigame(mg)
-		_concluir_tarefa(tf)
+		if not tf.is_empty():
+			_concluir_tarefa(tf)
 	)
 	# fechou no X ou no Esc: volta ao jogo sem concluir a tarefa
-	mg.cancelou.connect(func(): _fechar_minigame(mg))
+	if mg.has_signal("cancelou"):
+		mg.cancelou.connect(func(): _fechar_minigame(mg))
 
 
 func _fechar_minigame(mg: Control) -> void:
 	mg.queue_free()
 	em_minigame = false
+	quadro_fechou_minigame = Engine.get_process_frames()
 	hud.visible = true
 	jogador.set_physics_process(true)
 
