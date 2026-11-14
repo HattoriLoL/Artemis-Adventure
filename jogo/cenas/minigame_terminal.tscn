@@ -1,0 +1,101 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/minigame_terminal.gd" id="1_term"]
+
+[node name="MinigameTerminal" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_term")
+
+[node name="Fundo" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 30.0
+offset_right = 265.0
+offset_bottom = 150.0
+color = Color(0.0352941, 0.0392157, 0.0784314, 1)
+
+[node name="Selecao" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 71.0
+offset_top = 61.0
+offset_right = 109.0
+offset_bottom = 113.0
+color = Color(0.909804, 0.756863, 0.439216, 1)
+
+[node name="Chave1" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 75.0
+offset_top = 65.0
+offset_right = 105.0
+offset_bottom = 109.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Luz1" type="ColorRect" parent="Chave1"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 6.0
+offset_right = 25.0
+offset_bottom = 14.0
+color = Color(0.0627451, 0.0784314, 0.121569, 1)
+
+[node name="Chave2" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 120.0
+offset_top = 65.0
+offset_right = 150.0
+offset_bottom = 109.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Luz2" type="ColorRect" parent="Chave2"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 6.0
+offset_right = 25.0
+offset_bottom = 14.0
+color = Color(0.0627451, 0.0784314, 0.121569, 1)
+
+[node name="Chave3" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 165.0
+offset_top = 65.0
+offset_right = 195.0
+offset_bottom = 109.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Luz3" type="ColorRect" parent="Chave3"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 6.0
+offset_right = 25.0
+offset_bottom = 14.0
+color = Color(0.0627451, 0.0784314, 0.121569, 1)
+
+[node name="Chave4" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 210.0
+offset_top = 65.0
+offset_right = 240.0
+offset_bottom = 109.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Luz4" type="ColorRect" parent="Chave4"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 6.0
+offset_right = 25.0
+offset_bottom = 14.0
+color = Color(0.0627451, 0.0784314, 0.121569, 1)
+
+[node name="Textos" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
