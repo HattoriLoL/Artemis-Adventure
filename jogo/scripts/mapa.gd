@@ -28,6 +28,7 @@ var escuro := 0.0
 var dormindo := false
 var sala_atual := ""
 var fim := false
+var minigame: Control = null       # minigame aberto agora (veja README_MINIGAMES.md)
 
 # robô do modo demo: anda pelo caminho da grade de navegação
 var astar: AStarGrid2D
@@ -111,7 +112,7 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		_ret(corpo, r, pos)
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
-			"pos": pos + Vector2(tf["x"], tf["y"])}
+			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", ""))}
 		tarefas.append(item)
 		var m := Polygon2D.new()                     # seta amarela pulando sobre a tarefa (como no Among Us)
 		m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
@@ -210,7 +211,9 @@ func _process(delta: float) -> void:
 	var it := _perto(interacoes, usadas)
 	if demo:
 		_demo(delta)
-	if dormindo:
+	if minigame != null:
+		jogador.t_usar = 0.1                   # astronauta parado enquanto o minigame está aberto
+	elif dormindo:
 		pass
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
@@ -232,6 +235,24 @@ func _tarefa(id: String) -> Dictionary:
 
 
 func _usar(tf: Dictionary) -> void:
+	if tf["minigame"] == "":
+		_concluir(tf)
+		return
+	if not ResourceLoader.exists(tf["minigame"]):
+		push_error("Minigame nao encontrado: " + tf["minigame"])
+		_concluir(tf)
+		return
+	# a tarefa tem minigame: abre a cena por cima do jogo e só conclui quando ela avisar que terminou
+	minigame = load(tf["minigame"]).instantiate()
+	minigame.demo = demo
+	minigame.terminou.connect(func():
+		minigame.queue_free()
+		minigame = null
+		_concluir(tf))
+	hud.get_parent().add_child(minigame)
+
+
+func _concluir(tf: Dictionary) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
 	marcas[tf["id"]].visible = false
@@ -351,7 +372,7 @@ func _desenha_hud() -> void:
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
-	if not tf.is_empty() and not dormindo:
+	if not tf.is_empty() and not dormindo and minigame == null:
 		Fonte.centralizado(hud, "E: " + str(tf["texto"]), 160, 160, AMARELO)
 	if escuro > 0.0:
 		hud.draw_rect(Rect2(0, 0, 320, 180), Color(0.02, 0.02, 0.05, escuro))
