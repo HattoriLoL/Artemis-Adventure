@@ -5,6 +5,7 @@
  "limite_baixo": 25,
  "queda_condicao_por_recurso_baixo": 0.1,
  "efeitos": {
+  "energia/paineis": {"energia": 12},
   "energia/baterias": {"energia": 15},
   "energia/terminal": {"energia": 10},
   "energia/distribuicao": {"energia": 10},
@@ -19,6 +20,7 @@
   "abrigo/blindagem": {"condicao": 5}
  },
  "multiplicadores": {
+  "energia/paineis": "geracao_solar",
   "energia/terminal": "geracao_solar",
   "habitat/agua": "gelo_por_coleta"
  }
