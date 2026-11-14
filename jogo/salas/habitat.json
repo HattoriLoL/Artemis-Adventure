@@ -94,7 +94,8 @@
    "id": "agua",
    "x": 270,
    "y": 72,
-   "texto": "REFILL THE WATER"
+   "texto": "REFILL THE WATER",
+   "minigame": "res://cenas/minigame_agua.tscn"
   }
  ],
  "inicio": [
