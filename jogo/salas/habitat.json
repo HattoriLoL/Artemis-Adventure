@@ -88,7 +88,8 @@
    "id": "refeicao",
    "x": 87,
    "y": 70,
-   "texto": "PREPARE A MEAL"
+   "texto": "PREPARE A MEAL",
+   "minigame": "res://cenas/minigame_refeicao.tscn"
   },
   {
    "id": "agua",
