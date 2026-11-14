@@ -1,10 +1,11 @@
 extends Control
-## Minigame da estufa (WATER THE PLANTS): 3 vasos de alface sob a luz de cultivo.
-## Segurar o clique num vaso (ou escolher com esquerda/direita e segurar E) faz a umidade subir; com ela na faixa
-## verde e a rega solta, a alface cresce até ficar pronta. Água demais encharca (o vaso escorre e é preciso esperar);
-## sem água a umidade cai sozinha e a planta murcha. Os 3 vasos prontos concluem a tarefa.
-## Arte do PixelAi (paleta Apollo) em res://assets/minigames/regar/; moldura, medidores e texto desenhados aqui.
-## Contrato com o mapa: sinal `terminou` (concluiu), sinal `cancelou` (fechou no X ou Esc) e a variável `demo`.
+## Minigame da estufa (WATER THE PLANTS), no estilo "segure a faixa em cima do alvo".
+## Do lado do canteiro há um trilho vertical. Segurar E (ou o clique) faz o JATO subir; soltar faz ele cair.
+## A GOTA (a umidade certa) sobe e desce sozinha. Com a gota dentro do jato, o crescimento enche e as 3 alfaces
+## crescem; fora, ele esvazia. Cheio: plantas regadas, a tarefa conclui. Vazio: as plantas murcham e a rodada
+## recomeça; depois de TENTATIVAS falhas o minigame fecha sem concluir (a tarefa continua no mapa).
+## Arte do PixelAi (paleta Apollo) em res://assets/minigames/regar/; moldura, trilho e texto desenhados aqui.
+## Contrato com o mapa: sinal `terminou` (concluiu), sinal `cancelou` (fechou no X, no Esc ou falhou tudo) e `demo`.
 
 signal terminou
 signal cancelou
@@ -33,33 +34,44 @@ const AGUA_BRILHO := Color("#a4dddb")
 const VERMELHO := Color("#a53030")
 const VERMELHO_CLARO := Color("#cf573c")
 
-const PAINEL := Rect2(56, 13, 208, 154)
+# --- tela
+const PAINEL := Rect2(36, 13, 228, 154)
 const JANELA := Vector2(64, 29)                 # canto do canteiro (192x121) na tela
 const BOTAO_X := Rect2(245, 17, 8, 8)
 const VASOS := [46, 96, 146]                    # centro de cada vaso, no canteiro
 const BICOS := [49, 95, 143]                    # gotejador de cada vaso
-const MEDIDORES := [66, 115, 165]
 const Y_BICO := 49
 const Y_TERRA := 91
-const Y_MED := 54
-const ALT_MED := 38
 const QUADRO := Vector2(31, 29)
+const TRILHO := Rect2(42, 29, 10, 121)          # onde o jato e a gota andam
+const BARRA := Rect2(55, 29, 4, 121)            # medidor de crescimento
 
-const FAIXA := Vector2(0.55, 0.78)              # umidade certa
-const ENCHE := 0.42                             # por segundo, regando
-const SECA := 0.035                             # por segundo, evaporando sob o LED
-const ESCORRE := 0.3                            # por segundo, encharcado
-const SECO := 0.2                               # abaixo disso a planta murcha
-const ESPERA_FAIXA := 0.6                       # tempo na faixa, sem regar, para começar a crescer
-const PASSO_CRESCER := 0.22                     # tempo de cada estágio ao crescer
+# --- jogo (mexa aqui para deixar mais fácil ou mais difícil)
+const ALT_JATO := 30.0                          # altura do jato, em pixels (maior = mais fácil)
+const SUBIDA := 340.0                           # aceleração para cima segurando, px/s²
+const GRAVIDADE := 300.0                        # aceleração para baixo soltando, px/s²
+const VEL_MAX := 130.0                          # velocidade máxima do jato, px/s
+const QUIQUE := 0.35                            # quanto o jato quica no fundo (0 = não quica)
+const VEL_GOTA := 48.0                          # velocidade da gota, px/s
+const TROCA_GOTA := Vector2(0.5, 1.3)           # a gota escolhe um novo destino a cada 0,5 a 1,3 s
+const ENCHE := 0.11                             # crescimento por segundo com a gota no jato
+const ESVAZIA := 0.09                           # crescimento perdido por segundo com a gota fora
+const COMECO := 0.3                             # crescimento no começo de cada rodada
+const TENTATIVAS := 3
 
 var demo := false
-var vasos := []
-var sel := 0
-var regando := -1
 var e_liberado := false                         # o E que abriu o minigame ainda pode estar apertado
 var t := 0.0
-var t_fim := -1.0
+var segurando := false
+var jato_y := 0.0                               # topo do jato, contado do topo do trilho
+var jato_v := 0.0
+var gota_y := 0.0                               # centro da gota, contado do topo do trilho
+var gota_destino := 0.0
+var t_gota := 0.0
+var crescimento := COMECO                       # 0 a 1
+var tentativa := 1
+var estado := "jogando"                         # "jogando", "murchou" ou "pronto"
+var t_estado := 0.0
 var aviso := ""
 var cor_aviso := BRANCO
 var t_aviso := 0.0
@@ -68,13 +80,11 @@ var t_aviso := 0.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_criar_teclas()
-	for v in [[0.32, 3], [0.18, 2], [0.06, 2]]:
-		vasos.append({"nivel": v[0], "estagio": v[1], "pronto": false, "crescendo": false, "t_faixa": 0.0,
-			"t_cresce": 0.0, "pulo": 0.0, "encharcado": false})
+	_nova_rodada()
 
 
 func _input(ev: InputEvent) -> void:
-	if t_fim >= 0.0 or demo:
+	if estado != "jogando" or demo:
 		return
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		if BOTAO_X.grow(1).has_point(get_local_mouse_position()):
@@ -86,96 +96,92 @@ func _input(ev: InputEvent) -> void:
 func _process(delta: float) -> void:
 	t += delta
 	t_aviso = maxf(0.0, t_aviso - delta)
-	if t_fim >= 0.0:
-		t_fim -= delta
-		_animar(delta)
-		queue_redraw()
-		if t_fim < 0.0:
-			set_process(false)
-			terminou.emit()
-		return
-	regando = _quem_rega()
-	for i in vasos.size():
-		_atualizar(i, delta)
-	_animar(delta)
-	if vasos.all(func(v): return v["pronto"]):
-		t_fim = 1.6
-		_avisar("PLANTS WATERED!", VERDE_LIMA, 2.0)
+	if estado == "jogando":
+		segurando = _quer_subir()
+		_mover_jato(delta)
+		_mover_gota(delta)
+		_crescer(delta)
+	else:
+		segurando = false
+		t_estado -= delta
+		if t_estado <= 0.0:
+			_fim_da_pausa()
 	queue_redraw()
 
 
-func _quem_rega() -> int:
-	if demo:  # como um jogador: rega o vaso até o meio da faixa, solta e espera crescer; depois o próximo
-		for i in vasos.size():
-			var v: Dictionary = vasos[i]
-			if not v["pronto"] and not v["crescendo"]:
-				sel = i
-				if v["nivel"] >= 0.68:
-					v["demo_solto"] = true
-				elif v["nivel"] < FAIXA.x:
-					v["demo_solto"] = false
-				return -1 if v.get("demo_solto", false) or v["encharcado"] else i
-		return -1
+func _nova_rodada() -> void:
+	jato_y = TRILHO.size.y - ALT_JATO
+	jato_v = 0.0
+	gota_y = TRILHO.size.y * 0.6
+	gota_destino = gota_y
+	t_gota = 0.0
+	crescimento = COMECO
+	estado = "jogando"
+
+
+func _quer_subir() -> bool:
+	if demo:  # como um jogador: segura se o jato (com o embalo dele) está abaixo da gota
+		return jato_y + ALT_JATO / 2.0 + jato_v * 0.25 > gota_y
 	if not Input.is_action_pressed("usar"):
 		e_liberado = true
-	if Input.is_action_just_pressed("esquerda"):
-		sel = (sel + vasos.size() - 1) % vasos.size()
-	if Input.is_action_just_pressed("direita"):
-		sel = (sel + 1) % vasos.size()
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		var m := get_local_mouse_position()
-		for i in vasos.size():
-			if _area_vaso(i).has_point(m):
-				sel = i
-				return i
 	if e_liberado and Input.is_action_pressed("usar"):
-		return sel
-	return -1
+		return true
+	return Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
+		and not BOTAO_X.grow(1).has_point(get_local_mouse_position())
 
 
-func _area_vaso(i: int) -> Rect2:
-	return Rect2(JANELA + Vector2(VASOS[i] - 22, 52), Vector2(44, 69))
+func _mover_jato(delta: float) -> void:
+	jato_v += (-SUBIDA if segurando else GRAVIDADE) * delta
+	jato_v = clampf(jato_v, -VEL_MAX, VEL_MAX)
+	jato_y += jato_v * delta
+	var fundo := TRILHO.size.y - ALT_JATO
+	if jato_y > fundo:
+		jato_y = fundo
+		jato_v = -jato_v * QUIQUE
+	if jato_y < 0.0:
+		jato_y = 0.0
+		jato_v = 0.0
 
 
-func _atualizar(i: int, delta: float) -> void:
-	var v: Dictionary = vasos[i]
-	if v["pronto"] or v["crescendo"]:
-		return
-	if v["encharcado"]:
-		v["nivel"] -= ESCORRE * delta
-		if v["nivel"] < 0.8:
-			v["encharcado"] = false
-	elif i == regando:
-		v["nivel"] += ENCHE * delta
-		if v["nivel"] >= 0.97:
-			v["encharcado"] = true
-			_avisar("TOO MUCH WATER! WAIT FOR IT TO DRAIN", VERMELHO_CLARO, 1.8)
+func _mover_gota(delta: float) -> void:
+	t_gota -= delta
+	if t_gota <= 0.0:
+		t_gota = randf_range(TROCA_GOTA.x, TROCA_GOTA.y)
+		gota_destino = randf_range(6.0, TRILHO.size.y - 6.0)
+	gota_y = move_toward(gota_y, gota_destino, VEL_GOTA * delta)
+
+
+func _gota_no_jato() -> bool:
+	return gota_y >= jato_y and gota_y <= jato_y + ALT_JATO
+
+
+func _crescer(delta: float) -> void:
+	crescimento += (ENCHE if _gota_no_jato() else -ESVAZIA) * delta
+	if crescimento >= 1.0:
+		crescimento = 1.0
+		estado = "pronto"
+		t_estado = 1.6
+		_avisar("PLANTS WATERED!", VERDE_LIMA, 2.0)
+	elif crescimento <= 0.0:
+		crescimento = 0.0
+		estado = "murchou"
+		t_estado = 1.6
+		if tentativa < TENTATIVAS:
+			_avisar("THE PLANTS WILTED! TRY AGAIN", VERMELHO_CLARO, 1.6)
+		else:
+			_avisar("THE PLANTS WILTED!", VERMELHO_CLARO, 1.6)
+
+
+func _fim_da_pausa() -> void:
+	if estado == "pronto":
+		set_process(false)
+		terminou.emit()
+	elif tentativa < TENTATIVAS:
+		tentativa += 1
+		_nova_rodada()
 	else:
-		v["nivel"] -= SECA * delta
-	v["nivel"] = clampf(v["nivel"], 0.0, 1.0)
-	var na_faixa: bool = v["nivel"] >= FAIXA.x and v["nivel"] <= FAIXA.y
-	if na_faixa and i != regando and not v["encharcado"]:
-		v["t_faixa"] += delta
-		if v["t_faixa"] >= ESPERA_FAIXA:
-			v["crescendo"] = true
-	else:
-		v["t_faixa"] = 0.0
-
-
-func _animar(delta: float) -> void:
-	for v in vasos:
-		v["pulo"] = maxf(0.0, v["pulo"] - delta)
-		if not v["crescendo"]:
-			continue
-		v["t_cresce"] += delta
-		if v["t_cresce"] >= PASSO_CRESCER:
-			v["t_cresce"] = 0.0
-			v["estagio"] += 1
-			v["pulo"] = 0.07
-			if v["estagio"] >= 7:
-				v["estagio"] = 7
-				v["crescendo"] = false
-				v["pronto"] = true
+		set_process(false)
+		cancelou.emit()
 
 
 func _avisar(txt: String, cor: Color, dur: float) -> void:
@@ -188,24 +194,20 @@ func _avisar(txt: String, cor: Color, dur: float) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 320, 180), Color(PRETO, 0.68))
 	_moldura()
-	var feitos := vasos.filter(func(v): return v["pronto"]).size()
 	Fonte.centralizado(self, "WATER THE PLANTS", PAINEL.position.x + PAINEL.size.x / 2.0, PAINEL.position.y + 5,
 		AMARELO)
-	Fonte.desenhar(self, "%d/3" % feitos, PAINEL.position + Vector2(12, 5), VERDE_LIMA)
-	draw_rect(BOTAO_X.grow(1), PRETO)
-	draw_rect(BOTAO_X.grow(0).grow_individual(-1, -1, -1, -1), VERMELHO)
-	for k in 4:
-		draw_rect(Rect2(BOTAO_X.position + Vector2(2 + k, 2 + k), Vector2.ONE), BRANCO)
-		draw_rect(Rect2(BOTAO_X.position + Vector2(5 - k, 2 + k), Vector2.ONE), BRANCO)
+	Fonte.desenhar(self, "TRY %d/%d" % [tentativa, TENTATIVAS], PAINEL.position + Vector2(12, 5), VERDE_LIMA)
+	_botao_x()
 	draw_rect(Rect2(JANELA - Vector2.ONE, Vector2(194, 123)), PRETO)
 	draw_texture(TEX_CANTEIRO, JANELA)
-	for i in vasos.size():
+	for i in VASOS.size():
 		_vaso(i)
+	_trilho()
 	var y_txt := JANELA.y + 126
 	if t_aviso > 0.0:
 		Fonte.centralizado(self, aviso, 160, y_txt, cor_aviso)
 	else:
-		Fonte.centralizado(self, "HOLD A POT TO WATER, RELEASE IN THE GREEN ZONE", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado(self, "HOLD E OR CLICK: KEEP THE DROP IN THE WATER", 160, y_txt, BRANCO_SUJO)
 
 
 func _moldura() -> void:
@@ -222,75 +224,68 @@ func _moldura() -> void:
 	draw_rect(Rect2(p.position + Vector2(8, 3), Vector2(p.size.x - 16, 10)), FUNDO)
 
 
+func _botao_x() -> void:
+	draw_rect(BOTAO_X.grow(1), PRETO)
+	draw_rect(BOTAO_X.grow_individual(-1, -1, -1, -1), VERMELHO)
+	for k in 4:
+		draw_rect(Rect2(BOTAO_X.position + Vector2(2 + k, 2 + k), Vector2.ONE), BRANCO)
+		draw_rect(Rect2(BOTAO_X.position + Vector2(5 - k, 2 + k), Vector2.ONE), BRANCO)
+
+
 func _vaso(i: int) -> void:
-	var v: Dictionary = vasos[i]
 	var cx: float = JANELA.x + VASOS[i]
 	var terra: float = JANELA.y + Y_TERRA
-	# planta
-	if not v["pronto"] and not v["crescendo"] and v["nivel"] < SECO:
+	if estado == "murchou":
 		draw_texture(TEX_MURCHA, Vector2(cx - TEX_MURCHA.get_width() / 2, terra - TEX_MURCHA.get_height() + 1))
 	else:
-		var q: int = v["estagio"]
-		if v["pronto"]:
+		var q := int(crescimento * 7.0)                 # estágio 0 a 7 conforme o crescimento
+		if estado == "pronto":
 			q = [8, 7, 9, 7][int(t / 0.3) % 4]          # balanço da planta pronta
-		var alto := QUADRO.y + (1.0 if v["pulo"] > 0.0 else 0.0)
-		draw_texture_rect_region(TEX_ALFACE, Rect2(cx - 15, terra - alto + 1, QUADRO.x, alto),
+		draw_texture_rect_region(TEX_ALFACE, Rect2(cx - 15, terra - QUADRO.y + 1, QUADRO.x, QUADRO.y),
 			Rect2(Vector2(q * QUADRO.x, 0), QUADRO))
-	# água encharcada em cima da terra
-	if v["encharcado"]:
-		draw_rect(Rect2(cx - 14, terra - 1, 28, 2), AGUA)
-		draw_rect(Rect2(cx - 10, terra - 1, 6, 1), AGUA_BRILHO)
-	# gotas caindo do gotejador
-	if i == regando:
+	# gotas caindo do gotejador enquanto o jogador segura
+	if segurando:
 		var bx: float = JANELA.x + BICOS[i]
 		var queda: float = Y_TERRA - Y_BICO - 4
 		for k in 3:
 			var gy: float = JANELA.y + Y_BICO + 2 + fmod(t * 60.0 + k * 13.0, queda)
 			draw_rect(Rect2(bx, gy, 1, 2), AGUA_CLARA)
 			draw_rect(Rect2(bx, gy - 1, 1, 1), AGUA_BRILHO)
-	_medidor(i)
-	# vaso escolhido pelo teclado
-	if not demo and not v["pronto"] and i == sel:
-		var y := JANELA.y + 122
-		for k in 3:
-			draw_rect(Rect2(cx - k, y + k, 1 + 2 * k, 1), AMARELO)
 
 
-func _medidor(i: int) -> void:
-	var v: Dictionary = vasos[i]
-	var x: float = JANELA.x + MEDIDORES[i]
-	var topo: float = JANELA.y + Y_MED
-	draw_rect(Rect2(x - 1, topo - 1, 8, ALT_MED + 2), PRETO)
-	draw_rect(Rect2(x, topo, 6, ALT_MED), NOITE)
-	var f0 := topo + ALT_MED - roundf(ALT_MED * FAIXA.y)
-	var f1 := topo + ALT_MED - roundf(ALT_MED * FAIXA.x)
-	draw_rect(Rect2(x, f0, 6, f1 - f0), VERDE_ESC)
-	var marca := VERDE_LIMA if v["pronto"] else VERDE
-	for mx in [x - 2, x + 7]:
-		draw_rect(Rect2(mx, f0, 1, 1), marca)
-		draw_rect(Rect2(mx, f1 - 1, 1, 1), marca)
-	var h := roundf(ALT_MED * float(v["nivel"]))
+func _trilho() -> void:
+	var r := TRILHO
+	draw_rect(r.grow(1), PRETO)
+	draw_rect(r, NOITE)
+	# jato (o que o jogador controla): azul quando a gota está dentro
+	var dentro := _gota_no_jato() and estado == "jogando"
+	var jato := Rect2(r.position.x + 1, r.position.y + roundf(jato_y), r.size.x - 2, ALT_JATO)
+	draw_rect(jato, AGUA if dentro else CINZA_ESC)
+	draw_rect(Rect2(jato.position, Vector2(jato.size.x, 1)), AGUA_BRILHO if dentro else CINZA)
+	draw_rect(Rect2(jato.position.x, jato.end.y - 1, jato.size.x, 1), AGUA_BRILHO if dentro else CINZA)
+	# gota (o alvo)
+	var g := Vector2(r.position.x + r.size.x / 2.0, r.position.y + roundf(gota_y))
+	draw_rect(Rect2(g.x - 1, g.y - 3, 2, 1), AGUA_BRILHO)
+	draw_rect(Rect2(g.x - 2, g.y - 2, 4, 2), AGUA_CLARA)
+	draw_rect(Rect2(g.x - 3, g.y, 6, 2), AGUA_CLARA)
+	draw_rect(Rect2(g.x - 2, g.y + 2, 4, 1), AGUA)
+	draw_rect(Rect2(g.x - 2, g.y - 1, 1, 1), BRANCO)
+	# medidor de crescimento
+	var b := BARRA
+	draw_rect(b.grow(1), PRETO)
+	draw_rect(b, NOITE)
+	var h := roundf(b.size.y * crescimento)
+	var cor := VERDE_LIMA if crescimento > 0.35 else (AMARELO if crescimento > 0.15 else VERMELHO_CLARO)
 	if h > 0:
-		draw_rect(Rect2(x + 1, topo + ALT_MED - h, 4, h), AGUA)
-		draw_rect(Rect2(x + 1, topo + ALT_MED - h, 4, 1), AGUA_BRILHO)
-		if h > 1:
-			draw_rect(Rect2(x + 1, topo + ALT_MED - h + 1, 1, h - 1), AGUA_CLARA)
-	if v["pronto"]:
-		for pt in [Vector2(1, -5), Vector2(2, -4), Vector2(3, -5), Vector2(4, -6), Vector2(5, -7)]:
-			draw_rect(Rect2(Vector2(x, topo) + pt, Vector2.ONE), VERDE_LIMA)
-	elif (v["encharcado"] or v["nivel"] < SECO) and int(t * 4.0) % 2 == 0:
-		draw_rect(Rect2(x + 2, topo - 8, 2, 4), VERMELHO_CLARO)
-		draw_rect(Rect2(x + 2, topo - 3, 2, 1), VERMELHO_CLARO)
+		draw_rect(Rect2(b.position.x, b.end.y - h, b.size.x, h), cor)
 
 
 func _criar_teclas() -> void:
 	# para a cena rodar sozinha com F6: no jogo, quem cria as teclas é o mapa
-	var m := {"usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER], "esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT]}
-	for acao in m:
-		if InputMap.has_action(acao):
-			continue
-		InputMap.add_action(acao)
-		for k in m[acao]:
-			var ev := InputEventKey.new()
-			ev.physical_keycode = k
-			InputMap.action_add_event(acao, ev)
+	if InputMap.has_action("usar"):
+		return
+	InputMap.add_action("usar")
+	for k in [KEY_E, KEY_X, KEY_J, KEY_ENTER]:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = k
+		InputMap.action_add_event("usar", ev)
