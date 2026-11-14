@@ -1,0 +1,96 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/minigame_blindagem.gd" id="1_blind"]
+
+[node name="MinigameBlindagem" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_blind")
+
+[node name="Fundo" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 25.0
+offset_right = 270.0
+offset_bottom = 155.0
+color = Color(0.0352941, 0.0392157, 0.0784314, 1)
+
+[node name="Parede" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 42.0
+offset_right = 260.0
+offset_bottom = 134.0
+color = Color(0.109804, 0.141176, 0.172549, 1)
+
+[node name="Alvo1" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 84.0
+offset_top = 56.0
+offset_right = 116.0
+offset_bottom = 88.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Alvo2" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 144.0
+offset_top = 76.0
+offset_right = 176.0
+offset_bottom = 108.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Alvo3" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 204.0
+offset_top = 56.0
+offset_right = 236.0
+offset_bottom = 88.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Fixa1" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 84.0
+offset_top = 56.0
+offset_right = 116.0
+offset_bottom = 88.0
+color = Color(0.27451, 0.509804, 0.196078, 1)
+
+[node name="Fixa2" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 144.0
+offset_top = 76.0
+offset_right = 176.0
+offset_bottom = 108.0
+color = Color(0.27451, 0.509804, 0.196078, 1)
+
+[node name="Fixa3" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 204.0
+offset_top = 56.0
+offset_right = 236.0
+offset_bottom = 88.0
+color = Color(0.27451, 0.509804, 0.196078, 1)
+
+[node name="CursorPlaca" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 144.0
+offset_top = 102.0
+offset_right = 176.0
+offset_bottom = 134.0
+color = Color(0.505882, 0.592157, 0.588235, 1)
+
+[node name="Textos" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

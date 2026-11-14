@@ -124,7 +124,8 @@
    "id": "blindagem",
    "x": 246,
    "y": 144,
-   "texto": "REINFORCE THE SHIELDING"
+   "texto": "REINFORCE THE SHIELDING",
+   "minigame": "res://cenas/minigame_blindagem.tscn"
   }
  ],
  "inicio": [
