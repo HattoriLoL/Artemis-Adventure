@@ -1,0 +1,25 @@
+{
+ "_leia": "Números provisórios para o balanceamento. Valores de 0 a 100. Consumo e geração por segundo de jogo.",
+ "consumo_por_segundo": {"energia": 0.25, "oxigenio": 0.15, "comida": 0.08, "condicao": 0.03},
+ "geracao_solar_por_segundo": 0.12,
+ "limite_baixo": 25,
+ "queda_condicao_por_recurso_baixo": 0.1,
+ "efeitos": {
+  "energia/baterias": {"energia": 15},
+  "energia/terminal": {"energia": 10},
+  "energia/distribuicao": {"energia": 10},
+  "energia/tanques": {"oxigenio": 5},
+  "suporte/oxigenio": {"oxigenio": 15},
+  "suporte/gas": {"oxigenio": 10},
+  "suporte/algas": {"oxigenio": 5, "comida": 3},
+  "habitat/refeicao": {"comida": -5, "condicao": 10},
+  "habitat/agua": {"oxigenio": 8},
+  "habitat/cama": {"condicao": 15},
+  "estufa/regar": {"comida": 5, "condicao": 5, "oxigenio": 3},
+  "abrigo/blindagem": {"condicao": 5}
+ },
+ "multiplicadores": {
+  "energia/terminal": "geracao_solar",
+  "habitat/agua": "gelo_por_coleta"
+ }
+}
