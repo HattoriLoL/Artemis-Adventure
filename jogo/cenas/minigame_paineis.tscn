@@ -2,57 +2,12 @@
 
 [ext_resource type="Script" uid="uid://t77xnrpqnlo4" path="res://scripts/minigame_paineis.gd" id="1_vl1sg"]
 
-[node name="MinigamePanels" type="Control" unique_id=358702002]
+[node name="MinigamePaineis" type="Control"]
 layout_mode = 3
-anchors_preset = 0
-offset_right = 320.0
-offset_bottom = 180.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_vl1sg")
-
-[node name="Painel" type="ColorRect" parent="." unique_id=237071648]
-layout_mode = 0
-offset_left = 50.0
-offset_top = 35.0
-offset_right = 270.0
-offset_bottom = 145.0
-color = Color(0.03529412, 0.039215688, 0.078431375, 1)
-
-[node name="Placa1" type="ColorRect" parent="." unique_id=1903564470]
-layout_mode = 0
-offset_left = 60.0
-offset_top = 45.0
-offset_right = 120.0
-offset_bottom = 135.0
-color = Color(0.14509805, 0.22745098, 0.36862746, 1)
-
-[node name="Placa2" type="ColorRect" parent="." unique_id=1570396380]
-layout_mode = 0
-offset_left = 130.0
-offset_top = 45.0
-offset_right = 190.0
-offset_bottom = 135.0
-color = Color(0.14509805, 0.22745098, 0.36862746, 1)
-
-[node name="Placa3" type="ColorRect" parent="." unique_id=102427646]
-layout_mode = 0
-offset_left = 200.0
-offset_top = 45.0
-offset_right = 260.0
-offset_bottom = 135.0
-color = Color(0.14509805, 0.22745098, 0.36862746, 1)
-
-[node name="Mancha" type="ColorRect" parent="." unique_id=885558083]
-layout_mode = 0
-
-[node name="Escova" type="ColorRect" parent="." unique_id=1449235627]
-layout_mode = 0
-offset_left = 157.0
-offset_top = 87.0
-offset_right = 169.0
-offset_bottom = 99.0
-color = Color(0.9098039, 0.75686276, 0.4392157, 1)
-
-[node name="Textos" type="Control" parent="." unique_id=328908079]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
