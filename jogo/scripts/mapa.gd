@@ -87,7 +87,7 @@ func _ready() -> void:
 
 func _entradas() -> void:
 	var m := {"esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT], "cima": [KEY_W, KEY_UP],
-		"baixo": [KEY_S, KEY_DOWN], "andar": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
+		"baixo": [KEY_S, KEY_DOWN], "correr": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
 	for acao in m:
 		if InputMap.has_action(acao):
 			continue
@@ -125,7 +125,7 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		_ret(corpo, r, pos)
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
-			"pos": pos + Vector2(tf["x"], tf["y"])}
+			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", ""))}
 		tarefas.append(item)
 		var m := Polygon2D.new()                     # seta amarela pulando sobre a tarefa (como no Among Us)
 		m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
@@ -272,8 +272,14 @@ func _tarefa(id: String) -> Dictionary:
 
 
 func _usar(tf: Dictionary) -> void:
+	if tf.get("minigame", "") != "":
+		abrir_minigame(tf["minigame"], tf)
+		return
 	if tf["id"] == "estufa/regar":
 		abrir_minigame("res://cenas/minigame_estufa.tscn", tf)
+		return
+	if tf["id"] == "suporte/gas":
+		abrir_minigame("res://cenas/minigame_swap_co2.tscn", tf)
 		return
 	_concluir_tarefa(tf)
 
