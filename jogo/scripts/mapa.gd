@@ -20,6 +20,10 @@ var portas := []
 var marcas := {}
 var jogador: CharacterBody2D
 var hud: Control
+var camada_ui: CanvasLayer
+var em_minigame := false
+var dia_atual := 1
+var dia_plantio := 0
 var aviso := ""
 var t_aviso := 0.0
 var demo := false
@@ -161,12 +165,12 @@ func _navegacao() -> void:
 
 
 func _interface() -> void:
-	var cl := CanvasLayer.new()
-	add_child(cl)
+	camada_ui = CanvasLayer.new()
+	add_child(camada_ui)
 	hud = Control.new()
 	hud.size = Vector2(320, 180)
 	hud.draw.connect(_desenha_hud)
-	cl.add_child(hud)
+	camada_ui.add_child(hud)
 
 
 func _avisar(txt: String) -> void:
@@ -210,7 +214,7 @@ func _process(delta: float) -> void:
 	var it := _perto(interacoes, usadas)
 	if demo:
 		_demo(delta)
-	if dormindo:
+	if dormindo or em_minigame:
 		pass
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
@@ -232,6 +236,32 @@ func _tarefa(id: String) -> Dictionary:
 
 
 func _usar(tf: Dictionary) -> void:
+	if tf["id"] == "estufa/regar":
+		_iniciar_minigame_estufa(tf)
+		return
+	_concluir_tarefa(tf)
+
+
+func _iniciar_minigame_estufa(tf: Dictionary) -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var cena_mg: PackedScene = load("res://cenas/minigame_estufa.tscn")
+	var mg: Control = cena_mg.instantiate()
+	mg.demo = demo
+	camada_ui.add_child(mg)
+	mg.terminou.connect(func():
+		mg.queue_free()
+		em_minigame = false
+		hud.visible = true
+		jogador.set_physics_process(true)
+		dia_plantio = dia_atual
+		_concluir_tarefa(tf)
+	)
+
+
+func _concluir_tarefa(tf: Dictionary) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
 	marcas[tf["id"]].visible = false
@@ -281,7 +311,7 @@ func _proximo_alvo() -> Dictionary:
 
 
 func _demo(delta: float) -> void:
-	if fim:
+	if fim or em_minigame:
 		return
 	var alvo := _proximo_alvo()
 	if alvo.is_empty():

@@ -1,0 +1,103 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/minigame_estufa.gd" id="1_estufa"]
+
+[node name="MinigameEstufa" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_estufa")
+
+[node name="Painel" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 24.0
+offset_right = 270.0
+offset_bottom = 154.0
+color = Color(0.0823529, 0.101961, 0.141176, 0.95)
+
+[node name="Bandeja1" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 68.0
+offset_top = 80.0
+offset_right = 108.0
+offset_bottom = 104.0
+color = Color(0.247059, 0.282353, 0.333333, 1)
+
+[node name="Broto" type="ColorRect" parent="Bandeja1"]
+visible = false
+layout_mode = 0
+offset_left = 14.0
+offset_top = -10.0
+offset_right = 26.0
+offset_bottom = 4.0
+color = Color(0.423529, 0.772549, 0.262745, 1)
+
+[node name="Bandeja2" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 118.0
+offset_top = 80.0
+offset_right = 158.0
+offset_bottom = 104.0
+color = Color(0.247059, 0.282353, 0.333333, 1)
+
+[node name="Broto" type="ColorRect" parent="Bandeja2"]
+visible = false
+layout_mode = 0
+offset_left = 14.0
+offset_top = -10.0
+offset_right = 26.0
+offset_bottom = 4.0
+color = Color(0.423529, 0.772549, 0.262745, 1)
+
+[node name="Bandeja3" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 168.0
+offset_top = 80.0
+offset_right = 208.0
+offset_bottom = 104.0
+color = Color(0.247059, 0.282353, 0.333333, 1)
+
+[node name="Broto" type="ColorRect" parent="Bandeja3"]
+visible = false
+layout_mode = 0
+offset_left = 14.0
+offset_top = -10.0
+offset_right = 26.0
+offset_bottom = 4.0
+color = Color(0.423529, 0.772549, 0.262745, 1)
+
+[node name="Barra" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 228.0
+offset_top = 45.0
+offset_right = 252.0
+offset_bottom = 125.0
+color = Color(0.0901961, 0.117647, 0.160784, 1)
+
+[node name="Faixa" type="ColorRect" parent="Barra"]
+layout_mode = 0
+offset_top = 20.0
+offset_right = 24.0
+offset_bottom = 40.0
+color = Color(0.266667, 0.690196, 0.301961, 0.85)
+
+[node name="Agua" type="ColorRect" parent="Barra"]
+layout_mode = 0
+offset_top = 80.0
+offset_right = 24.0
+offset_bottom = 80.0
+color = Color(0.219608, 0.635294, 0.898039, 0.9)
+
+[node name="Textos" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
