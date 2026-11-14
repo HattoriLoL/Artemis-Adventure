@@ -16,6 +16,7 @@ var bot_alvo := Vector2.INF
 var bot_espera := 0.0
 var t_usar := 0.0
 var lanterna_energia := 0.0        # (a versão de plataforma usa; aqui fica parada)
+var mult_vel := 1.0                # multiplicador da velocidade (aba DEV do menu de pausa)
 
 var spr: AnimatedSprite2D
 var poeira: CPUParticles2D
@@ -97,8 +98,8 @@ func _entrada(delta: float) -> Vector2:
 
 func _physics_process(delta: float) -> void:
 	var ent := Vector2.ZERO if t_usar > 0.0 else _entrada(delta)
-	var vmax := VEL_ANDAR if (not demo and Input.is_action_pressed("andar")) else VEL
-	velocity = velocity.move_toward(ent * vmax, ACEL * delta)
+	var vmax := (VEL_ANDAR if (not demo and Input.is_action_pressed("andar")) else VEL) * mult_vel
+	velocity = velocity.move_toward(ent * vmax, ACEL * mult_vel * delta)
 	move_and_slide()
 	t_usar = max(0.0, t_usar - delta)
 	if t_usar > 0.0:
