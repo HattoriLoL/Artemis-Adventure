@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/minigame_oxigenio.gd" id="1_oxigenio"]
+[ext_resource type="Script" uid="uid://c1oymtbrqtjik" path="res://scripts/minigame_oxigenio.gd" id="1_oxigenio"]
 
 [node name="MinigameOxigenio" type="Control"]
 layout_mode = 3
@@ -9,82 +9,5 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_oxigenio")
-
-[node name="Fundo" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 60.0
-offset_top = 30.0
-offset_right = 260.0
-offset_bottom = 150.0
-color = Color(0.0352941, 0.0392157, 0.0784314, 1)
-
-[node name="Selecao" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 108.0
-offset_top = 48.0
-offset_right = 144.0
-offset_bottom = 122.0
-color = Color(0.909804, 0.756863, 0.439216, 1)
-
-[node name="ColunaO2" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 112.0
-offset_top = 52.0
-offset_right = 140.0
-offset_bottom = 118.0
-color = Color(0.117647, 0.160784, 0.211765, 1)
-
-[node name="Faixa" type="ColorRect" parent="ColunaO2"]
-layout_mode = 0
-offset_left = -2.0
-offset_top = 16.0
-offset_right = 30.0
-offset_bottom = 36.0
-color = Color(0.27451, 0.509804, 0.196078, 1)
-
-[node name="Nivel" type="ColorRect" parent="ColunaO2"]
-layout_mode = 0
-offset_left = 4.0
-offset_top = 66.0
-offset_right = 24.0
-offset_bottom = 66.0
-color = Color(0.45098, 0.745098, 0.827451, 1)
-
-[node name="ColunaCO2" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 180.0
-offset_top = 52.0
-offset_right = 208.0
-offset_bottom = 118.0
-color = Color(0.117647, 0.160784, 0.211765, 1)
-
-[node name="Faixa" type="ColorRect" parent="ColunaCO2"]
-layout_mode = 0
-offset_left = -2.0
-offset_top = 34.0
-offset_right = 30.0
-offset_bottom = 54.0
-color = Color(0.27451, 0.509804, 0.196078, 1)
-
-[node name="Nivel" type="ColorRect" parent="ColunaCO2"]
-layout_mode = 0
-offset_left = 4.0
-offset_top = 66.0
-offset_right = 24.0
-offset_bottom = 66.0
-color = Color(0.843137, 0.462745, 0.262745, 1)
-
-[node name="BarraEstavel" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 100.0
-offset_top = 130.0
-offset_right = 100.0
-offset_bottom = 134.0
-color = Color(0.658824, 0.792157, 0.345098, 1)
-
-[node name="Textos" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 320.0
-offset_bottom = 180.0
