@@ -140,8 +140,9 @@ func _jogador() -> void:
 	cam.limit_top = 0
 	cam.limit_right = int(mapa["tamanho"][0])
 	cam.limit_bottom = int(mapa["tamanho"][1])
-	cam.position_smoothing_enabled = true
-	cam.position_smoothing_speed = 6.0
+	# câmera presa no astronauta, sem suavização: com a suavização, câmera e astronauta caíam em frações de pixel
+	# diferentes e o arredondamento fazia o astronauta tremer 1 px na tela (ver physics_interpolation no projeto)
+	cam.position_smoothing_enabled = false
 	cam.offset = Vector2(0, -14)
 	jogador.add_child(cam)
 	cam.make_current()
