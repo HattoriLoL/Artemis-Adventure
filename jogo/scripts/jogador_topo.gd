@@ -1,6 +1,7 @@
 extends CharacterBody2D
 ## Astronauta da versão vista de cima (três quartos): anda em 8 direções; a animação segue a direção dominante
 ## (baixo, cima, esquerda, direita). Origem do nó = pés (os quadros de 48x48 têm os pés na linha 46).
+## Segurando Shift (ação `correr`) corre, com a animação run_<dir> e mais poeira.
 ## Na Lua, levanta um pouco de poeira ao andar. Modo demonstração: anda até `bot_alvo` (a próxima tarefa).
 
 const VEL_ANDAR := 70.0
@@ -98,7 +99,7 @@ func _entrada(delta: float) -> Vector2:
 
 func _physics_process(delta: float) -> void:
 	var ent := Vector2.ZERO if t_usar > 0.0 else _entrada(delta)
-	var correndo := not demo and (Input.is_action_pressed("correr") or Input.is_action_pressed("andar"))
+	var correndo := not demo and Input.is_action_pressed("correr")
 	var vmax := (VEL_CORRER if correndo else VEL_ANDAR) * mult_vel
 	velocity = velocity.move_toward(ent * vmax, ACEL * mult_vel * delta)
 	move_and_slide()
@@ -110,10 +111,12 @@ func _physics_process(delta: float) -> void:
 			dir = "right" if ent.x > 0 else "left"
 		else:
 			dir = "down" if ent.y > 0 else "up"
-	var anim := ("walk_" if velocity.length() > 8.0 else "idle_") + dir
+	var anim := "idle_"
+	if velocity.length() > 8.0:
+		anim = "run_" if correndo and spr.sprite_frames.has_animation("run_" + dir) else "walk_"
+	anim += dir
 	if spr.animation != anim:
 		spr.play(anim)
-	spr.speed_scale = 1.4 if (correndo and velocity.length() > 8.0) else 1.0
 	if com_poeira and velocity.length() > 8.0:
 		t_passo -= delta
 		if t_passo <= 0.0:
