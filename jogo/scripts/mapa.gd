@@ -237,7 +237,26 @@ func _usar(tf: Dictionary) -> void:
 	if tf["id"] == "estufa/regar":
 		_iniciar_minigame_estufa(tf)
 		return
+	if tf["id"] == "suporte/gas":
+		_iniciar_minigame_swap_co2(tf)
+		return
 	_concluir_tarefa(tf)
+
+
+func _iniciar_minigame_swap_co2(tf: Dictionary) -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var cena_mg: PackedScene = load("res://cenas/minigame_swap_co2.tscn")
+	var mg: Control = cena_mg.instantiate()
+	mg.demo = demo
+	camada_ui.add_child(mg)
+	mg.terminou.connect(func():
+		_fechar_minigame(mg)
+		_concluir_tarefa(tf)
+	)
+	mg.cancelou.connect(func(): _fechar_minigame(mg))
 
 
 func _iniciar_minigame_estufa(tf: Dictionary) -> void:

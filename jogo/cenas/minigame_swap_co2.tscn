@@ -1,0 +1,70 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/minigame_swap_co2.gd" id="1_swap"]
+
+[node name="MinigameSwapCo2" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_swap")
+
+[node name="Fundo" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 30.0
+offset_right = 260.0
+offset_bottom = 150.0
+color = Color(0.0352941, 0.0392157, 0.0784314, 1)
+
+[node name="Encaixe" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 140.0
+offset_top = 52.0
+offset_right = 180.0
+offset_bottom = 108.0
+color = Color(0.223529, 0.290196, 0.313726, 1)
+
+[node name="Trava" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 140.0
+offset_top = 50.0
+offset_right = 180.0
+offset_bottom = 53.0
+color = Color(0.909804, 0.756863, 0.439216, 1)
+
+[node name="FiltroVelho" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 146.0
+offset_top = 58.0
+offset_right = 174.0
+offset_bottom = 102.0
+color = Color(0.341176, 0.447059, 0.466667, 1)
+
+[node name="FiltroNovo" type="ColorRect" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 146.0
+offset_top = 58.0
+offset_right = 174.0
+offset_bottom = 102.0
+color = Color(0.45098, 0.745098, 0.827451, 1)
+
+[node name="Progresso" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 128.0
+offset_right = 80.0
+offset_bottom = 132.0
+color = Color(0.658824, 0.792157, 0.345098, 1)
+
+[node name="Textos" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
