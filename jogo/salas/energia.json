@@ -1,0 +1,140 @@
+{
+ "nome": "energia",
+ "png": "res://assets/v3/salas/energia.png",
+ "tamanho": [
+  400,
+  240
+ ],
+ "titulo": "SALA DE ENERGIA",
+ "concluida": "ENERGIA RESTABELECIDA",
+ "solidos": [
+  [
+   0,
+   0,
+   400,
+   56
+  ],
+  [
+   0,
+   0,
+   32,
+   240
+  ],
+  [
+   368,
+   0,
+   32,
+   240
+  ],
+  [
+   30,
+   48,
+   44,
+   48
+  ],
+  [
+   30,
+   96,
+   10,
+   22
+  ],
+  [
+   30,
+   120,
+   20,
+   75
+  ],
+  [
+   45,
+   135,
+   112,
+   60
+  ],
+  [
+   280,
+   75,
+   82,
+   50
+  ],
+  [
+   360,
+   70,
+   10,
+   30
+  ],
+  [
+   255,
+   150,
+   115,
+   45
+  ],
+  [
+   0,
+   190,
+   182,
+   50
+  ],
+  [
+   220,
+   190,
+   180,
+   50
+  ]
+ ],
+ "portas": [
+  {
+   "lado": "baixo",
+   "ret": [
+    182,
+    190,
+    38,
+    50
+   ]
+  },
+  {
+   "lado": "cima",
+   "ret": [
+    182,
+    8,
+    38,
+    40
+   ],
+   "trancada": true,
+   "luz": [
+    200,
+    12
+   ]
+  }
+ ],
+ "tarefas": [
+  {
+   "id": "baterias",
+   "x": 295,
+   "y": 66,
+   "texto": "TROCAR AS BATERIAS"
+  },
+  {
+   "id": "terminal",
+   "x": 62,
+   "y": 106,
+   "texto": "REINICIAR O TERMINAL"
+  },
+  {
+   "id": "distribuicao",
+   "x": 318,
+   "y": 136,
+   "texto": "AJUSTAR A DISTRIBUICAO"
+  },
+  {
+   "id": "tanques",
+   "x": 100,
+   "y": 128,
+   "texto": "CONFERIR OS TANQUES"
+  }
+ ],
+ "inicio": [
+  200,
+  160
+ ],
+ "interacoes": []
+}

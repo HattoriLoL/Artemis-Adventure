@@ -1,0 +1,113 @@
+{
+ "nome": "habitat",
+ "png": "res://assets/v3/salas/habitat.png",
+ "tamanho": [
+  400,
+  240
+ ],
+ "titulo": "HABITAT",
+ "concluida": "HABITAT EM ORDEM",
+ "solidos": [
+  [
+   0,
+   0,
+   178,
+   60
+  ],
+  [
+   222,
+   0,
+   178,
+   62
+  ],
+  [
+   0,
+   0,
+   30,
+   240
+  ],
+  [
+   370,
+   0,
+   30,
+   240
+  ],
+  [
+   288,
+   10,
+   112,
+   195
+  ],
+  [
+   28,
+   126,
+   40,
+   14
+  ],
+  [
+   30,
+   140,
+   96,
+   60
+  ],
+  [
+   0,
+   190,
+   178,
+   50
+  ],
+  [
+   222,
+   190,
+   178,
+   50
+  ]
+ ],
+ "portas": [
+  {
+   "lado": "cima",
+   "ret": [
+    178,
+    0,
+    44,
+    45
+   ]
+  },
+  {
+   "lado": "baixo",
+   "ret": [
+    178,
+    190,
+    44,
+    50
+   ]
+  }
+ ],
+ "tarefas": [
+  {
+   "id": "refeicao",
+   "x": 87,
+   "y": 70,
+   "texto": "PREPARAR A REFEICAO"
+  },
+  {
+   "id": "agua",
+   "x": 270,
+   "y": 72,
+   "texto": "ABASTECER A AGUA"
+  }
+ ],
+ "inicio": [
+  200,
+  170
+ ],
+ "interacoes": [
+  {
+   "id": "cama",
+   "x": 136,
+   "y": 168,
+   "texto": "DORMIR",
+   "acao": "dormir"
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+# Godot
+jogo/.godot/
+*.tmp
+export_presets.cfg
+
+# sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# vídeos
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
