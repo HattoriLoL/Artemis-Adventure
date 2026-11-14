@@ -1,4 +1,4 @@
-[gd_resource type="SpriteFrames" load_steps=58 format=3]
+[gd_resource type="SpriteFrames" load_steps=42 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/astronauta/astronauta_topo_folha.png" id="1_folha"]
 
@@ -161,70 +161,6 @@ region = Rect2(48, 528, 48, 48)
 [sub_resource type="AtlasTexture" id="AtlasTexture_40"]
 atlas = ExtResource("1_folha")
 region = Rect2(96, 528, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_41"]
-atlas = ExtResource("1_folha")
-region = Rect2(0, 576, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_42"]
-atlas = ExtResource("1_folha")
-region = Rect2(48, 576, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_43"]
-atlas = ExtResource("1_folha")
-region = Rect2(96, 576, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_44"]
-atlas = ExtResource("1_folha")
-region = Rect2(144, 576, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_45"]
-atlas = ExtResource("1_folha")
-region = Rect2(0, 624, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_46"]
-atlas = ExtResource("1_folha")
-region = Rect2(48, 624, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_47"]
-atlas = ExtResource("1_folha")
-region = Rect2(96, 624, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_48"]
-atlas = ExtResource("1_folha")
-region = Rect2(144, 624, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_49"]
-atlas = ExtResource("1_folha")
-region = Rect2(0, 672, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_50"]
-atlas = ExtResource("1_folha")
-region = Rect2(48, 672, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_51"]
-atlas = ExtResource("1_folha")
-region = Rect2(96, 672, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_52"]
-atlas = ExtResource("1_folha")
-region = Rect2(144, 672, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_53"]
-atlas = ExtResource("1_folha")
-region = Rect2(0, 720, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_54"]
-atlas = ExtResource("1_folha")
-region = Rect2(48, 720, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_55"]
-atlas = ExtResource("1_folha")
-region = Rect2(96, 720, 48, 48)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_56"]
-atlas = ExtResource("1_folha")
-region = Rect2(144, 720, 48, 48)
 
 [resource]
 animations = [{
@@ -435,84 +371,4 @@ animations = [{
 "loop": false,
 "name": &"use_up",
 "speed": 8.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_41")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_42")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_43")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_44")
-}],
-"loop": true,
-"name": &"run_down",
-"speed": 12.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_45")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_46")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_47")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_48")
-}],
-"loop": true,
-"name": &"run_left",
-"speed": 12.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_49")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_50")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_51")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_52")
-}],
-"loop": true,
-"name": &"run_right",
-"speed": 12.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_53")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_54")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_55")
-},
-{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_56")
-}],
-"loop": true,
-"name": &"run_up",
-"speed": 12.0
 }]
