@@ -330,11 +330,20 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 	var mg: Control = cena_mg.instantiate()
 	mg.demo = demo
 	camada_ui.add_child(mg)
+	# terminou: a tarefa rende conforme os erros (o minigame diz a taxa em taxa_erro(), de 0 a 1; sem ela, 0)
 	mg.terminou.connect(func():
+		var taxa := clampf(float(mg.taxa_erro()), 0.0, 1.0) if mg.has_method("taxa_erro") else 0.0
 		_fechar_minigame(mg)
 		if not tf.is_empty():
-			_concluir_tarefa(tf)
+			_concluir_tarefa(tf, Recursos.fator_erro(taxa))
 	)
+	# falhou (errou demais): a tarefa é perdida, gasta a ação do dia e não rende nada
+	if mg.has_signal("falhou"):
+		mg.falhou.connect(func():
+			_fechar_minigame(mg)
+			if not tf.is_empty():
+				_concluir_tarefa(tf, 0.0, true)
+		)
 	# fechou no X ou no Esc: volta ao jogo sem concluir a tarefa
 	if mg.has_signal("cancelou"):
 		mg.cancelou.connect(func(): _fechar_minigame(mg))
@@ -348,13 +357,19 @@ func _fechar_minigame(mg: Control) -> void:
 	jogador.set_physics_process(true)
 
 
-func _concluir_tarefa(tf: Dictionary) -> void:
+## `fator`: quanto do ganho a tarefa rende (1 = tudo; menos quando o minigame teve erros). `perdeu`: o minigame
+## falhou; a tarefa gasta a ação do dia do mesmo jeito, mas não rende nada.
+func _concluir_tarefa(tf: Dictionary, fator := 1.0, perdeu := false) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
-	ciclo.registrar(tf)                            # gasta uma das ações do dia
+	var texto := str(tf["texto"])
+	ciclo.registrar({"texto": texto + " (FAILED)"} if perdeu else tf)   # gasta uma das ações do dia
 	_atualizar_marcas()
-	Recursos.aplicar(tf["id"])
-	_avisar("DONE: " + str(tf["texto"]))
+	if perdeu:
+		_avisar("FAILED: " + texto)
+	else:
+		Recursos.aplicar(tf["id"], fator)
+		_avisar(("DONE: " if fator >= 1.0 else "DONE WITH ERRORS: ") + texto)
 	if ciclo.acoes_restantes() == 0:
 		await get_tree().create_timer(2.0).timeout
 		if not dormindo and not fim:

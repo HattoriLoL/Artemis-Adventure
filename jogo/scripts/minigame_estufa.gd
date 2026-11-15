@@ -3,11 +3,14 @@ extends Control
 ## Do lado do canteiro há um trilho vertical. Segurar E (ou o clique) faz o JATO subir; soltar faz ele cair.
 ## A GOTA (a umidade certa) sobe e desce sozinha. Com a gota dentro do jato, o crescimento enche e as 3 alfaces
 ## crescem; fora, ele esvazia. Cheio: plantas regadas, a tarefa conclui. Vazio: as plantas murcham e a rodada
-## recomeça; depois de TENTATIVAS falhas o minigame fecha sem concluir (a tarefa continua no mapa).
+## recomeça; depois de TENTATIVAS falhas a tarefa é perdida (sinal falhou). O tempo com a gota fora do jato é a
+## taxa de erro (taxa_erro): diminui o que a tarefa rende.
 ## Arte do PixelAi (paleta Apollo) em res://assets/minigames/regar/; moldura, trilho e texto desenhados aqui.
-## Contrato com o mapa: sinal `terminou` (concluiu), sinal `cancelou` (fechou no X, no Esc ou falhou tudo) e `demo`.
+## Contrato com o mapa: sinais `terminou` (concluiu), `falhou` (murchou TENTATIVAS vezes) e `cancelou` (X ou Esc),
+## taxa_erro() e `demo`.
 
 signal terminou
+signal falhou
 signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
@@ -79,6 +82,8 @@ var cor_aviso := BRANCO
 var t_aviso := 0.0
 var t_impacto := 0.0                            # > 0 logo depois de o jato bater no fundo
 var forca_impacto := 0.0                        # 0 a 1: quão forte foi a batida (velocidade / VEL_MAX)
+var t_jogando := 0.0                            # tempo jogando, somando as rodadas
+var t_fora := 0.0                               # desse tempo, quanto a gota passou fora do jato
 
 
 func _ready() -> void:
@@ -165,7 +170,15 @@ func _gota_no_jato() -> bool:
 	return gota_y >= jato_y and gota_y <= jato_y + ALT_JATO
 
 
+## Fração do tempo de jogo com a gota fora do jato.
+func taxa_erro() -> float:
+	return t_fora / maxf(0.001, t_jogando)
+
+
 func _crescer(delta: float) -> void:
+	t_jogando += delta
+	if not _gota_no_jato():
+		t_fora += delta
 	crescimento += (ENCHE if _gota_no_jato() else -ESVAZIA) * delta
 	if crescimento >= 1.0:
 		crescimento = 1.0
@@ -179,7 +192,7 @@ func _crescer(delta: float) -> void:
 		if tentativa < TENTATIVAS:
 			_avisar("THE PLANTS WILTED! TRY AGAIN", VERMELHO_CLARO, 1.6)
 		else:
-			_avisar("THE PLANTS WILTED!", VERMELHO_CLARO, 1.6)
+			_avisar("THE PLANTS WILTED - TASK FAILED", VERMELHO_CLARO, 1.6)
 
 
 func _fim_da_pausa() -> void:
@@ -191,7 +204,7 @@ func _fim_da_pausa() -> void:
 		_nova_rodada()
 	else:
 		set_process(false)
-		cancelou.emit()
+		falhou.emit()
 
 
 func _avisar(txt: String, cor: Color, dur: float) -> void:

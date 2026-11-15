@@ -2,11 +2,14 @@ extends Control
 ## Minigame "trocar o filtro de CO2" (SWAP THE CO2 FILTER), nos tanques do Suporte à Vida. 4 passos em ordem:
 ## destravar (E 6 vezes), puxar o filtro velho (segurar baixo), encaixar o novo (segurar cima) e travar (E).
 ## O filtro é um cartucho cilíndrico: o novo é branco, o velho está gasto.
-## Soltar antes do tempo zera o passo de segurar; tecla errada mostra WRONG KEY sem perder o progresso.
+## Soltar antes do tempo zera o passo de segurar; tecla errada mostra WRONG KEY sem perder o progresso. Os dois são
+## erros: taxa_erro diminui o que a tarefa rende e MAX_ERROS erros perdem a tarefa (sinal falhou).
 ## Arte (paleta Apollo) em res://assets/minigames/co2/; moldura, LED, barra e texto desenhados aqui.
-## Contrato com o mapa: sinal `terminou` (concluiu), sinal `cancelou` (fechou no X ou Esc) e a variável `demo`.
+## Contrato com o mapa: sinais `terminou` (concluiu), `falhou` (errou demais) e `cancelou` (X ou Esc), taxa_erro()
+## e a variável `demo`.
 
 signal terminou
+signal falhou
 signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
@@ -55,6 +58,7 @@ const TECLAS := ["usar", "esquerda", "direita", "cima", "baixo"]
 const INTERVALO_DEMO := 0.2                      # no demo, tempo entre um aperto e outro
 const VEL_TRAVA := 120.0                         # px/s da trava ao recolher e ao voltar
 const TEMPO_FIM := 1.3
+const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var passo := 0                                   # passo atual: 0 a 3 (4 = acabou)
@@ -66,6 +70,9 @@ var t_tremor := 0.0                              # a trava treme um instante a c
 var e_liberado := false                          # só aceita o E depois que o jogador soltar o aperto que abriu
 var t_fim := -1.0
 var trava_y := float(Y_TRAVA)                    # posição desenhada da trava (anda até o alvo)
+var acertos := 0                                 # apertos certos e passos de segurar completos
+var erros := 0                                   # teclas erradas e soltar antes da hora
+var perdeu := false
 
 
 func _ready() -> void:
@@ -93,7 +100,10 @@ func _process(delta: float) -> void:
 		queue_redraw()
 		if t_fim < 0.0:
 			set_process(false)
-			terminou.emit()
+			if perdeu:
+				falhou.emit()
+			else:
+				terminou.emit()
 		return
 	if not Input.is_action_pressed("usar"):
 		e_liberado = true
@@ -112,18 +122,34 @@ func _process(delta: float) -> void:
 func _passo_apertar(p: Dictionary) -> void:
 	if _apertou(p["tecla"]):
 		progresso += 1.0
+		acertos += 1
 		t_tremor = 0.08
 	elif _apertou_outra(p["tecla"]):
-		t_aviso = 0.8
+		_errar()
 
 
 func _passo_segurar(p: Dictionary, delta: float) -> void:
 	if Input.is_action_pressed(p["tecla"]):
 		progresso += delta
 	else:
-		progresso = 0.0                          # soltou antes do tempo: volta a zero
+		if progresso > 0.0:                      # soltou antes do tempo: volta a zero e conta como erro
+			_errar()
+		progresso = 0.0
 	if _apertou_outra(p["tecla"]):
-		t_aviso = 0.8
+		_errar()
+
+
+func _errar() -> void:
+	t_aviso = 0.8
+	erros += 1
+	if erros >= MAX_ERROS:
+		perdeu = true
+		t_fim = TEMPO_FIM
+
+
+## Fração dos lances que foram erros.
+func taxa_erro() -> float:
+	return erros / maxf(1.0, float(erros + acertos))
 
 
 func _apertou(tecla: String) -> bool:
@@ -154,6 +180,8 @@ func _jogar_sozinho(p: Dictionary, delta: float) -> void:
 
 
 func _proximo_passo() -> void:
+	if PASSOS[passo]["tipo"] == "segurar":
+		acertos += 1
 	passo += 1
 	progresso = 0.0
 	t_demo = 0.0
@@ -197,10 +225,12 @@ func _draw() -> void:
 	draw_texture(tex_trava, JANELA + Vector2(x_trava + tremor, round(trava_y)))
 	_led()
 	var y_txt := JANELA.y + TAM_JANELA.y + 4
-	if passo >= PASSOS.size():
+	if perdeu:
+		Fonte.centralizado(self, "TOO MANY ERRORS - TASK FAILED", 160, y_txt, VERMELHO_CLARO)
+	elif passo >= PASSOS.size():
 		Fonte.centralizado(self, "FILTER SWAPPED - AIRFLOW RESTORED", 160, y_txt, VERDE_LIMA)
 	elif t_aviso > 0.0:
-		Fonte.centralizado(self, "WRONG KEY", 160, y_txt, VERMELHO_CLARO)
+		Fonte.centralizado(self, "WRONG KEY (%d/%d)" % [erros, MAX_ERROS], 160, y_txt, VERMELHO_CLARO)
 	else:
 		Fonte.centralizado(self, PASSOS[passo]["texto"], 160, y_txt, BRANCO_SUJO)
 	_barra()
