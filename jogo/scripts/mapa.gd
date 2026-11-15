@@ -8,6 +8,7 @@ const Porta = preload("res://scripts/porta.gd")
 const MenuPausa = preload("res://scripts/menu_pausa.gd")
 const CicloDias = preload("res://scripts/ciclo_dias.gd")
 const Tempestade = preload("res://scripts/tempestade.gd")
+const Tutorial = preload("res://scripts/tutorial_minigame.gd")
 const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
@@ -456,7 +457,12 @@ func _usar(tf: Dictionary) -> void:
 
 
 ## Abre um minigame por cima do jogo. Com `tf` vazio (aba DEV do menu de pausa), terminar não conclui tarefa nenhuma.
+## Na primeira vez de cada minigame (fora do demo), antes aparece o tutorial dele (tutorial_minigame.gd).
 func abrir_minigame(caminho: String, tf := {}) -> void:
+	var id_tutorial := Tutorial.id_de(caminho)
+	if not demo and Tutorial.tem(id_tutorial) and not Tutorial.ja_visto(id_tutorial):
+		_abrir_tutorial(id_tutorial, caminho, tf)
+		return
 	em_minigame = true
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
@@ -495,6 +501,24 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 			elif Engine.get_process_frames() != quadro_desistir:
 				falhar.call()
 		)
+
+
+## Tutorial de primeira vez: E começa o minigame (e o tutorial não aparece mais); Esc ou X volta ao jogo sem gastar
+## nada (e o tutorial aparece de novo na próxima vez).
+func _abrir_tutorial(id_tutorial: String, caminho: String, tf: Dictionary) -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var tut: Control = Tutorial.new()
+	tut.id = id_tutorial
+	camada_ui.add_child(tut)
+	tut.continuar.connect(func():
+		Tutorial.marcar_visto(id_tutorial)
+		tut.queue_free()
+		abrir_minigame(caminho, tf)
+	)
+	tut.cancelou.connect(func(): _fechar_minigame(tut))
 
 
 ## Computador de navegação (mesa do Suporte): clima espacial, diário, previsão e situação da base. Consultar não
