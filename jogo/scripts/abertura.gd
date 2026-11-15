@@ -9,7 +9,7 @@ extends Control
 ## Teclas: E / Enter / clique pulam; segurar baixo acelera; segurar cima deixa mais devagar.
  
 const Fonte = preload("res://scripts/fonte.gd")
- 
+const CAMINHO_MUSICA := "res://assets/sons/abertura.wav"
 const CENA_SEGUINTE := "res://cenas/escolha_pouso.tscn"
 const ARQUIVO_DIAS := "res://dados/dias.json"
  
@@ -67,7 +67,15 @@ var saindo := false
 var estrelas: Array = []           # [posição, cor, fase do brilho, velocidade do brilho]
 var material_texto: ShaderMaterial
 var topo: Control
- 
+var player_musica: AudioStreamPlayer
+
+func _configurar_musica() -> void:
+	player_musica = AudioStreamPlayer.new()
+	var stream = load(CAMINHO_MUSICA)
+	if stream:
+		player_musica.stream = stream
+		add_child(player_musica)
+		player_musica.play()
  
 func _ready() -> void:
 	_criar_teclas()
@@ -109,6 +117,7 @@ func _ready() -> void:
 	add_child(topo)
 	# a última linha do texto sobe até o meio da tela e aí a abertura escurece
 	fim_rolagem = alt_texto * SUPER + 0.7 * (ALT_TELA - HORIZONTE) / ESCALA
+	_configurar_musica()
  
  
 func _process(delta: float) -> void:

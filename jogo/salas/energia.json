@@ -125,19 +125,22 @@
    "id": "terminal",
    "x": 62,
    "y": 106,
-   "texto": "RESTART THE TERMINAL"
+   "texto": "AIM THE SOLAR PANELS",
+   "minigame": "res://cenas/minigame_align_panels.tscn"
   },
   {
    "id": "distribuicao",
    "x": 318,
    "y": 136,
-   "texto": "BALANCE THE POWER"
+   "texto": "BALANCE THE POWER",
+   "minigame": "res://cenas/minigame_distribuicao.tscn"
   },
   {
    "id": "tanques",
    "x": 100,
    "y": 128,
-   "texto": "CHECK THE TANKS"
+   "texto": "CHECK THE TANKS",
+   "minigame": "res://cenas/minigame_tanques.tscn"
   }
  ],
  "inicio": [
