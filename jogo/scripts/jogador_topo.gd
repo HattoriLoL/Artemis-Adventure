@@ -64,8 +64,9 @@ func _ready() -> void:
 
 
 func usar() -> void:
+	# o astronauta para um instante na tarefa; por enquanto a folha só tem parado e andar (sem animação de usar)
 	t_usar = 0.45
-	spr.play("use_" + dir)
+	spr.play("idle_" + dir)
 
 
 func bot_quer_usar(_t: Dictionary) -> bool:
