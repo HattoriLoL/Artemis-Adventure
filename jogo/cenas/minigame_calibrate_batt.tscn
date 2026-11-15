@@ -1,72 +1,13 @@
-[gd_scene format=3 uid="uid://o3dv8717elqu"]
+[gd_scene load_steps=2 format=3 uid="uid://o3dv8717elqu"]
 
 [ext_resource type="Script" uid="uid://dvm45miflc7m1" path="res://scripts/minigame_calibrate_batt.gd" id="1_3jscf"]
 
-[node name="MinigameCalibrateBatt" type="Control" unique_id=258871123]
+[node name="MinigameCalibrateBatt" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_3jscf")
-
-[node name="Bateria1" type="ColorRect" parent="." unique_id=1493567208]
-z_index = 2
-layout_mode = 0
-offset_left = 124.0
-offset_top = 48.0
-offset_right = 140.0
-offset_bottom = 74.0
-color = Color(0.22352941, 0.2901961, 0.3137255, 1)
-
-[node name="Bateria2" type="ColorRect" parent="." unique_id=1436434686]
-z_index = 2
-layout_mode = 0
-offset_left = 152.0
-offset_top = 48.0
-offset_right = 168.0
-offset_bottom = 74.0
-color = Color(0.22352941, 0.2901961, 0.3137255, 1)
-
-[node name="Bateria3" type="ColorRect" parent="." unique_id=1288705059]
-z_index = 2
-layout_mode = 0
-offset_left = 180.0
-offset_top = 48.0
-offset_right = 196.0
-offset_bottom = 74.0
-color = Color(0.22352941, 0.2901961, 0.3137255, 1)
-
-[node name="Fundo" type="ColorRect" parent="." unique_id=1544106516]
-layout_mode = 0
-offset_left = 60.0
-offset_top = 30.0
-offset_right = 260.0
-offset_bottom = 150.0
-color = Color(0.03529412, 0.039215688, 0.078431375, 1)
-
-[node name="Barra" type="ColorRect" parent="." unique_id=396128499]
-layout_mode = 0
-offset_left = 80.0
-offset_top = 92.0
-offset_right = 240.0
-offset_bottom = 100.0
-color = Color(0.22352941, 0.2901961, 0.3137255, 1)
-
-[node name="Faixa" type="ColorRect" parent="Barra" unique_id=523839085]
-layout_mode = 0
-offset_right = 24.0
-offset_bottom = 8.0
-color = Color(0.65882355, 0.7921569, 0.34509805, 1)
-
-[node name="Ponteiro" type="ColorRect" parent="Barra" unique_id=34825401]
-layout_mode = 0
-offset_right = 14.0
-offset_bottom = 8.0
-color = Color(0.92156863, 0.92941177, 0.9137255, 1)
-
-[node name="Textos" type="Control" parent="." unique_id=497613930]
-anchors_preset = 0
-offset_right = 320.0
-offset_bottom = 180.0

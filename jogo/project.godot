@@ -8,15 +8,18 @@
 
 config_version=5
 
-[animation]
-
-compatibility/default_parent_skeleton_in_mesh_instance_3d=true
-
 [application]
 
 config/name="Artemis Outpost"
-run/main_scene="res://cenas/mapa.tscn"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+run/main_scene="uid://denyrbev860p7"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+
+[autoload]
+
+Opcoes="*res://scripts/opcoes.gd"
+Prints="*res://scripts/prints.gd"
+Missao="*res://scripts/missao.gd"
+Recursos="*res://scripts/recursos.gd"
 
 [display]
 

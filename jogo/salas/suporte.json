@@ -124,24 +124,34 @@
    "id": "algas",
    "x": 108,
    "y": 120,
-   "texto": "TEND THE ALGAE"
+   "texto": "TEND THE ALGAE",
+   "minigame": "res://cenas/minigame_algas.tscn"
   },
   {
    "id": "gas",
    "x": 298,
    "y": 118,
-   "texto": "CHECK THE GAS TANKS"
+   "texto": "SWAP THE CO2 FILTER"
   },
   {
    "id": "oxigenio",
    "x": 276,
    "y": 70,
-   "texto": "ADJUST THE OXYGEN"
+   "texto": "BALANCE THE AIR",
+   "minigame": "res://cenas/minigame_oxigenio.tscn"
   }
  ],
  "inicio": [
   202,
   172
  ],
- "interacoes": []
+ "interacoes": [
+  {
+   "id": "computador",
+   "x": 272,
+   "y": 136,
+   "texto": "NAVIGATION COMPUTER",
+   "acao": "computador"
+  }
+ ]
 }
