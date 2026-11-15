@@ -851,7 +851,7 @@ func _concluir_emergencia_casco() -> void:
 	emergencia_blindagem = false
 	_parar_alarme_mapa()
 	_avisar("HULL REPAIRED // SHELTER AIRTIGHT! (+5 HP)")
-	Recursos.aplicar_efeito({"condicao": 5.0})
+	Recursos.aplicar("abrigo/blindagem")
 	feitas["abrigo/blindagem"] = true
 	_atualizar_marcas()
 	if hud != null:
@@ -864,10 +864,20 @@ func _falhar_emergencia_casco() -> void:
 	tremer_tela(1.2, 5.0)
 	_tocar_impacto_mapa()
 	_avisar("[!] HULL COLLAPSE // RADIATION LEAK (-15 HP)")
-	Recursos.aplicar_efeito({"condicao": -15.0})
+	_alterar_recurso("condicao", -15.0)
 	_atualizar_marcas()
 	if hud != null:
 		hud.queue_redraw()
+
+
+func _alterar_recurso(nome: String, delta: float) -> void:
+	if Recursos.valores.has(nome):
+		var antes: float = Recursos.valores[nome]
+		Recursos.valores[nome] = clampf(antes + delta, 0.0, 100.0)
+		var diff: float = Recursos.valores[nome] - antes
+		if not is_equal_approx(diff, 0.0):
+			variacoes[nome] = [diff, 2.0]
+			Recursos.mudou.emit("emergencia", {nome: diff})
 
 
 func _criar_audio_mapa() -> void:
