@@ -43,7 +43,7 @@ const TAM_QUADRO := Vector2(32, 32)
 const PE_NO_QUADRO := Vector2(16, 31)             # onde fica o pé do poste dentro do quadro
 const QUADROS := 7
 const ANGULO_MAX := 60.0                           # o quadro 0 é -60° e o último é +60°
-const CEU := Rect2(16, 20, 160, 34)                # onde o Sol pode nascer (acima do horizonte)
+const CEU := Rect2(30, 20, 130, 38)                # onde o Sol pode nascer: céu livre, longe do REC e da antena
 const PROFUNDIDADE := 90.0                         # "distância" até o Sol: com 90, todo alvo fica dentro de ±57°
 
 const VELOCIDADE := 50.0                           # graus por segundo segurando A/D
@@ -191,7 +191,7 @@ func _sol() -> void:
 ## Linha de mira do painel que está girando: sai do painel na direção para onde ele aponta (verde de frente pro Sol).
 func _mira(i: int) -> void:
 	var pe: Vector2 = LUGARES[i]
-	var origem := pe + Vector2(0, -TAM_QUADRO.y * 0.6)
+	var origem := pe + Vector2(0, -21)                  # o meio do painel (ele ocupa y 2..18 do quadro)
 	var dx := tan(deg_to_rad(angulos[i])) * PROFUNDIDADE
 	var fim := Vector2(origem.x + dx, sol.y)
 	var cor := VERDE_LIMA if mirando() else Color(CIANO, 0.8)
