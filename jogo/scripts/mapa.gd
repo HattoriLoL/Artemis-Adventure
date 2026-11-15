@@ -17,7 +17,7 @@ const AZUL := Color("#73bed3")
 const SEM_SOL := "NO SUN TODAY: NO EFFECT"
 # planta da base (arte do PixelAi, ver arte/minimapa.py) em dois tamanhos: o minimapa do canto de baixo à direita e o
 # mapa da tecla M. A imagem cobre o retângulo PLANTA_ORIGEM + PLANTA_TAM do mapa (salas e túneis), em qualquer tamanho
-const TEX_MINIMAPA := preload("res://assets/mapa/minimapa_grande.png")    # 74x90 (o de 53x64 é minimapa.png)
+const TEX_MINIMAPA := preload("res://assets/mapa/minimapa_canto.png")     # 64x78 (testados: 53x64 e 74x90)
 const TEX_MAPA_TELA := preload("res://assets/mapa/mapa_tela.png")        # 132x160
 const PLANTA_ORIGEM := Vector2(40, 40)
 const PLANTA_TAM := Vector2(944, 1146)

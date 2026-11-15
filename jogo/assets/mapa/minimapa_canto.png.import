@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://35iur3aisi7d"
-path="res://.godot/imported/minimapa_grande.png-fdff32c1373a85a6e678f0caa0f99854.ctex"
+uid="uid://c4vuujlsida5n"
+path="res://.godot/imported/minimapa_canto.png-884a0c16b35c95fde8ef486f2bb90f64.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/mapa/minimapa_grande.png"
-dest_files=["res://.godot/imported/minimapa_grande.png-fdff32c1373a85a6e678f0caa0f99854.ctex"]
+source_file="res://assets/mapa/minimapa_canto.png"
+dest_files=["res://.godot/imported/minimapa_canto.png-884a0c16b35c95fde8ef486f2bb90f64.ctex"]
 
 [params]
 
