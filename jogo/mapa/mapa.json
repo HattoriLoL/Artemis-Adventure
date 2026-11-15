@@ -9,36 +9,36 @@
   {
    "nome": "energia",
    "pos": [
-    48,
-    48
+	48,
+	48
    ]
   },
   {
    "nome": "habitat",
    "pos": [
-    48,
-    448
+	48,
+	448
    ]
   },
   {
    "nome": "suporte",
    "pos": [
-    48,
-    848
+	48,
+	848
    ]
   },
   {
    "nome": "abrigo",
    "pos": [
-    576,
-    448
+	576,
+	448
    ]
   },
   {
    "nome": "estufa",
    "pos": [
-    576,
-    848
+	576,
+	848
    ]
   }
  ],
@@ -164,33 +164,33 @@
    "sala": "energia",
    "lado": "baixo",
    "painel": [
-    231,
-    246,
-    36,
-    34
+	231,
+	246,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    198,
-    36,
-    34
+	183,
+	198,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/energia.png",
    "bloqueio": [
-    230,
-    244,
-    38,
-    44
+	230,
+	244,
+	38,
+	44
    ],
    "gatilho": [
-    224,
-    214,
-    50,
-    104
+	224,
+	214,
+	50,
+	104
    ],
    "luz": [
-    249,
-    242
+	249,
+	242
    ],
    "trancada": false
   },
@@ -199,33 +199,33 @@
    "sala": "energia",
    "lado": "cima",
    "painel": [
-    231,
-    54,
-    36,
-    34
+	231,
+	54,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    6,
-    36,
-    34
+	183,
+	6,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/energia.png",
    "bloqueio": [
-    230,
-    48,
-    38,
-    42
+	230,
+	48,
+	38,
+	42
    ],
    "gatilho": [
-    224,
-    12,
-    50,
-    100
+	224,
+	12,
+	50,
+	100
    ],
    "luz": [
-    249,
-    50
+	249,
+	50
    ],
    "trancada": true
   },
@@ -234,33 +234,33 @@
    "sala": "habitat",
    "lado": "cima",
    "painel": [
-    231,
-    454,
-    36,
-    34
+	231,
+	454,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    6,
-    36,
-    34
+	183,
+	6,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/habitat.png",
    "bloqueio": [
-    226,
-    448,
-    44,
-    42
+	226,
+	448,
+	44,
+	42
    ],
    "gatilho": [
-    220,
-    412,
-    56,
-    100
+	220,
+	412,
+	56,
+	100
    ],
    "luz": [
-    249,
-    450
+	249,
+	450
    ],
    "trancada": false
   },
@@ -269,33 +269,33 @@
    "sala": "habitat",
    "lado": "baixo",
    "painel": [
-    231,
-    646,
-    36,
-    34
+	231,
+	646,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    198,
-    36,
-    34
+	183,
+	198,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/habitat.png",
    "bloqueio": [
-    226,
-    644,
-    44,
-    44
+	226,
+	644,
+	44,
+	44
    ],
    "gatilho": [
-    220,
-    614,
-    56,
-    104
+	220,
+	614,
+	56,
+	104
    ],
    "luz": [
-    249,
-    642
+	249,
+	642
    ],
    "trancada": false
   },
@@ -304,33 +304,33 @@
    "sala": "suporte",
    "lado": "cima",
    "painel": [
-    231,
-    854,
-    36,
-    34
+	231,
+	854,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    6,
-    36,
-    34
+	183,
+	6,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/suporte.png",
    "bloqueio": [
-    230,
-    848,
-    42,
-    42
+	230,
+	848,
+	42,
+	42
    ],
    "gatilho": [
-    224,
-    812,
-    54,
-    100
+	224,
+	812,
+	54,
+	100
    ],
    "luz": [
-    249,
-    850
+	249,
+	850
    ],
    "trancada": false
   },
@@ -339,33 +339,33 @@
    "sala": "suporte",
    "lado": "baixo",
    "painel": [
-    231,
-    1046,
-    36,
-    34
+	231,
+	1046,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    198,
-    36,
-    34
+	183,
+	198,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/suporte.png",
    "bloqueio": [
-    230,
-    1044,
-    42,
-    44
+	230,
+	1044,
+	42,
+	44
    ],
    "gatilho": [
-    224,
-    1014,
-    54,
-    104
+	224,
+	1014,
+	54,
+	104
    ],
    "luz": [
-    249,
-    1042
+	249,
+	1042
    ],
    "trancada": false
   },
@@ -374,33 +374,33 @@
    "sala": "abrigo",
    "lado": "cima",
    "painel": [
-    759,
-    454,
-    36,
-    34
+	759,
+	454,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    6,
-    36,
-    34
+	183,
+	6,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/abrigo.png",
    "bloqueio": [
-    758,
-    448,
-    42,
-    42
+	758,
+	448,
+	42,
+	42
    ],
    "gatilho": [
-    752,
-    412,
-    54,
-    100
+	752,
+	412,
+	54,
+	100
    ],
    "luz": [
-    777,
-    450
+	777,
+	450
    ],
    "trancada": false
   },
@@ -409,33 +409,33 @@
    "sala": "abrigo",
    "lado": "baixo",
    "painel": [
-    759,
-    646,
-    36,
-    34
+	759,
+	646,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    198,
-    36,
-    34
+	183,
+	198,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/abrigo.png",
    "bloqueio": [
-    758,
-    644,
-    42,
-    44
+	758,
+	644,
+	42,
+	44
    ],
    "gatilho": [
-    752,
-    614,
-    54,
-    104
+	752,
+	614,
+	54,
+	104
    ],
    "luz": [
-    777,
-    642
+	777,
+	642
    ],
    "trancada": false
   },
@@ -444,33 +444,33 @@
    "sala": "estufa",
    "lado": "cima",
    "painel": [
-    759,
-    854,
-    36,
-    34
+	759,
+	854,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    6,
-    36,
-    34
+	183,
+	6,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/estufa.png",
    "bloqueio": [
-    758,
-    848,
-    38,
-    42
+	758,
+	848,
+	38,
+	42
    ],
    "gatilho": [
-    752,
-    812,
-    50,
-    100
+	752,
+	812,
+	50,
+	100
    ],
    "luz": [
-    777,
-    850
+	777,
+	850
    ],
    "trancada": false
   },
@@ -479,33 +479,33 @@
    "sala": "estufa",
    "lado": "baixo",
    "painel": [
-    759,
-    1046,
-    36,
-    34
+	759,
+	1046,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    198,
-    36,
-    34
+	183,
+	198,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/estufa.png",
    "bloqueio": [
-    758,
-    1044,
-    38,
-    44
+	758,
+	1044,
+	38,
+	44
    ],
    "gatilho": [
-    752,
-    1014,
-    50,
-    104
+	752,
+	1014,
+	50,
+	104
    ],
    "luz": [
-    777,
-    1042
+	777,
+	1042
    ],
    "trancada": false
   },
@@ -514,33 +514,33 @@
    "sala": "",
    "lado": "cima",
    "painel": [
-    759,
-    48,
-    36,
-    34
+	759,
+	48,
+	36,
+	34
    ],
    "painel_textura": [
-    183,
-    6,
-    36,
-    34
+	183,
+	6,
+	36,
+	34
    ],
    "textura": "res://assets/v3/salas/suporte.png",
    "bloqueio": [
-    758,
-    82,
-    38,
-    6
+	758,
+	82,
+	38,
+	6
    ],
    "gatilho": [
-    751,
-    78,
-    52,
-    40
+	751,
+	78,
+	52,
+	40
    ],
    "luz": [
-    777,
-    44
+	777,
+	44
    ],
    "trancada": true,
    "aviso": "AIRLOCK: EXIT TO THE MOON"
