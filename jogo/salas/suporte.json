@@ -131,13 +131,14 @@
    "id": "gas",
    "x": 298,
    "y": 118,
-   "texto": "CHECK THE GAS TANKS"
+   "texto": "SWAP THE CO2 FILTER"
   },
   {
    "id": "oxigenio",
    "x": 276,
    "y": 70,
-   "texto": "ADJUST THE OXYGEN"
+   "texto": "BALANCE THE AIR",
+   "minigame": "res://cenas/minigame_oxigenio.tscn"
   }
  ],
  "inicio": [

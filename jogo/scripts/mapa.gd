@@ -10,6 +10,13 @@ const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
 const VERDE := Color("#75a743")
+const VERMELHO := Color("#cf573c")
+const ESCURO := Color("#394a50")
+# os 4 indicadores no HUD (canto de cima à direita), na ordem do plano
+const INDICADORES := ["energia", "oxigenio", "comida", "condicao"]
+const ROTULOS := {"energia": "POWER", "oxigenio": "OXYGEN", "comida": "FOOD", "condicao": "CREW"}
+const CORES := {"energia": Color("#e8c170"), "oxigenio": Color("#73bed3"), "comida": Color("#a8ca58"),
+	"condicao": Color("#df84a5")}
 
 var mapa: Dictionary
 var salas := {}                    # nome -> {"dados": ..., "pos": Vector2}
@@ -32,6 +39,7 @@ var escuro := 0.0
 var dormindo := false
 var sala_atual := ""
 var fim := false
+var variacoes := {}                # indicador -> [quanto mudou, tempo na tela]: o "+15" ao lado da barra
 
 # robô do modo demo: anda pelo caminho da grade de navegação
 var astar: AStarGrid2D
@@ -72,12 +80,14 @@ func _ready() -> void:
 		portas.append(porta)
 	_navegacao()
 	_interface()
+	Recursos.iniciar()                             # começa com as condições do local de pouso
+	Recursos.mudou.connect(_recursos_mudaram)
 	_avisar("LUNAR BASE")
 
 
 func _entradas() -> void:
 	var m := {"esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT], "cima": [KEY_W, KEY_UP],
-		"baixo": [KEY_S, KEY_DOWN], "andar": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
+		"baixo": [KEY_S, KEY_DOWN], "correr": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
 	for acao in m:
 		if InputMap.has_action(acao):
 			continue
@@ -186,6 +196,20 @@ func _avisar(txt: String) -> void:
 	t_aviso = 2.2
 
 
+func _recursos_mudaram(_id: String, mudancas: Dictionary) -> void:
+	for nome in mudancas:
+		variacoes[nome] = [mudancas[nome], 2.0]
+
+
+## {"comida": -5, "condicao": 10} -> "-5 FOOD +10 CREW"
+func _texto_efeito(efeito: Dictionary) -> String:
+	var partes := PackedStringArray()
+	for nome in INDICADORES:
+		if efeito.has(nome) and roundi(efeito[nome]) != 0:
+			partes.append("%+d %s" % [roundi(efeito[nome]), ROTULOS[nome]])
+	return " ".join(partes)
+
+
 func _sala_de(pos: Vector2) -> String:
 	for nome in salas:
 		var tam: Array = salas[nome]["dados"]["tamanho"]
@@ -210,6 +234,10 @@ func _perto(lista: Array, feito: Dictionary) -> Dictionary:
 func _process(delta: float) -> void:
 	t += delta
 	t_aviso = max(0.0, t_aviso - delta)
+	for nome in variacoes.keys():
+		variacoes[nome][1] -= delta
+		if variacoes[nome][1] <= 0.0:
+			variacoes.erase(nome)
 	for id in marcas:
 		var item := _tarefa(id)
 		marcas[id].position.y = item["pos"].y - 44 + round(sin(t * 5.0) * 1.5)
@@ -250,6 +278,9 @@ func _usar(tf: Dictionary) -> void:
 	if tf["id"] == "estufa/regar":
 		abrir_minigame("res://cenas/minigame_estufa.tscn", tf)
 		return
+	if tf["id"] == "suporte/gas":
+		abrir_minigame("res://cenas/minigame_swap_co2.tscn", tf)
+		return
 	_concluir_tarefa(tf)
 
 
@@ -285,6 +316,7 @@ func _concluir_tarefa(tf: Dictionary) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
 	marcas[tf["id"]].visible = false
+	Recursos.aplicar(tf["id"])
 	_avisar("DONE: " + str(tf["texto"]))
 	var sala: String = tf["sala"]
 	var faltam := tarefas.filter(func(x): return x["sala"] == sala and not feitas.has(x["id"]))
@@ -293,6 +325,7 @@ func _concluir_tarefa(tf: Dictionary) -> void:
 		_avisar(str(salas[sala]["dados"].get("concluida", "ROOM DONE")))
 	if feitas.size() == tarefas.size():
 		await get_tree().create_timer(2.4).timeout
+		Recursos.ativo = false                      # fim provisório: os indicadores param (o fim de verdade é outra task)
 		_avisar("BASE SECURED")
 		t_aviso = 999.0
 		_demo_fim()
@@ -300,6 +333,7 @@ func _concluir_tarefa(tf: Dictionary) -> void:
 
 func _interagir(it: Dictionary) -> void:
 	usadas[it["id"]] = true
+	Recursos.aplicar(it["id"])
 	if it["acao"] == "dormir":
 		dormindo = true
 		jogador.t_usar = 3.6
@@ -398,11 +432,16 @@ func _desenha_hud() -> void:
 		Fonte.desenhar(hud, str(tf["texto"]), Vector2(14, y), CINZA if feito else BRANCO)
 	y += 8
 	Fonte.desenhar(hud, "BASE %d/%d" % [feitas.size(), tarefas.size()], Vector2(8, y), CINZA)
+	_desenha_recursos()
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
 	if not tf.is_empty() and not dormindo:
-		Fonte.centralizado(hud, "E: " + str(tf["texto"]), 160, 160, AMARELO)
+		var efeito := _texto_efeito(Recursos.previa(tf["id"]))
+		var y_e := 160 if efeito == "" else 154
+		Fonte.centralizado(hud, "E: " + str(tf["texto"]), 160, y_e, AMARELO)
+		if efeito != "":                           # custo e benefício antes de fazer
+			Fonte.centralizado(hud, efeito, 160, y_e + 8, BRANCO)
 	if escuro > 0.0:
 		hud.draw_rect(Rect2(0, 0, 320, 180), Color(0.02, 0.02, 0.05, escuro))
 		var zs := "Z" + " Z".repeat(int(t * 2.0) % 3)
@@ -411,3 +450,31 @@ func _desenha_hud() -> void:
 		var w := Fonte.largura(aviso) + 8
 		hud.draw_rect(Rect2(160 - w / 2.0, 54, w, 11), Color(0.035, 0.04, 0.08, 0.8))
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
+
+
+## Os 4 indicadores no canto de cima à direita: nome, barra e valor. Abaixo do limite, a barra pisca em vermelho.
+## Quando uma tarefa muda um indicador, aparece "+15" (ou "-5") à esquerda dele por 2 s.
+func _desenha_recursos() -> void:
+	var largura := 82
+	var x0 := 320 - 4 - largura
+	hud.draw_rect(Rect2(x0, 3, largura, 2 + 8 * INDICADORES.size()), Color(0.035, 0.04, 0.08, 0.7))
+	for i in INDICADORES.size():
+		var nome: String = INDICADORES[i]
+		var v: float = Recursos.valores[nome]
+		var y := 6 + 8 * i
+		var cor: Color = CORES[nome]
+		Fonte.desenhar(hud, ROTULOS[nome], Vector2(x0 + 4, y), cor)
+		var barra := Rect2(x0 + 30, y, 32, 5)
+		hud.draw_rect(barra, ESCURO)
+		var cor_barra := cor
+		if Recursos.baixo(nome):
+			cor_barra = VERMELHO if fmod(t, 0.6) < 0.3 else cor
+		hud.draw_rect(Rect2(barra.position, Vector2(round(barra.size.x * v / 100.0), barra.size.y)), cor_barra)
+		var txt := str(ceili(v))
+		Fonte.desenhar(hud, txt, Vector2(x0 + largura - 4 - Fonte.largura(txt), y), BRANCO)
+		if variacoes.has(nome):
+			var d: float = variacoes[nome][0]
+			var s := "%+d" % roundi(d)
+			var xs := x0 - 4 - Fonte.largura(s)
+			hud.draw_rect(Rect2(xs - 3, y - 2, Fonte.largura(s) + 5, 9), Color(0.035, 0.04, 0.08, 0.85))
+			Fonte.desenhar(hud, s, Vector2(xs, y), Color("#a8ca58") if d > 0 else VERMELHO)
