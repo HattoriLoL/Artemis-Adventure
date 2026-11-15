@@ -5,10 +5,13 @@ extends Control
 ## Não tem falha, mas o tempo conta a partir do primeiro movimento: até TEMPO_IDEAL rende tudo; depois disso a poeira
 ## custa geração e taxa_erro sobe até TEMPO_ZERO (rende nada). O relógio fica no canto do painel.
 ## Arte (paleta Apollo) em res://assets/minigames/paineis/; poeira, nuvens de pó, brilho, moldura e textos animados
-## aqui. Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e a variável `demo`.
+## aqui. Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou` (X ou Esc), taxa_erro(), comecou() e a
+## variável `demo`.
 
 signal terminou
 signal cancelou
+signal falhou                                    # nunca emitido aqui: com ele e comecou(), o mapa trata fechar
+                                                 # depois de começar como desistência (gasta a ação, não rende)
 
 const Fonte = preload("res://scripts/fonte.gd")
 const TEX_CAMPO := preload("res://assets/minigames/paineis/campo.png")     # 192x121
@@ -110,6 +113,13 @@ func _process(delta: float) -> void:
 	pos_escova = (pos_escova + dir * VELOCIDADE * delta).clamp(AREA.position, AREA.end)
 	_limpar(delta)
 	queue_redraw()
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça. Sem isso, dava para fechar um preparo ruim e
+## jogar de novo até sair perfeito, e a perda de ganho por erro não valia nada.
+func comecou() -> bool:
+	return comecou_a_andar
 
 
 ## Até TEMPO_IDEAL rende tudo; depois o ganho cai em linha reta até zero em TEMPO_ZERO (taxa 0,2 a 1,0 no mapa).

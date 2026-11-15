@@ -9,10 +9,12 @@ extends Control
 ## Arte (paleta Apollo, PixelAi) em res://assets/minigames/refeicao/: fundo.png (192x121), comida_crua.png e
 ## comida_pronta.png (mesmo tamanho e alinhamento) e termometro.png. Se um arquivo faltar, o minigame desenha uma
 ## versão provisória no lugar dele. O líquido do termômetro, a faixa ideal, o vapor e os textos são desenhados aqui.
-## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e `demo`.
+## Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou` (X ou Esc), taxa_erro(), comecou() e `demo`.
 
 signal terminou
 signal cancelou
+signal falhou                                    # nunca emitido aqui: com ele e comecou(), o mapa trata fechar
+                                                 # depois de começar como desistência (gasta a ação, não rende)
 
 const Fonte = preload("res://scripts/fonte.gd")
 const DIR_ARTE := "res://assets/minigames/refeicao/"
@@ -66,6 +68,7 @@ var queimando := false                             # está acima da marca (só c
 var t_queima := 0.0                                # aviso BURNED! na tela
 var e_liberado := false                            # o E que abriu o minigame não pode já esquentar
 var aquecendo := false
+var mexeu := false                                 # já esquentou alguma vez (comecou)
 var acabou := false
 var t := 0.0
 var t_fim := -1.0
@@ -108,6 +111,7 @@ func _process(delta: float) -> void:
 		e_liberado = true
 	if not acabou:
 		aquecendo = temp < 0.58 if demo else (e_liberado and Input.is_action_pressed("usar"))
+		mexeu = mexeu or aquecendo
 		temp = clampf(temp + (AQUECE if aquecendo else -ESFRIA) * delta, 0.0, 1.0)
 		if na_faixa():
 			tempo_cozinhando += delta
@@ -133,6 +137,13 @@ func _process(delta: float) -> void:
 ## Fração das tentativas que queimaram: 1 queima ~ 84% do ganho, 2 ~ 62%, 3 ~ 50%.
 func taxa_erro() -> float:
 	return queimas / (queimas + 2.0)
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça. Sem isso, dava para fechar um preparo ruim e
+## jogar de novo até sair perfeito, e a perda de ganho por erro não valia nada.
+func comecou() -> bool:
+	return mexeu
 
 
 func na_faixa() -> bool:

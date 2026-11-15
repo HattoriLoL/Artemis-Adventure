@@ -11,10 +11,12 @@ extends Control
 ## Arte (paleta Apollo, PixelAi) em res://assets/minigames/paineis_mira/: fundo.png (192x121, a vista da câmera) e
 ## painel.png / painel_brilho.png (tiras com QUADROS quadros, de -ANGULO_MAX a +ANGULO_MAX graus). Se um arquivo
 ## faltar, o minigame desenha uma versão provisória no lugar dele. O Sol, a mira e os textos são desenhados aqui.
-## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e `demo`.
+## Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou` (X ou Esc), taxa_erro(), comecou() e `demo`.
 
 signal terminou
 signal cancelou
+signal falhou                                    # nunca emitido aqui: com ele e comecou(), o mapa trata fechar
+                                                 # depois de começar como desistência (gasta a ação, não rende)
 
 const Fonte = preload("res://scripts/fonte.gd")
 const DIR_ARTE := "res://assets/minigames/paineis_mira/"
@@ -60,6 +62,7 @@ var angulos: Array[float] = []
 var travados: Array[bool] = []
 var atual := 0                                     # o painel que o jogador está girando
 var t_mirando := 0.0
+var mexeu := false                                 # já girou algum painel (comecou)
 var erros := 0                                     # passou direto pelo Sol ou forçou o batente
 var t_erro := 0.0                                  # aviso na tela
 var msg_erro := ""
@@ -126,6 +129,7 @@ func _process(delta: float) -> void:
 		if demo:
 			var falta := alvo(atual) - angulos[atual]
 			giro = signf(falta) if absf(falta) > 1.0 else 0.0
+		mexeu = mexeu or giro != 0.0
 		var estava := mirando()
 		angulos[atual] = clampf(angulos[atual] + giro * VELOCIDADE * delta, -ANGULO_MAX, ANGULO_MAX)
 		if estava and not mirando() and giro != 0.0 and not demo:
@@ -152,6 +156,13 @@ func _errar(txt: String) -> void:
 	erros += 1
 	t_erro = 0.9
 	msg_erro = txt
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça. Sem isso, dava para fechar um preparo ruim e
+## jogar de novo até sair perfeito, e a perda de ganho por erro não valia nada.
+func comecou() -> bool:
+	return mexeu
 
 
 ## Fração de erros: o primeiro sai de graça (1 erro rende tudo), 2 ~ 83% do ganho, 3 ~ 71%.
