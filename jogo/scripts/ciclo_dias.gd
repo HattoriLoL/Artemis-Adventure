@@ -157,6 +157,7 @@ func fechar_dia(id_cama := "") -> void:
 		if Missao.tempestade.is_empty():           # dormiu sem fazer nada no dia da erupção: pego fora do Abrigo
 			Missao.tempestade = {"dia": Missao.dia, "abrigo": false, "dormindo": true}
 		Missao.tempestade["dano"] = Recursos.ferir("condicao", Recursos.dano_tempestade(Missao.tempestade["abrigo"]))
+		_registrar_tempestade()
 	resumo = {"antes": antes, "depois": Recursos.valores.duplicate(), "solar": partes["solar"],
 		"desgaste": partes["desgaste"], "tempestade": Missao.tempestade if Missao.dia == Missao.dia_erupcao else {}}
 	Missao.historico[-1]["valores"] = Recursos.valores.duplicate()
@@ -174,6 +175,31 @@ func _registrar_noite(partes: Dictionary) -> void:
 	if partes["desgaste"] > 0.0 and not baixos_antes.get("desgaste", false):
 		Missao.registrar_evento(Missao.dia, "desgaste", "CREW HURT", "Low supplies started to hurt the crew.", "condicao", 6)
 		baixos_antes["desgaste"] = true
+
+
+## A erupção solar na linha do tempo do relatório (uma linha de até ~68 caracteres na página LOG).
+func _registrar_tempestade() -> void:
+	var tp: Dictionary = Missao.tempestade
+	var dano := roundi(tp.get("dano", 0.0))
+	var txt := "A proton storm hit. The crew made it to the shelter: -%d health." % dano
+	if not tp.get("abrigo", false):
+		txt = "A proton storm hit the crew outside the shelter: -%d health." % dano
+	Missao.registrar_evento(Missao.dia, "tempestade", "SOLAR STORM", txt, "condicao", 9)
+
+
+## Página 04 DONKI do relatório: o evento real (eventos_solares.json) em que a erupção da missão se baseou.
+## Missao.donki fica no formato que o relatorio.gd espera: {"id", "tipo", "data", "fonte", "relacao"}.
+func _preparar_donki() -> void:
+	var ev: Dictionary = Missao.evento_solar
+	if ev.is_empty():
+		return
+	var relacao := "This mission's solar storm was modeled on it: %s." % str(ev["titulo"]).to_lower()
+	if Missao.tempestade.is_empty():
+		relacao = "The solar storm forecast for this mission was modeled on it, but the mission ended first."
+	if ev.has("velocidade"):
+		relacao += " Its CME left the Sun at %d km/s." % int(ev["velocidade"])
+	Missao.donki = {"id": str(ev.get("cme", "")), "tipo": "CME + PROTON STORM", "data": str(ev["data"]),
+		"fonte": "arquivo", "relacao": relacao}
 
 
 func _comecar_dia() -> void:
@@ -219,6 +245,7 @@ func _terminar(resultado: String, causa := "") -> void:
 	Missao.causa = causa
 	mapa.fim = true
 	pagina = 0
+	_preparar_donki()
 	Relatorio.preparar(regras["dias"])
 	print("Missao: ", resultado, " no dia ", Missao.dia, " ", Recursos.valores, " erupcao=", Missao.dia_erupcao, " ", Missao.tempestade)
 	_abrir("fim")

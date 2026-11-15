@@ -407,6 +407,8 @@ static func _cor_evento(e: Dictionary) -> Color:
 			return VERMELHO
 		"erros":
 			return AMARELO
+		"tempestade":
+			return Color("#de9e41")             # erupção solar: laranja (a cor do alerta da tempestade)
 		"fim":
 			return RES_COR[Missao.resultado]
 	return VERDE
