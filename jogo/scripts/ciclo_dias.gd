@@ -290,7 +290,7 @@ func _clima_espacial(largura: float) -> Array[String]:
 	if Missao.dia_erupcao == 0:
 		return []
 	if Missao.dia == Missao.dia_erupcao - 1:
-		return quebrar("SPACE WEATHER: solar activity rising. A solar storm is likely tomorrow. Reinforcing the shielding cuts the dose.", largura)
+		return quebrar("SPACE WEATHER: solar activity rising. A solar storm is likely tomorrow. Reinforcing the shielding cuts the dose. Details on the navigation computer.", largura)
 	if Missao.dia == Missao.dia_erupcao:
 		return quebrar("SOLAR STORM TODAY: when the alarm sounds, run to the shielded shelter.", largura)
 	return []

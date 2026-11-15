@@ -41,6 +41,11 @@ var usadas := {}
 var portas := []
 var obstaculos: Array[Rect2] = []  # colisão dos objetos soltos das salas (o robô do demo desvia deles)
 var marcas := {}
+var pc_item := {}                  # a interação do computador de navegação (mesa do Suporte)
+var marca_pc: Polygon2D            # setinha azul sobre ela enquanto a previsão do dia não foi lida
+const MARCA_PC := Vector2(13, -3)  # logo acima dos monitores da mesa (o ponto da interação fica na frente dela)
+const MESA_PC := Vector2(13, 50)   # pé da mesa, na borda de baixo da sala (no minimapa, longe do ícone do gás)
+var pc_visto_dia := 0              # o dia em que o jogador abriu o computador pela última vez
 var jogador: CharacterBody2D
 var hud: Control
 var camada_ui: CanvasLayer
@@ -169,6 +174,19 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		if it.has("acordar"):                        # cama: onde o astronauta aparece de manhã (fora do alcance do E)
 			item["acordar"] = pos + Vector2(it["acordar"][0], it["acordar"][1])
 		interacoes.append(item)
+		if item["acao"] == "computador":
+			pc_item = item
+			marca_pc = Polygon2D.new()
+			marca_pc.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
+			marca_pc.color = Color("#a4dddb")
+			var borda := Polygon2D.new()             # contorno escuro: a seta azul some no piso cinza sem ele
+			borda.polygon = PackedVector2Array([Vector2(-5, -1), Vector2(5, -1), Vector2(0, 6)])
+			borda.color = CONTORNO
+			borda.show_behind_parent = true
+			marca_pc.add_child(borda)
+			marca_pc.position = item["pos"] + MARCA_PC
+			marca_pc.z_index = 5
+			add_child(marca_pc)
 
 
 ## Ícone 7x7 da tarefa (lista do HUD e minimapa): res://assets/icones/<sala>_<tarefa>.png. Sem arquivo, null (a
@@ -312,6 +330,8 @@ func _recursos_mudaram(_id: String, mudancas: Dictionary) -> void:
 
 ## O que a tarefa rende, em texto para o HUD e o boletim. Uma tarefa de energia solar à noite não rende nada.
 func texto_previa(id: String) -> String:
+	if not pc_item.is_empty() and id == pc_item["id"]:
+		return "NEW SPACE WEATHER DATA" if pc_nao_lido() else ""
 	var txt := _texto_efeito(Recursos.previa(id))
 	if Recursos.protege(id):                      # blindagem: protege da erupção solar em vez de mudar um recurso
 		return (txt + " " if txt != "" else "") + "+1 STORM SHIELD"
@@ -365,6 +385,9 @@ func _process(delta: float) -> void:
 	for id in marcas:
 		var item := _tarefa(id)
 		marcas[id].position.y = item["pos"].y - 44 + round(sin(t * 5.0) * 1.5)
+	if marca_pc:
+		marca_pc.visible = pc_nao_lido() and not tempestade.ativo
+		marca_pc.position.y = pc_item["pos"].y + MARCA_PC.y + round(sin(t * 5.0 + 1.5) * 1.5)
 	var agora := _sala_de(jogador.global_position)
 	if agora != sala_atual:
 		sala_atual = agora
@@ -453,6 +476,7 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 ## Computador de navegação (mesa do Suporte): clima espacial, diário, previsão e situação da base. Consultar não
 ## gasta ação; abre por cima do jogo como um minigame (o jogador fica parado e o HUD some).
 func abrir_computador() -> void:
+	pc_visto_dia = Missao.dia
 	em_minigame = true
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
@@ -461,6 +485,11 @@ func abrir_computador() -> void:
 	pc.mapa = self
 	pc.fechou.connect(func(): _fechar_minigame(pc))
 	camada_ui.add_child(pc)
+
+
+## O computador tem previsão nova hoje (o jogador ainda não abriu): setinha no mapa e ícone piscando no minimapa.
+func pc_nao_lido() -> bool:
+	return not pc_item.is_empty() and pc_visto_dia != Missao.dia and not fim
 
 
 func _fechar_minigame(mg: Control) -> void:
@@ -747,6 +776,11 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
 			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
+	if not pc_item.is_empty() and not tempestade.ativo:   # computador: monitorzinho, piscando com previsão nova
+		var pc := _na_planta(pc_item["pos"] + MESA_PC, tex, canto)
+		hud.draw_rect(Rect2(pc + Vector2(-2, -2), Vector2(5, 4)), CONTORNO)
+		var tela_pc := Color("#a4dddb") if (not pc_nao_lido() or aceso) else Color(AZUL, 0.3)
+		hud.draw_rect(Rect2(pc + Vector2(-1, -1), Vector2(3, 2)), tela_pc)
 	if tempestade.ativo and fmod(t, 0.5) < 0.3:   # erupção: o Abrigo pisca em vermelho
 		var ab: Dictionary = salas[Tempestade.SALA_ABRIGO]
 		var tam_ab: Array = ab["dados"]["tamanho"]
