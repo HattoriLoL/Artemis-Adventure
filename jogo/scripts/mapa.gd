@@ -259,7 +259,7 @@ func texto_previa(id: String) -> String:
 	return txt
 
 
-## {"comida": -5, "condicao": 10} -> "-5 FOOD +10 CREW"
+## {"comida": -5, "condicao": 10} -> "-5 FOOD +10 HEALTH"
 func _texto_efeito(efeito: Dictionary) -> String:
 	var partes := PackedStringArray()
 	for nome in Recursos.NOMES:

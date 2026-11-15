@@ -10,7 +10,7 @@
   {"tarefas": ["energia/terminal", "suporte/algas", "habitat/refeicao", "energia/tanques"],
    "boletim": "Keep an eye on the oxygen. The air system works harder every day."},
   {"tarefas": ["energia/distribuicao", "suporte/oxigenio", "estufa/regar", "abrigo/blindagem"],
-   "boletim": "Halfway there. A tired crew makes mistakes: do not forget to rest well."},
+   "boletim": "Halfway there. Low supplies hurt the crew. Meals and the greenhouse help them recover."},
   {"tarefas": ["energia/paineis", "suporte/gas", "habitat/refeicao", "habitat/agua"],
    "boletim": "Food stocks are dropping. The greenhouse and the algae can help."},
   {"tarefas": ["energia/baterias", "suporte/algas", "estufa/regar", "energia/tanques"],
