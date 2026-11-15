@@ -67,9 +67,31 @@ func fator_erro(taxa: float) -> float:
 	return clampf(1.0 - (taxa - livre) / maxf(zero - livre, 0.001), 0.0, 1.0)
 
 
+## A tarefa reforça a blindagem contra a erupção solar ("protecao" em recursos.json)?
+func protege(id: String) -> bool:
+	return regras.get("protecao", {}).has(id)
+
+
+## Dano na saúde da erupção solar: pequeno no Abrigo; fora dele, menor a cada reforço da blindagem.
+func dano_tempestade(no_abrigo: bool) -> float:
+	var r: Dictionary = regras["radiacao"]
+	if no_abrigo:
+		return float(r["dano_abrigo"])
+	return maxf(float(r["dano_fora_min"]), float(r["dano_fora"]) - float(r["reducao_por_reforco"]) * Missao.blindagem)
+
+
+## Tira saúde (ou outro indicador) de uma vez, como a erupção solar; devolve quanto tirou de fato.
+func ferir(nome: String, v: float) -> float:
+	var antes: float = valores[nome]
+	_somar(nome, -v)
+	return antes - valores[nome]
+
+
 ## Aplica o efeito de uma tarefa ou interação e devolve o que mudou de fato (perto de 100 ou de 0, muda menos).
-## `fator` < 1 quando o minigame teve erros (fator_erro).
+## `fator` < 1 quando o minigame teve erros (fator_erro). Tarefa de proteção (blindagem) soma reforços.
 func aplicar(id: String, fator := 1.0) -> Dictionary:
+	if protege(id) and fator > 0.0:
+		Missao.blindagem += int(regras["protecao"][id])
 	var efeito := previa(id, fator)
 	var mudancas := {}
 	for nome in efeito:

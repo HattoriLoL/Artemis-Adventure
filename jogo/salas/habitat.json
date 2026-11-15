@@ -96,6 +96,13 @@
    "y": 72,
    "texto": "REFILL THE WATER",
    "minigame": "res://cenas/minigame_agua.tscn"
+  },
+  {
+   "id": "chuveiro",
+   "x": 78,
+   "y": 100,
+   "texto": "REMOVE THE MOON DUST",
+   "minigame": "res://cenas/minigame_chuveiro.tscn"
   }
  ],
  "inicio": [

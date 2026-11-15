@@ -150,6 +150,7 @@ func _itens() -> Array:
 				{"id": "tudo_feito", "texto": "FINISH ALL TASKS"},
 				{"id": "zerar", "texto": "RESET TODAY"},
 				{"id": "fim_dia", "texto": "END THE DAY"},
+				{"id": "erupcao", "texto": "SOLAR STORM NOW"},
 				{"id": "simular_impacto", "texto": "SIMULATE HULL IMPACT (SHELTER)"},
 				{"id": "minigame", "texto": "MINIGAME", "valor": mg},
 				{"id": "noclip", "texto": "NOCLIP", "liga": noclip},
@@ -276,6 +277,10 @@ func _ativar(id: String) -> void:
 		"zerar":
 			mapa.zerar_dia()
 			_avisar("TODAY'S TASKS AND ACTIONS RESET")
+		"erupcao":
+			_fechar()
+			if not mapa.erupcao_agora_dev():
+				mapa._avisar("CAN'T START THE STORM NOW")
 		"fim_dia":
 			_fechar()
 			mapa.encerrar_dia()
