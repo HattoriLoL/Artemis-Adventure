@@ -2,8 +2,8 @@ extends Control
 ## Minigame "trocar o filtro de CO2" (SWAP THE CO2 FILTER), nos tanques do Suporte à Vida. 4 passos em ordem:
 ## destravar (E 6 vezes), puxar o filtro velho (segurar baixo), encaixar o novo (segurar cima) e travar (E).
 ## O filtro é um cartucho cilíndrico: o novo é branco, o velho está gasto.
-## Soltar antes do tempo zera o passo de segurar; tecla errada mostra WRONG KEY sem perder o progresso. Os dois são
-## erros: taxa_erro diminui o que a tarefa rende e MAX_ERROS erros perdem a tarefa (sinal falhou).
+## Soltar antes do tempo só zera o passo de segurar (sem erro). Tecla errada mostra WRONG KEY sem perder o progresso
+## e é erro: taxa_erro diminui o que a tarefa rende e MAX_ERROS erros perdem a tarefa (sinal falhou).
 ## Arte (paleta Apollo) em res://assets/minigames/co2/; moldura, LED, barra e texto desenhados aqui.
 ## Contrato com o mapa: sinais `terminou` (concluiu), `falhou` (errou demais) e `cancelou` (X ou Esc), taxa_erro()
 ## e a variável `demo`.
@@ -58,7 +58,7 @@ const TECLAS := ["usar", "esquerda", "direita", "cima", "baixo"]
 const INTERVALO_DEMO := 0.2                      # no demo, tempo entre um aperto e outro
 const VEL_TRAVA := 120.0                         # px/s da trava ao recolher e ao voltar
 const TEMPO_FIM := 1.3
-const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
+const MAX_ERROS := 4                             # com tantos erros a tarefa é perdida (era 6: tolerante demais)
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var passo := 0                                   # passo atual: 0 a 3 (4 = acabou)
@@ -132,9 +132,8 @@ func _passo_segurar(p: Dictionary, delta: float) -> void:
 	if Input.is_action_pressed(p["tecla"]):
 		progresso += delta
 	else:
-		if progresso > 0.0:                      # soltou antes do tempo: volta a zero e conta como erro
-			_errar()
-		progresso = 0.0
+		progresso = 0.0                          # soltou antes do tempo: só volta a zero (tocar em vez de segurar
+		                                         # é engano de novato; com MAX_ERROS 4 perderia a tarefa à toa)
 	if _apertou_outra(p["tecla"]):
 		_errar()
 

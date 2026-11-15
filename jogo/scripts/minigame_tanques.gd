@@ -88,6 +88,7 @@ var rotacao_valvulas: Array[float] = [0.0, 0.0, 0.0]
 var selecionado: int = 0
 var ajuste: float = 0.0
 var purga_ativa: bool = false
+var e_liberado: bool = false                     # o E que fechou o tutorial (ou abriu a tarefa) não pode já purgar
 
 var tempo_estavel: float = 0.0
 var t_demo: float = 0.0
@@ -244,7 +245,9 @@ func _controles(_delta: float) -> void:
 		t_troca = 0.2
 		_tocar_troca()
 
-	var tecla_purga: bool = Input.is_action_pressed("usar")
+	if not Input.is_action_pressed("usar"):
+		e_liberado = true
+	var tecla_purga: bool = e_liberado and Input.is_action_pressed("usar")
 	ajuste = Input.get_axis("baixo", "cima")
 
 	# Purga se ativa por tecla direta ou pela válvula de purga

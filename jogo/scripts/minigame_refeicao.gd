@@ -2,13 +2,14 @@ extends Control
 ## Minigame "preparar refeição" (PREPARE A MEAL), na bancada da cozinha do Habitat: o astronauta põe um pacote de
 ## comida espacial no reidratador e aquecedor (como o food warmer da ISS). Segurar E esquenta e soltar esfria; a
 ## comida só cozinha enquanto o termômetro fica na faixa ideal, e a barra de preparo enche até a refeição ficar
-## pronta. Não tem falha nem taxa de erro (cozinhar sempre dá certo, só demora mais): a tarefa rende tudo.
+## pronta. Não tem falha (cozinhar sempre termina), mas esquentar demais queima: cada vez que o termômetro passa
+## da marca vermelha (QUEIMA) conta um erro e o preparo perde um pouco; taxa_erro diminui o que a tarefa rende.
 ## A ideia e a mecânica (modular o aquecedor com E para manter a temperatura na faixa) vieram do PR #13
 ## (IltonBJSilva).
 ## Arte (paleta Apollo, PixelAi) em res://assets/minigames/refeicao/: fundo.png (192x121), comida_crua.png e
 ## comida_pronta.png (mesmo tamanho e alinhamento) e termometro.png. Se um arquivo faltar, o minigame desenha uma
 ## versão provisória no lugar dele. O líquido do termômetro, a faixa ideal, o vapor e os textos são desenhados aqui.
-## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc) e `demo`.
+## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e `demo`.
 
 signal terminou
 signal cancelou
@@ -53,11 +54,16 @@ const FAIXA_MAX := 0.75
 const AQUECE := 0.65                               # por segundo segurando E
 const ESFRIA := 0.35                               # por segundo solto
 const TEMPO_NECESSARIO := 2.5                      # segundos na faixa ideal
+const QUEIMA := 0.85                               # acima disto a comida queima: um erro por vez que passar
+const PERDA_QUEIMA := 0.5                          # segundos de preparo perdidos a cada queima
 const TEMPO_FIM := 1.2
 
 var demo := false
 var temp := 0.15                                   # 0 (frio) a 1 (muito quente)
 var tempo_cozinhando := 0.0
+var queimas := 0                                   # quantas vezes passou da marca vermelha
+var queimando := false                             # está acima da marca (só conta de novo depois de esfriar)
+var t_queima := 0.0                                # aviso BURNED! na tela
 var e_liberado := false                            # o E que abriu o minigame não pode já esquentar
 var aquecendo := false
 var acabou := false
@@ -97,6 +103,7 @@ func _input(ev: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
+	t_queima = maxf(0.0, t_queima - delta)
 	if not e_liberado and not Input.is_action_pressed("usar"):
 		e_liberado = true
 	if not acabou:
@@ -104,6 +111,13 @@ func _process(delta: float) -> void:
 		temp = clampf(temp + (AQUECE if aquecendo else -ESFRIA) * delta, 0.0, 1.0)
 		if na_faixa():
 			tempo_cozinhando += delta
+		if temp > QUEIMA and not queimando:
+			queimando = true
+			queimas += 1
+			t_queima = 1.0
+			tempo_cozinhando = maxf(0.0, tempo_cozinhando - PERDA_QUEIMA)
+		elif temp <= FAIXA_MAX:
+			queimando = false
 		if tempo_cozinhando >= TEMPO_NECESSARIO:
 			acabou = true
 			t_fim = TEMPO_FIM
@@ -114,6 +128,11 @@ func _process(delta: float) -> void:
 			set_process(false)
 			terminou.emit()
 	queue_redraw()
+
+
+## Fração das tentativas que queimaram: 1 queima ~ 84% do ganho, 2 ~ 62%, 3 ~ 50%.
+func taxa_erro() -> float:
+	return queimas / (queimas + 2.0)
 
 
 func na_faixa() -> bool:
@@ -167,6 +186,9 @@ func _draw() -> void:
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
 	if acabou:
 		Fonte.centralizado(self, "MEAL READY!", 160, y_txt, VERDE_LIMA)
+	elif t_queima > 0.0 or temp > QUEIMA:
+		Fonte.centralizado(self, "BURNED! (%d) RELEASE E TO COOL" % queimas, 160, y_txt,
+			VERMELHO_CLARO if fmod(t, 0.3) < 0.18 else LARANJA)
 	elif na_faixa():
 		Fonte.centralizado(self, "PERFECT TEMPERATURE - KEEP IT THERE", 160, y_txt, VERDE_LIMA)
 	elif temp > FAIXA_MAX:
@@ -213,6 +235,11 @@ func _termometro() -> void:
 	draw_rect(Rect2(JANELA + Vector2(TUBO_X - 4, y_max), Vector2(2, y_min - y_max)), cor_faixa)
 	draw_rect(Rect2(JANELA + Vector2(TUBO_X + TUBO_LARG + 2, y_max), Vector2(2, y_min - y_max)), cor_faixa)
 	draw_rect(Rect2(JANELA + Vector2(TUBO_X, y_max), Vector2(TUBO_LARG, y_min - y_max)), Color(VERDE, 0.25))
+	# marca vermelha da queima: acima dela a comida queima
+	var y_queima := TUBO_BASE - QUEIMA * altura
+	var cor_queima := VERMELHO_CLARO if temp > QUEIMA and fmod(t, 0.3) < 0.18 else VERMELHO
+	draw_rect(Rect2(JANELA + Vector2(TUBO_X - 4, TUBO_TOPO), Vector2(2, y_queima - TUBO_TOPO)), cor_queima)
+	draw_rect(Rect2(JANELA + Vector2(TUBO_X + TUBO_LARG + 2, TUBO_TOPO), Vector2(2, y_queima - TUBO_TOPO)), cor_queima)
 	var h := roundf(temp * altura)
 	var cor := VERMELHO_CLARO if temp > FAIXA_MAX else (AMARELO if na_faixa() else CIANO)
 	draw_circle(JANELA + BULBO, 3.6, cor)                                          # bulbo e o pescoço até o tubo

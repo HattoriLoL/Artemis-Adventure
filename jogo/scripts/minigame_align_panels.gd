@@ -3,14 +3,15 @@ extends Control
 ## externa, o astronauta vê os 3 painéis solares da base no polo sul da Lua, onde o Sol fica baixo, perto do
 ## horizonte. Um painel de cada vez: A/D gira o painel no eixo vertical e a linha de mira mostra para onde ele aponta;
 ## de frente para o Sol (dentro de TOLERANCIA graus) por TEMPO_TRAVAR segundos, o painel trava e brilha. Com os 3
-## travados, a tarefa termina. Não tem falha nem taxa de erro: a tarefa rende tudo (o +POWER dela já é multiplicado
-## pela luz do local de pouso em recursos.json).
+## travados, a tarefa termina. Não tem falha, mas passar direto pelo Sol (sair da mira ainda girando) ou forçar o
+## painel no batente é erro: taxa_erro diminui o que a tarefa rende (o primeiro erro sai de graça). O +POWER dela
+## já é multiplicado pela luz do local de pouso em recursos.json.
 ## A ideia e a mecânica (girar o painel com A/D até alinhar e segurar) vieram do PR #14 (chinesdecroks) e do card
 ## tarefas/card_align_panels.md (3 painéis, um de cada vez, seguindo o Sol).
 ## Arte (paleta Apollo, PixelAi) em res://assets/minigames/paineis_mira/: fundo.png (192x121, a vista da câmera) e
 ## painel.png / painel_brilho.png (tiras com QUADROS quadros, de -ANGULO_MAX a +ANGULO_MAX graus). Se um arquivo
 ## faltar, o minigame desenha uma versão provisória no lugar dele. O Sol, a mira e os textos são desenhados aqui.
-## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc) e `demo`.
+## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e `demo`.
 
 signal terminou
 signal cancelou
@@ -30,6 +31,7 @@ const AMARELO := Color("#e8c170")
 const LARANJA := Color("#de9e41")
 const VERDE_LIMA := Color("#a8ca58")
 const VERMELHO := Color("#a53030")
+const VERMELHO_CLARO := Color("#cf573c")
 const AZUL := Color("#4f8fba")
 const CIANO := Color("#73bed3")
 
@@ -58,6 +60,10 @@ var angulos: Array[float] = []
 var travados: Array[bool] = []
 var atual := 0                                     # o painel que o jogador está girando
 var t_mirando := 0.0
+var erros := 0                                     # passou direto pelo Sol ou forçou o batente
+var t_erro := 0.0                                  # aviso na tela
+var msg_erro := ""
+var no_batente := false                            # já contou o batente (só conta de novo depois de sair dele)
 var acabou := false
 var t := 0.0
 var t_fim := -1.0
@@ -114,12 +120,20 @@ func _input(ev: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
+	t_erro = maxf(0.0, t_erro - delta)
 	if not acabou:
 		var giro := Input.get_axis("esquerda", "direita")
 		if demo:
 			var falta := alvo(atual) - angulos[atual]
 			giro = signf(falta) if absf(falta) > 1.0 else 0.0
+		var estava := mirando()
 		angulos[atual] = clampf(angulos[atual] + giro * VELOCIDADE * delta, -ANGULO_MAX, ANGULO_MAX)
+		if estava and not mirando() and giro != 0.0 and not demo:
+			_errar("OVERSHOT THE SUN!")
+		var batente := absf(angulos[atual]) >= ANGULO_MAX and giro != 0.0
+		if batente and not no_batente and not demo:
+			_errar("PANEL AT ITS LIMIT!")
+		no_batente = batente
 		if mirando():
 			t_mirando += delta
 			if t_mirando >= TEMPO_TRAVAR:
@@ -132,6 +146,17 @@ func _process(delta: float) -> void:
 			set_process(false)
 			terminou.emit()
 	queue_redraw()
+
+
+func _errar(txt: String) -> void:
+	erros += 1
+	t_erro = 0.9
+	msg_erro = txt
+
+
+## Fração de erros: o primeiro sai de graça (1 erro rende tudo), 2 ~ 83% do ganho, 3 ~ 71%.
+func taxa_erro() -> float:
+	return erros / (erros + 4.0)
 
 
 func _travar() -> void:
@@ -172,6 +197,9 @@ func _draw() -> void:
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
 	if acabou:
 		Fonte.centralizado(self, "SOLAR ARRAY ALIGNED!", 160, y_txt, VERDE_LIMA)
+	elif t_erro > 0.0:
+		Fonte.centralizado(self, "%s (%d)" % [msg_erro, erros], 160, y_txt,
+			VERMELHO_CLARO if fmod(t, 0.3) < 0.18 else AMARELO)
 	elif mirando():
 		Fonte.centralizado(self, "FACING THE SUN - HOLD IT...", 160, y_txt, VERDE_LIMA)
 	else:

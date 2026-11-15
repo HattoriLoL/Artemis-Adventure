@@ -2,8 +2,10 @@ extends Control
 ## Minigame "limpar os painéis solares" (CLEAN THE SOLAR PANELS), na superfície lunar em frente à Sala de Energia:
 ## o jogador move a escova com WASD / setas por cima dos 3 painéis e a poeira some ao passar a escova (não precisa
 ## apertar nada). A escova não sai da área dos painéis. Quando todas as manchas somem, o minigame fecha.
+## Não tem falha, mas o tempo conta a partir do primeiro movimento: até TEMPO_IDEAL rende tudo; depois disso a poeira
+## custa geração e taxa_erro sobe até TEMPO_ZERO (rende nada). O relógio fica no canto do painel.
 ## Arte (paleta Apollo) em res://assets/minigames/paineis/; poeira, nuvens de pó, brilho, moldura e textos animados
-## aqui. Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc) e a variável `demo`.
+## aqui. Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e a variável `demo`.
 
 signal terminou
 signal cancelou
@@ -24,6 +26,7 @@ const BRANCO := Color("#ebede9")
 const AMARELO := Color("#e8c170")
 const VERDE_LIMA := Color("#a8ca58")
 const VERMELHO := Color("#a53030")
+const VERMELHO_CLARO := Color("#cf573c")
 const CIANO := Color("#73bed3")
 const CIANO_CLARO := Color("#a4dddb")
 
@@ -48,6 +51,8 @@ const RAIO_MAX := 5.2
 const DIST_MIN := 11.0                           # distância mínima entre manchas sorteadas
 const TEMPO_BRILHO := 0.6                        # reflexo que passa no painel quando ele fica limpo
 const TEMPO_FIM := 1.3
+const TEMPO_IDEAL := 15.0                        # até aqui rende tudo (um jogador atento leva 10-13 s)
+const TEMPO_ZERO := 45.0                         # aqui já não rende nada
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var pos_escova := Vector2(96, 54)
@@ -61,6 +66,8 @@ var andando := false
 var acabou := false
 var t := 0.0
 var t_fim := -1.0
+var tempo := 0.0                                 # segundos limpando (conta a partir do primeiro movimento)
+var comecou_a_andar := false
 
 
 func _ready() -> void:
@@ -97,9 +104,19 @@ func _process(delta: float) -> void:
 		return
 	var dir := _direcao_demo() if demo else Input.get_vector("esquerda", "direita", "cima", "baixo")
 	andando = dir != Vector2.ZERO
+	comecou_a_andar = comecou_a_andar or andando
+	if comecou_a_andar:
+		tempo += delta
 	pos_escova = (pos_escova + dir * VELOCIDADE * delta).clamp(AREA.position, AREA.end)
 	_limpar(delta)
 	queue_redraw()
+
+
+## Até TEMPO_IDEAL rende tudo; depois o ganho cai em linha reta até zero em TEMPO_ZERO (taxa 0,2 a 1,0 no mapa).
+func taxa_erro() -> float:
+	if tempo <= TEMPO_IDEAL:
+		return 0.0
+	return 0.2 + 0.8 * clampf((tempo - TEMPO_IDEAL) / (TEMPO_ZERO - TEMPO_IDEAL), 0.0, 1.0)
 
 
 ## Mancha nova: um borrão irregular de pixels de poeira. Cada pixel tem um limiar: ao limpar, as bordas somem
@@ -217,6 +234,10 @@ func _draw() -> void:
 		PAINEL.position.y + 5, AMARELO)
 	Fonte.desenhar(self, "%d/%d" % [QTD_MANCHAS - manchas.size(), QTD_MANCHAS], PAINEL.position + Vector2(12, 5),
 		VERDE_LIMA)
+	var relogio := "%ds" % floori(tempo)
+	var cor_relogio := VERDE_LIMA if tempo <= TEMPO_IDEAL else (AMARELO if fmod(t, 0.5) < 0.3 else VERMELHO_CLARO)
+	Fonte.desenhar(self, relogio, Vector2(BOTAO_X.position.x - 6 - Fonte.largura(relogio), PAINEL.position.y + 5),
+		cor_relogio)
 	draw_rect(BOTAO_X.grow(1), PRETO)
 	draw_rect(BOTAO_X.grow_individual(-1, -1, -1, -1), VERMELHO)
 	for k in 4:
@@ -236,6 +257,8 @@ func _draw() -> void:
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
 	if acabou:
 		Fonte.centralizado(self, "PANELS ARE CLEAN!", 160, y_txt, VERDE_LIMA)
+	elif tempo > TEMPO_IDEAL:
+		Fonte.centralizado(self, "HURRY - DUSTY PANELS LOSE POWER", 160, y_txt, AMARELO)
 	else:
 		Fonte.centralizado(self, "MOVE THE BRUSH OVER THE DUST", 160, y_txt, BRANCO_SUJO)
 
