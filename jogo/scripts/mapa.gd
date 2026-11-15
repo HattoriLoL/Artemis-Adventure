@@ -15,12 +15,13 @@ const VERMELHO := Color("#cf573c")
 const ESCURO := Color("#394a50")
 const AZUL := Color("#73bed3")
 const SEM_SOL := "NO SUN TODAY: NO EFFECT"
-# minimapa (canto de baixo à direita): a base inteira em 53x64 (arte do PixelAi, ver arte/minimapa.py); cada pixel
-# cobre MINI_ESCALA px do mapa a partir de MINI_ORIGEM
-const TEX_MINIMAPA := preload("res://assets/mapa/minimapa.png")
-const MINI_ORIGEM := Vector2(40, 40)
-const MINI_ESCALA := Vector2(944.0 / 53.0, 1146.0 / 64.0)
-const MINI_POS := Vector2(320 - 5 - 53, 180 - 5 - 64)
+# planta da base (arte do PixelAi, ver arte/minimapa.py) em dois tamanhos: o minimapa do canto de baixo à direita e o
+# mapa da tecla M. A imagem cobre o retângulo PLANTA_ORIGEM + PLANTA_TAM do mapa (salas e túneis), em qualquer tamanho
+const TEX_MINIMAPA := preload("res://assets/mapa/minimapa_grande.png")    # 74x90 (o de 53x64 é minimapa.png)
+const TEX_MAPA_TELA := preload("res://assets/mapa/mapa_tela.png")        # 132x160
+const PLANTA_ORIGEM := Vector2(40, 40)
+const PLANTA_TAM := Vector2(944, 1146)
+const TELA_POS := Vector2(10, 13)                                       # canto do mapa da tecla M
 const CONTORNO := Color("#090a14")
 # a parede de baixo de cada sala e a verga da porta de cima ficam fora do fundo da sala: entram no Y-sort do mapa
 # junto com o astronauta, então ele passa atrás delas (antes ele ficava em cima da parede na porta de baixo)
@@ -46,6 +47,7 @@ var hud: Control
 var camada_ui: CanvasLayer
 var ciclo: CicloDias               # ciclo_dias.gd: dias, ações, boletim, noite e fim da missão
 var em_minigame := false
+var mapa_aberto := false           # o mapa grande da tecla M
 var desistir := 0.0                # > 0: o jogador tentou fechar um minigame já começado; de novo = desiste (falha)
 var quadro_desistir := -1          # quadro do primeiro pedido (Esc e clique no X no mesmo quadro não confirmam)
 var aviso_desistir: Control        # o aviso por cima do minigame
@@ -109,7 +111,7 @@ func _ready() -> void:
 
 func _entradas() -> void:
 	var m := {"esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT], "cima": [KEY_W, KEY_UP],
-		"baixo": [KEY_S, KEY_DOWN], "correr": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
+		"baixo": [KEY_S, KEY_DOWN], "correr": [KEY_SHIFT], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER], "mapa": [KEY_M]}
 	for acao in m:
 		if InputMap.has_action(acao):
 			continue
@@ -268,7 +270,7 @@ func _interface() -> void:
 
 
 func pode_pausar() -> bool:
-	return not em_minigame and not fim and Engine.get_process_frames() != quadro_fechou_minigame
+	return not em_minigame and not fim and not mapa_aberto and Engine.get_process_frames() != quadro_fechou_minigame
 
 
 func _avisar(txt: String) -> void:
@@ -368,8 +370,15 @@ func _process(delta: float) -> void:
 	var it := _perto(interacoes, usadas)
 	if demo:
 		_demo(delta)
-	if dormindo or em_minigame or fim or ciclo.ocupado():
+	if mapa_aberto:
+		if Input.is_action_just_pressed("mapa") or Input.is_action_just_pressed("ui_cancel"):
+			mapa_aberto = false
+			travar(false)
+	elif dormindo or em_minigame or fim or ciclo.ocupado() or escuro > 0.0:
 		pass
+	elif Input.is_action_just_pressed("mapa") and not demo:
+		mapa_aberto = true
+		travar(true)
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
 	elif not it.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(it))):
@@ -630,6 +639,9 @@ func _desenha_hud() -> void:
 	Fonte.desenhar(hud, "- " + acoes, Vector2(8 + Fonte.largura(rodape) + 4, y), cor_acoes)
 	_desenha_recursos()
 	_desenha_minimapa()
+	if mapa_aberto:
+		_desenha_mapa_tela()
+		return
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
@@ -654,36 +666,93 @@ func _desenha_hud() -> void:
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
 
 
-## Minimapa no canto de baixo à direita: a base inteira, o ícone de cada tarefa que dá para fazer agora (o mesmo da
-## lista no canto de cima) e o astronauta em branco. As tarefas são as mesmas da
-## seta amarela: oferecidas hoje, não feitas, com ação sobrando.
-## Some com os minigames, os painéis do dia (boletim, noite, fim) e enquanto ele dorme.
+## Minimapa no canto de baixo à direita: a planta pequena com o ícone de cada tarefa que dá para fazer agora (o mesmo
+## da lista no canto de cima; as mesmas da seta amarela) e o astronauta em branco. Some com os minigames, os painéis do
+## dia (boletim, noite, fim), o mapa da tecla M e enquanto ele dorme.
 func _desenha_minimapa() -> void:
-	if em_minigame or fim or dormindo or escuro > 0.0 or ciclo.ocupado():
+	if em_minigame or fim or dormindo or escuro > 0.0 or ciclo.ocupado() or mapa_aberto:
 		return
-	var tam := TEX_MINIMAPA.get_size()
-	hud.draw_rect(Rect2(MINI_POS - Vector2(2, 2), tam + Vector2(4, 4)), Color(0.035, 0.04, 0.08, 0.7))
-	hud.draw_texture(TEX_MINIMAPA, MINI_POS)
+	var canto := Vector2(320 - 5, 180 - 5) - TEX_MINIMAPA.get_size()
+	hud.draw_rect(Rect2(canto - Vector2(2, 2), TEX_MINIMAPA.get_size() + Vector2(4, 4)), Color(0.035, 0.04, 0.08, 0.7))
+	_desenha_planta(TEX_MINIMAPA, canto, false)
+
+
+## Mapa da tecla M: a planta grande com o nome das salas, todas as tarefas do dia (feitas apagadas com visto) e, ao
+## lado, a lista do dia com os mesmos ícones. O astronauta fica parado enquanto ele está aberto (M ou Esc fecha).
+func _desenha_mapa_tela() -> void:
+	hud.draw_rect(Rect2(0, 0, 320, 180), Color(0.035, 0.04, 0.08, 0.98))
+	Fonte.desenhar(hud, "BASE MAP", Vector2(TELA_POS.x, 4), AMARELO)
+	var tam := TEX_MAPA_TELA.get_size()
+	hud.draw_rect(Rect2(TELA_POS - Vector2(1, 1), tam + Vector2(2, 2)), ESCURO)
+	_desenha_planta(TEX_MAPA_TELA, TELA_POS, true)
+	for nome in salas:                         # nome da sala embaixo, dentro dela
+		var s: Dictionary = salas[nome]
+		var tam_sala := Vector2(s["dados"]["tamanho"][0], s["dados"]["tamanho"][1])
+		var p := _na_planta(s["pos"] + Vector2(tam_sala.x / 2.0, tam_sala.y), TEX_MAPA_TELA, TELA_POS)
+		var cor := CINZA if nome != sala_atual else BRANCO
+		var titulo := _titulo_sala(nome)
+		var largura_sala := tam_sala.x * TEX_MAPA_TELA.get_size().x / PLANTA_TAM.x
+		if Fonte.largura(titulo) > largura_sala - 6 and " " in titulo:     # nome comprido: duas linhas
+			var partes := titulo.split(" ", false, 1)
+			Fonte.centralizado(hud, partes[0], p.x, p.y - 15, cor)
+			Fonte.centralizado(hud, partes[1], p.x, p.y - 9, cor)
+		else:
+			Fonte.centralizado(hud, titulo, p.x, p.y - 9, cor)
+	# a lista do dia
+	var x := TELA_POS.x + tam.x + 10
+	var y := 16.0
+	Fonte.desenhar(hud, "TODAY - DAY %d/%d" % [Missao.dia, ciclo.total_dias()], Vector2(x, y), AMARELO)
+	for id in ciclo.hoje:
+		var tf := _tarefa(id)
+		if tf.is_empty():
+			continue
+		y += 14
+		var feito := feitas.has(id)
+		var pode := ciclo.disponivel(id) and not feito
+		var ic: Texture2D = tf.get("icone")
+		if ic:
+			hud.draw_texture(ic, Vector2(x, y - 1), Color.WHITE if pode else Color(1, 1, 1, 0.35))
+			if feito:
+				_visto(Vector2(x + 2, y + 1))
+		Fonte.desenhar(hud, str(tf["texto"]), Vector2(x + 10, y), BRANCO if pode else CINZA)
+		Fonte.desenhar(hud, _titulo_sala(tf["sala"]), Vector2(x + 10, y + 6), ESCURO if not pode else CINZA)
+	Fonte.desenhar(hud, "YOU", Vector2(x + 10, 150), BRANCO)
+	hud.draw_rect(Rect2(x + 2, 150, 4, 4), CONTORNO)
+	hud.draw_rect(Rect2(x + 3, 151, 2, 2), BRANCO)
+	var fechar := "M OR ESC: CLOSE"
+	Fonte.desenhar(hud, fechar, Vector2(320 - 6 - Fonte.largura(fechar), 168), CINZA)
+
+
+## A planta (minimapa ou mapa da tecla M) com o canto em canto: ícones das tarefas e o astronauta. Com todas, mostra
+## também as tarefas do dia já feitas ou sem ação sobrando (apagadas; feita com visto), senão só as que dá para fazer.
+func _desenha_planta(tex: Texture2D, canto: Vector2, todas: bool) -> void:
+	hud.draw_texture(tex, canto)
 	var aceso := fmod(t, 0.8) < 0.55
 	for id in ciclo.hoje:
-		if feitas.has(id) or not ciclo.disponivel(id):
+		var feito := feitas.has(id)
+		var pode := ciclo.disponivel(id) and not feito
+		if not pode and not todas:
 			continue
 		var tf := _tarefa(id)
 		if tf.is_empty():
 			continue
-		var m := _no_minimapa(tf["pos"])
+		var m := _na_planta(tf["pos"], tex, canto)
 		var ic: Texture2D = tf.get("icone")
 		if ic:                                     # o mesmo ícone da lista, sozinho (sem moldura nem fundo)
 			var tam_ic := ic.get_size()
 			var meio := (tam_ic / 2.0).floor()
-			var c := m.clamp(MINI_POS + meio, MINI_POS + TEX_MINIMAPA.get_size() - tam_ic + meio)
-			hud.draw_texture(ic, c - meio)
-		elif aceso:
+			var c := m.clamp(canto + meio, canto + tex.get_size() - tam_ic + meio)
+			hud.draw_texture(ic, c - meio, Color.WHITE if pode else Color(1, 1, 1, 0.35))
+			if feito:
+				_visto(c - meio + Vector2(2, 2))
+		elif aceso and pode:
 			hud.draw_rect(Rect2(m + Vector2(-1, -2), Vector2(3, 5)), CONTORNO)    # cruz amarela com contorno
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
 			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
-	var j := _no_minimapa(jogador.global_position)
+	if todas and not aceso:                    # no mapa grande o astronauta pisca, para achar rápido
+		return
+	var j := _na_planta(jogador.global_position, tex, canto)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
 
@@ -697,11 +766,10 @@ func _visto(p: Vector2) -> void:
 		hud.draw_rect(Rect2(p + q, Vector2.ONE), VERDE)
 
 
-## Posição no mapa -> pixel do minimapa na tela (preso dentro dele).
-func _no_minimapa(pos: Vector2) -> Vector2:
-	var p := ((pos - MINI_ORIGEM) / MINI_ESCALA).floor()
-	p = p.clamp(Vector2.ZERO, TEX_MINIMAPA.get_size() - Vector2.ONE)
-	return MINI_POS + p
+## Posição no mapa -> pixel da planta tex desenhada com o canto em canto (preso dentro dela).
+func _na_planta(pos: Vector2, tex: Texture2D, canto: Vector2) -> Vector2:
+	var p := ((pos - PLANTA_ORIGEM) * tex.get_size() / PLANTA_TAM).floor()
+	return canto + p.clamp(Vector2.ZERO, tex.get_size() - Vector2.ONE)
 
 
 ## Faixa embaixo da tela, por cima do minigame: fechar agora é desistir, e a tarefa conta como falha.
