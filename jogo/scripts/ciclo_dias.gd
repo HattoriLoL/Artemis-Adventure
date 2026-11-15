@@ -1,10 +1,10 @@
 extends CanvasLayer
-## Ciclo da missão: 7 dias com 2 ações por dia (regras em res://dados/dias.json). Criado pelo mapa.gd.
+## Ciclo da missão: os dias de dias.json (hoje 5) com 2 ações por dia (regras em res://dados/dias.json). Criado pelo mapa.gd.
 ##   - manhã: boletim do controle da missão com as tarefas oferecidas no dia e o que cada uma rende;
 ##   - durante o dia: cada tarefa concluída gasta uma ação (registrar); sem ações, só resta dormir;
-##   - noite (dormir na cama do habitat): a cama, o consumo do dia e a geração solar (Recursos.fechar_dia) e um
-##     resumo de quanto cada indicador mudou;
-##   - fim: um indicador zerou (missão abortada) ou o dia 7 terminou (concluída, ou com dificuldades se algum
+##   - noite (dormir na cama do habitat): o consumo do dia, a geração solar e o dano à saúde da equipe por recurso
+##     baixo (Recursos.fechar_dia) e um resumo de quanto cada indicador mudou;
+##   - fim: um indicador zerou (missão abortada) ou o último dia terminou (concluída, ou com dificuldades se algum
 ##     indicador terminou baixo). A tela do fim mostra o resultado e o diário da missão; E começa uma nova missão.
 ## Desenhado em código como o menu de pausa: moldura de metal, fonte 3x5 e cores da paleta.
 
@@ -32,7 +32,7 @@ const TITULOS_FIM := {"concluida": "MISSION COMPLETE", "dificuldades": "MISSION 
 	"abortada": "MISSION ABORTED"}
 const CORES_FIM := {"concluida": VERDE, "dificuldades": AMARELO, "abortada": VERMELHO}
 const CAUSAS := {"energia": "The base lost all power", "oxigenio": "The oxygen ran out",
-	"comida": "The food ran out", "condicao": "The crew became too exhausted to work"}
+	"comida": "The food ran out", "condicao": "The crew became too sick to work"}
 
 var mapa: Node2D                   # o mapa.gd (quem cria preenche)
 var regras: Dictionary = {}
@@ -77,9 +77,10 @@ func ocupado() -> bool:
 	return painel != "" or Engine.get_process_frames() == quadro_fechou
 
 
-## As noites do local (dias_de_noite) começam no dia primeira_noite: nelas os painéis não geram energia.
+## As noites são do local de pouso: começam no primeira_noite do local (sem ele, o de dias.json) e duram
+## dias_de_noite. Nelas os painéis não geram energia.
 func eh_noite(dia: int) -> bool:
-	var primeira := int(regras["primeira_noite"])
+	var primeira := int(Missao.condicoes.get("primeira_noite", regras["primeira_noite"]))
 	return dia >= primeira and dia < primeira + int(Missao.condicoes.get("dias_de_noite", 0))
 
 
@@ -268,7 +269,7 @@ func _desenha_noite() -> void:
 		Fonte.desenhar(tela, "LUNAR NIGHT: NO SOLAR POWER", Vector2(x, y), AZUL)
 	y += 8
 	if resumo["desgaste"] > 0.0:
-		Fonte.desenhar(tela, "LOW SUPPLIES WORE THE CREW DOWN: %+d CREW" % -roundi(resumo["desgaste"]),
+		Fonte.desenhar(tela, "LOW SUPPLIES HURT THE CREW: %+d HEALTH" % -roundi(resumo["desgaste"]),
 			Vector2(x, y), VERMELHO)
 	var dica := "E: MISSION RESULT" if _ultima_noite() else "E: NEXT DAY"
 	Fonte.centralizado(tela, dica, 160, r.end.y + 4, METAL)

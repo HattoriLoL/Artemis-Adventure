@@ -1,21 +1,17 @@
 {
- "_leia": "Ciclo da missão: 7 dias, 2 ações por dia. Cada dia oferece algumas tarefas (ids sala/tarefa) e o jogador escolhe quais fazer. As noites do local de pouso (dias_de_noite em locais_pouso.json) começam no dia primeira_noite: nelas os painéis não geram energia. O boletim é a mensagem do controle da missão na manhã do dia.",
+ "_leia": "Ciclo da missão: 5 dias, 2 ações por dia. Cada dia oferece algumas tarefas (ids sala/tarefa) e o jogador escolhe quais fazer. As noites são de cada local de pouso (primeira_noite e dias_de_noite em locais_pouso.json; o primeira_noite daqui só vale para local sem esse campo): nelas os painéis e o terminal não geram energia, então todo dia que pode ser noite (2, 3 e 4) precisa oferecer uma tarefa de energia que não depende do sol (baterias ou distribuição). O boletim é a mensagem do controle da missão na manhã do dia.",
  "acoes_por_dia": 2,
  "primeira_noite": 3,
  "dias": [
   {"tarefas": ["energia/paineis", "suporte/oxigenio", "estufa/regar", "habitat/refeicao"],
-   "boletim": "Welcome to the base. Every task takes time: you can only do two a day. Sleep to end the day."},
+   "boletim": "Welcome to the base. Every task takes time: you can only do two a day. Sleep in the habitat to end the day."},
   {"tarefas": ["energia/baterias", "suporte/gas", "habitat/agua", "abrigo/blindagem"],
-   "boletim": "Charge up while you can. Nights on the Moon are long and the panels go quiet."},
-  {"tarefas": ["energia/terminal", "suporte/algas", "habitat/refeicao", "energia/tanques"],
-   "boletim": "Keep an eye on the oxygen. The air system works harder every day."},
-  {"tarefas": ["energia/distribuicao", "suporte/oxigenio", "estufa/regar", "abrigo/blindagem"],
-   "boletim": "Halfway there. A tired crew makes mistakes: do not forget to rest well."},
-  {"tarefas": ["energia/paineis", "suporte/gas", "habitat/refeicao", "habitat/agua"],
-   "boletim": "Food stocks are dropping. The greenhouse and the algae can help."},
-  {"tarefas": ["energia/baterias", "suporte/algas", "estufa/regar", "energia/tanques"],
-   "boletim": "One more push. Check what is running low before you choose."},
-  {"tarefas": ["energia/distribuicao", "suporte/oxigenio", "habitat/refeicao", "energia/terminal"],
-   "boletim": "Last day. Leave the base ready for the next crew."}
+   "boletim": "Nights on the Moon are long and the panels go quiet. The batteries keep the base running in the dark."},
+  {"tarefas": ["energia/distribuicao", "suporte/algas", "habitat/refeicao", "energia/tanques"],
+   "boletim": "Darkness everywhere today. Keep an eye on the oxygen: the air system works harder every day."},
+  {"tarefas": ["energia/baterias", "suporte/oxigenio", "estufa/regar", "abrigo/blindagem"],
+   "boletim": "Low supplies hurt the crew. Meals and the greenhouse help them recover."},
+  {"tarefas": ["energia/terminal", "suporte/gas", "estufa/regar", "habitat/agua"],
+   "boletim": "Last day. The sun is back: leave the base ready for the next crew."}
  ]
 }

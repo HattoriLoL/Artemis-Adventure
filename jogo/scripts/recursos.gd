@@ -1,17 +1,19 @@
 extends Node
-## Os 4 indicadores da missão (autoload "Recursos"): energia, oxigênio, comida e condição da equipe, de 0 a 100.
-## Começam com as condições do local de pouso (Missao.condicoes) e mudam assim:
-##   - sobem (ou trocam um pelo outro) quando o jogador conclui uma tarefa ou dorme: aplicar("sala/id");
-##   - no fechamento de cada dia (fechar_dia, chamado pelo ciclo_dias.gd ao dormir) a base e a equipe consomem a
-##     parte do dia e os painéis geram energia conforme o local (geracao_solar). Nas noites não há geração solar.
-##     A condição da equipe cai mais quando outro recurso está baixo.
+## Os 4 indicadores da missão (autoload "Recursos"): energia, oxigênio, comida e saúde da equipe ("condicao"),
+## de 0 a 100. Começam com as condições do local de pouso (Missao.condicoes) e mudam assim:
+##   - sobem (ou trocam um pelo outro) quando o jogador conclui uma tarefa: aplicar("sala/id");
+##   - no fechamento de cada dia (fechar_dia, chamado pelo ciclo_dias.gd ao dormir) a base consome energia, oxigênio
+##     e comida e os painéis geram energia conforme o local (geracao_solar). Nas noites não há geração solar.
+##   - a saúde da equipe não tem consumo diário e dormir não mexe nela: só cai quando algo dá errado (cada recurso
+##     baixo na noite) e só sobe com cuidado (refeição, plantas). Regra para o jogador: "a equipe se machuca quando
+##     falta suprimento; comida e plantas recuperam".
 ## Todos os números ficam em res://dados/recursos.json, para o balanceamento mexer sem tocar no código.
 
 signal mudou(id: String, mudancas: Dictionary)   # depois de aplicar(): {"oxigenio": 15.0, ...}
 
 const ARQUIVO := "res://dados/recursos.json"
 const NOMES := ["energia", "oxigenio", "comida", "condicao"]   # também a ordem no HUD
-const ROTULOS := {"energia": "POWER", "oxigenio": "OXYGEN", "comida": "FOOD", "condicao": "CREW"}
+const ROTULOS := {"energia": "POWER", "oxigenio": "OXYGEN", "comida": "FOOD", "condicao": "HEALTH"}
 const CORES := {"energia": Color("#e8c170"), "oxigenio": Color("#73bed3"), "comida": Color("#a8ca58"),
 	"condicao": Color("#df84a5")}
 
@@ -81,8 +83,8 @@ func aplicar(id: String, fator := 1.0) -> Dictionary:
 	return mudancas
 
 
-## Fechamento do dia: consumo da base e da equipe, geração dos painéis. Devolve as partes para o resumo da noite:
-## {"solar": 4.2, "desgaste": 6.0} (desgaste = o extra que a equipe perdeu por causa de recursos baixos).
+## Fechamento do dia: consumo da base, geração dos painéis e o dano à saúde da equipe por recurso baixo. Devolve as
+## partes para o resumo da noite: {"solar": 4.2, "desgaste": 6.0} (desgaste = a saúde perdida por recursos baixos).
 func fechar_dia() -> Dictionary:
 	var consumo: Dictionary = regras["consumo_por_dia"]
 	var solar := float(regras["geracao_solar_por_dia"]) * fator_solar()
@@ -93,7 +95,7 @@ func fechar_dia() -> Dictionary:
 	_somar("energia", solar - float(consumo["energia"]))
 	_somar("oxigenio", -float(consumo["oxigenio"]))
 	_somar("comida", -float(consumo["comida"]))
-	_somar("condicao", -float(consumo["condicao"]) - desgaste)
+	_somar("condicao", -float(consumo.get("condicao", 0.0)) - desgaste)
 	return {"solar": solar, "desgaste": desgaste}
 
 
