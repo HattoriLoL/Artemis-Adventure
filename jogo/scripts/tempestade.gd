@@ -101,7 +101,7 @@ func _direcao_abrigo() -> Vector2:
 func _desenha() -> void:
 	var pulso := 0.2 + 0.14 * (0.5 + 0.5 * sin(t * 7.0))
 	tela.draw_rect(Rect2(0, 0, 320, 180), Color(VERMELHO, pulso))
-	var r := Rect2(48, 122, 204, 30)               # embaixo, longe do astronauta (meio da tela) e do minimapa
+	var r := Rect2(40, 122, 204, 30)               # embaixo, longe do astronauta (meio da tela) e do minimapa (64x78)
 	tela.draw_rect(r, Color(PRETO, 0.85))
 	tela.draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), VERMELHO)
 	tela.draw_rect(Rect2(r.position + Vector2(0, r.size.y - 1), Vector2(r.size.x, 1)), VERMELHO)
