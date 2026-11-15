@@ -145,5 +145,13 @@
   202,
   172
  ],
- "interacoes": []
+ "interacoes": [
+  {
+   "id": "computador",
+   "x": 272,
+   "y": 136,
+   "texto": "NAVIGATION COMPUTER",
+   "acao": "computador"
+  }
+ ]
 }
