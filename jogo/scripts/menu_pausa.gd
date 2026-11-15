@@ -150,6 +150,7 @@ func _itens() -> Array:
 				{"id": "tudo_feito", "texto": "FINISH ALL TASKS"},
 				{"id": "zerar", "texto": "RESET TODAY"},
 				{"id": "fim_dia", "texto": "END THE DAY"},
+				{"id": "meteoros", "texto": "METEOR SHOWER NOW"},
 				{"id": "erupcao", "texto": "SOLAR STORM NOW"},
 				{"id": "minigame", "texto": "MINIGAME", "valor": mg},
 				{"id": "noclip", "texto": "NOCLIP", "liga": noclip},
@@ -286,6 +287,10 @@ func _ativar(id: String) -> void:
 		"fim_dia":
 			_fechar()
 			mapa.encerrar_dia()
+		"meteoros":
+			_fechar()
+			if mapa.get("emergencia") != null:
+				mapa.get("emergencia").disparar()
 		"minigame":
 			if minigames.is_empty():
 				_avisar("NO MINIGAMES")
