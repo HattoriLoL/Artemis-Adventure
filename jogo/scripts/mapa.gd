@@ -70,6 +70,10 @@ var t_alarme_audio := 0.0
 var player_alarme_mapa: AudioStreamPlayer = null
 var som_sirene_mapa: AudioStreamWAV = null
 var som_impacto_mapa: AudioStreamWAV = null
+var dia_sorteado_impacto := 3
+var tempo_espera_impacto := 18.0
+var tempo_dia_ativo := 0.0
+var impacto_ja_ocorreu := false
 
 # robô do modo demo: anda pelo caminho da grade de navegação
 var astar: AStarGrid2D
@@ -112,6 +116,7 @@ func _ready() -> void:
 	_navegacao()
 	_interface()
 	_criar_audio_mapa()
+	_sortear_impacto()
 	Recursos.iniciar()                             # começa com as condições do local de pouso
 	Recursos.mudou.connect(_recursos_mudaram)
 	ciclo.noite_fechou.connect(_amanhecer)
@@ -298,7 +303,15 @@ func travar(v: bool) -> void:
 func novo_dia() -> void:
 	feitas.clear()
 	usadas.clear()
+	tempo_dia_ativo = 0.0
 	_atualizar_marcas()
+
+
+func _sortear_impacto() -> void:
+	dia_sorteado_impacto = 3 if randf() < 0.6 else 4
+	tempo_espera_impacto = randf_range(14.0, 24.0)
+	tempo_dia_ativo = 0.0
+	impacto_ja_ocorreu = false
 
 
 ## Aba DEV: refaz o dia (tarefas e ações).
@@ -386,6 +399,15 @@ func _process(delta: float) -> void:
 		if hud != null:
 			hud.queue_redraw()
 
+	# Agendamento autônomo do impacto de meteoros no casco durante a missão
+	if not impacto_ja_ocorreu and not emergencia_blindagem:
+		if not dormindo and not em_minigame and not fim and not ciclo.ocupado():
+			if Missao.dia == dia_sorteado_impacto:
+				tempo_dia_ativo += delta
+				if tempo_dia_ativo >= tempo_espera_impacto:
+					impacto_ja_ocorreu = true
+					disparar_impacto_casco()
+
 	aviso_desistir.visible = em_minigame and desistir > 0.0
 	if aviso_desistir.visible:
 		aviso_desistir.queue_redraw()
@@ -396,6 +418,10 @@ func _process(delta: float) -> void:
 	for id in marcas:
 		var item := _tarefa(id)
 		marcas[id].position.y = item["pos"].y - 44 + round(sin(t * 5.0) * 1.5)
+		if emergencia_blindagem and id == "abrigo/blindagem":
+			marcas[id].color = VERMELHO if fmod(t, 0.3) < 0.15 else AMARELO
+		else:
+			marcas[id].color = AMARELO
 	var agora := _sala_de(jogador.global_position)
 	if agora != sala_atual:
 		sala_atual = agora
@@ -734,6 +760,10 @@ func _desenha_minimapa() -> void:
 		return
 	var canto := Vector2(320 - 5, 180 - 5) - TEX_MINIMAPA.get_size()
 	hud.draw_rect(Rect2(canto - Vector2(2, 2), TEX_MINIMAPA.get_size() + Vector2(4, 4)), Color(0.035, 0.04, 0.08, 0.7))
+	if emergencia_blindagem:
+		var pisca_borda: bool = fmod(t, 0.36) < 0.18
+		var cor_borda: Color = VERMELHO if pisca_borda else Color("#e8c170")
+		hud.draw_rect(Rect2(canto - Vector2(3, 3), TEX_MINIMAPA.get_size() + Vector2(6, 6)), cor_borda, false, 1.0)
 	_desenha_planta(TEX_MINIMAPA, canto)
 
 
@@ -742,6 +772,8 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 	hud.draw_texture(tex, canto)
 	var aceso := fmod(t, 0.8) < 0.55
 	for id in ciclo.hoje:
+		if id == "abrigo/blindagem" and emergencia_blindagem:
+			continue
 		if feitas.has(id) or not ciclo.disponivel(id):
 			continue
 		var tf := _tarefa(id)
@@ -759,6 +791,20 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
 			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
+
+	if emergencia_blindagem:
+		var tf_em := _tarefa("abrigo/blindagem")
+		if not tf_em.is_empty():
+			var m_em := _na_planta(tf_em["pos"], tex, canto)
+			var pisca_em: bool = fmod(t, 0.28) < 0.14
+			var cor_alerta: Color = VERMELHO if pisca_em else AMARELO
+			var r := 4.0 if pisca_em else 3.0
+			hud.draw_rect(Rect2(m_em - Vector2(r, r), Vector2(r * 2.0 + 1.0, r * 2.0 + 1.0)), CONTORNO, false, 1.0)
+			hud.draw_rect(Rect2(m_em - Vector2(r - 1.0, r - 1.0), Vector2((r - 1.0) * 2.0 + 1.0, (r - 1.0) * 2.0 + 1.0)), cor_alerta, false, 1.0)
+			hud.draw_rect(Rect2(m_em - Vector2(1, 1), Vector2(3, 3)), BRANCO if pisca_em else VERMELHO)
+			if pisca_em:
+				Fonte.desenhar(hud, "!", m_em + Vector2(5, -3), cor_alerta)
+
 	var j := _na_planta(jogador.global_position, tex, canto)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
@@ -836,6 +882,7 @@ func tremer_tela(duracao: float = 0.6, forca: float = 4.0) -> void:
 func disparar_impacto_casco(duracao: float = 35.0) -> void:
 	if emergencia_blindagem or dormindo or fim:
 		return
+	impacto_ja_ocorreu = true
 	emergencia_blindagem = true
 	tempo_emergencia_blindagem = duracao
 	t_alarme_audio = 0.0
