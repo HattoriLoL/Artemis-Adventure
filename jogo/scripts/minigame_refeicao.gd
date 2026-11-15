@@ -39,7 +39,7 @@ const JANELA := Vector2(64, 29)                   # canto do fundo (192x121) na 
 const TAM_JANELA := Vector2(192, 121)
 const BOTAO_X := Rect2(245, 17, 8, 8)
 # dentro do fundo: o centro do pacote de comida e o miolo do tubo do termômetro (x, topo, base)
-const COMIDA := Vector2(88, 62)                   # dentro do forno, apoiada no fundo do compartimento (base em y 82)
+const COMIDA := Vector2(90, 65)                   # dentro do forno, apoiada no fundo do compartimento (base em y 84)
 const TAM_COMIDA_PROVISORIA := Vector2(56, 40)
 const TERMOMETRO := Vector2(134, 23)              # canto do termometro.png (16x60), na fenda do painel do forno
 const TUBO_X := TERMOMETRO.x + 6.0                 # miolo do tubo no termometro.png: x 6..11, de y 5 a 47
