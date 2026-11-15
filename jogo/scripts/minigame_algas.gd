@@ -1,142 +1,350 @@
 extends Control
-## Minigame "cuidar das algas": manter os 2 tubos na faixa de fotossíntese por 2 segundos.
+## Minigame "cuidar das algas" (TEND THE ALGAE), nos biorreatores do Suporte à Vida: deixar os 2 tubos (TUBE A e
+## TUBE B) dentro da faixa verde de fotossíntese ao mesmo tempo por 2 segundos. Esquerda / direita escolhem o tubo,
+## cima / baixo aumentam ou diminuem o fluxo de nutrientes e luz dele. Não dá para perder.
+## Arte (paleta Apollo) em res://assets/minigames/algas/; líquido das algas, bolhas de fotossíntese, luz UV, faixas,
+## seleção, luzes, barra de estabilidade, moldura e textos animados aqui. Contrato com o mapa: sinais `terminou` e
+## `cancelou` (X ou Esc) e a variável `demo`.
 
 signal terminou
 signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
+const TEX_REATOR := preload("res://assets/minigames/algas/reator.png")   # 192x121
+const TEX_VIDRO := preload("res://assets/minigames/algas/vidro.png")     # reflexos do vidro, por cima do líquido
+
+const PRETO := Color("#090a14")
+const NOITE := Color("#10141f")
+const FUNDO := Color("#151d28")
+const CINZA_ESC := Color("#394a50")
+const CINZA := Color("#577277")
+const METAL := Color("#819796")
+const METAL_CLARO := Color("#a8b5b2")
+const BRANCO_SUJO := Color("#c7cfcc")
 const BRANCO := Color("#ebede9")
 const AMARELO := Color("#e8c170")
-const VERDE := Color("#a8ca58")
-const VERDE_ALGA := Color("#468232")
-const CINZA := Color("#577277")
+const MUSGO := Color("#19332d")
+const VERDE_ESC := Color("#25562e")
+const VERDE := Color("#468232")
+const VERDE_CLARO := Color("#75a743")
+const VERDE_LIMA := Color("#a8ca58")
+const VERDE_PALIDO := Color("#d0da91")
+const VERMELHO := Color("#a53030")
+const VERMELHO_CLARO := Color("#cf573c")
+const ROXO := Color("#a23e8c")
+const ROSA := Color("#df84a5")
 
-const ALTURA_TUBO := 66.0
-const FAIXAS := [[0.45, 0.75], [0.35, 0.65]]
-const TEMPO_OK := 2.0
+const PAINEL := Rect2(56, 13, 208, 154)
+const JANELA := Vector2(64, 29)                  # canto do fundo (192x121) na tela
+const TAM_JANELA := Vector2(192, 121)
+const BOTAO_X := Rect2(245, 17, 8, 8)
+# posições dentro do fundo
+const TUBOS := [Rect2(51, 18, 30, 66), Rect2(112, 18, 30, 66)]   # dentro do vidro
+const LUZES_UV := [Rect2(37, 27, 8, 42), Rect2(147, 27, 8, 42)]   # faixas de LED roxo ao lado de cada tubo
+const LEDS := [Vector2(40, 79), Vector2(152, 79)]                 # luz de estado nas caixinhas de controle
+const VISOR := Rect2(26, 105, 140, 13)           # visor do rodapé: nomes dos tubos e barra de estabilidade
 
-var niveis: Array[float] = [0.20, 0.85]
-var selecionado := 0
+const NOMES := ["TUBE A", "TUBE B"]
+const FAIXAS := [[0.45, 0.75], [0.35, 0.65]]     # faixa de fotossíntese de cada tubo (0 = vazio, 1 = cheio)
+const INICIO := [0.20, 0.85]                     # cada tubo começa fora da faixa: o A baixo, o B alto
+const VEL_AJUSTE := 0.50                         # quanto o jogador sobe ou desce por segundo
+const TEMPO_OK := 2.0                            # segundos com os 2 tubos na faixa para terminar
+const TEMPO_FIM := 1.3
+
+var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
+var niveis: Array = []
+var selecionado := 0                             # tubo escolhido: 0 = A, 1 = B
 var tempo_estavel := 0.0
-var demo := false
 var t_demo := 0.0
 var acabou := false
-var mensagem := ""
-
-@onready var textos: Control = $Textos
-@onready var selecao: ColorRect = $Selecao
-@onready var tubos: Array[ColorRect] = [$TuboA, $TuboB]
+var t := 0.0
+var t_fim := -1.0
+var ajuste := 0.0                                # -1, 0 ou 1: o jogador está tirando ou pondo nutrientes
+var bolhas: Array = []                           # [tubo, x, y, vel]: bolhas de oxigênio subindo, dentro do tubo
+var particulas: Array = []                       # [tubo, x, y, fase]: grumos de alga boiando no líquido
+var t_bolha := 0.0
+var t_troca := 0.0                               # piscada da seleção ao trocar de tubo
 
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_criar_teclas()
-	textos.draw.connect(_desenhar_textos)
-	_atualizar_visual()
+	niveis = INICIO.duplicate()
+	for i in TUBOS.size():
+		var r: Rect2 = TUBOS[i]
+		for k in 9:
+			particulas.append([i, randf_range(2.0, r.size.x - 3.0), randf_range(0.0, 1.0), randf() * TAU])
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE:
+func _input(ev: InputEvent) -> void:
+	if acabou or demo:
+		return
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		if BOTAO_X.grow(1).has_point(get_local_mouse_position()):
 			cancelou.emit()
-			set_process(false)
+	elif ev.is_action_pressed("ui_cancel"):
+		cancelou.emit()
 
 
 func _process(delta: float) -> void:
+	t += delta
+	t_troca = maxf(0.0, t_troca - delta)
+	_animar_bolhas(delta)
 	if acabou:
+		ajuste = 0.0
+		t_fim -= delta
+		if t_fim < 0.0:
+			set_process(false)
+			terminou.emit()
+		queue_redraw()
 		return
-
 	if demo:
 		_jogar_sozinho(delta)
 	else:
 		_controles(delta)
-
-	var todos_ok := true
-	for i in 2:
-		if niveis[i] < FAIXAS[i][0] or niveis[i] > FAIXAS[i][1]:
-			todos_ok = false
-			break
-
-	if todos_ok:
+	if _todos_na_faixa():
 		tempo_estavel += delta
 		if tempo_estavel >= TEMPO_OK:
-			_terminar("BIORREATORES EM EQUILIBRIO")
+			acabou = true
+			t_fim = TEMPO_FIM
 	else:
 		tempo_estavel = 0.0
-
-	_atualizar_visual()
-	textos.queue_redraw()
+	queue_redraw()
 
 
 func _controles(delta: float) -> void:
+	var antes := selecionado
 	if Input.is_action_just_pressed("esquerda"):
 		selecionado = 0
 	elif Input.is_action_just_pressed("direita"):
 		selecionado = 1
+	if selecionado != antes:
+		t_troca = 0.2
+	ajuste = Input.get_axis("baixo", "cima")
+	niveis[selecionado] = clampf(niveis[selecionado] + ajuste * VEL_AJUSTE * delta, 0.0, 1.0)
 
-	var ajuste: float = Input.get_axis("baixo", "cima")
-	if ajuste != 0.0:
-		niveis[selecionado] = clampf(niveis[selecionado] + ajuste * 0.50 * delta, 0.0, 1.0)
+
+func _na_faixa(i: int) -> bool:
+	return niveis[i] >= FAIXAS[i][0] and niveis[i] <= FAIXAS[i][1]
+
+
+func _todos_na_faixa() -> bool:
+	for i in niveis.size():
+		if not _na_faixa(i):
+			return false
+	return true
+
+
+func _meio(i: int) -> float:
+	return (FAIXAS[i][0] + FAIXAS[i][1]) / 2.0
 
 
 func _jogar_sozinho(delta: float) -> void:
+	# no demo, a cada 0,35 s pega o primeiro tubo longe do meio da faixa e leva ele para o meio
 	t_demo += delta
 	if t_demo >= 0.35:
 		t_demo = 0.0
-		for i in 2:
-			var centro: float = (FAIXAS[i][0] + FAIXAS[i][1]) / 2.0
-			if absf(niveis[i] - centro) > 0.05:
+		for i in niveis.size():
+			if absf(niveis[i] - _meio(i)) > 0.05:
+				if i != selecionado:
+					t_troca = 0.2
 				selecionado = i
 				break
-
-	var alvo: float = (FAIXAS[selecionado][0] + FAIXAS[selecionado][1]) / 2.0
-	niveis[selecionado] = move_toward(niveis[selecionado], alvo, 0.50 * delta)
-
-
-func _atualizar_visual() -> void:
-	selecao.position.x = tubos[selecionado].position.x - 4
-	for i in 2:
-		var alga_node: ColorRect = tubos[i].get_node("Algas")
-		var h: float = roundf(niveis[i] * ALTURA_TUBO)
-		alga_node.size.y = h
-		alga_node.position.y = ALTURA_TUBO - h
-		var na_faixa: bool = niveis[i] >= FAIXAS[i][0] and niveis[i] <= FAIXAS[i][1]
-		alga_node.color = VERDE if na_faixa else VERDE_ALGA
+	var alvo := _meio(selecionado)
+	ajuste = 0.0 if absf(alvo - niveis[selecionado]) < 0.005 else signf(alvo - niveis[selecionado])
+	niveis[selecionado] = move_toward(niveis[selecionado], alvo, VEL_AJUSTE * delta)
 
 
-func _desenhar_textos() -> void:
-	Fonte.centralizado(textos, "BIORREATORES DE ALGAS", 160, 32, AMARELO)
+## y (dentro do tubo) da superfície do líquido.
+func _superficie(i: int) -> float:
+	var r: Rect2 = TUBOS[i]
+	return r.size.y - roundf(niveis[i] * r.size.y)
 
-	var nomes: Array[String] = ["TUBO A", "TUBO B"]
-	for i in 2:
-		var cx: float = tubos[i].position.x + tubos[i].size.x / 2.0
-		var na_faixa: bool = niveis[i] >= FAIXAS[i][0] and niveis[i] <= FAIXAS[i][1]
-		Fonte.centralizado(textos, nomes[i], cx, 122, VERDE if na_faixa else (BRANCO if i == selecionado else CINZA))
 
+## Bolhas de oxigênio da fotossíntese: muitas com o tubo na faixa, poucas fora dela.
+func _animar_bolhas(delta: float) -> void:
+	t_bolha -= delta
+	if t_bolha <= 0.0:
+		t_bolha = 0.1
+		for i in TUBOS.size():
+			var chance := 0.8 if _na_faixa(i) else 0.15
+			if randf() < chance and niveis[i] > 0.06:
+				var r: Rect2 = TUBOS[i]
+				bolhas.append([i, randf_range(2.0, r.size.x - 3.0), r.size.y - 1.0, randf_range(12.0, 26.0)])
+	for b in bolhas:
+		b[2] -= b[3] * delta
+		b[1] += sin(t * 6.0 + b[3]) * 4.0 * delta          # sobem balançando um pouco
+	bolhas = bolhas.filter(func(b): return b[2] > _superficie(b[0]) + 1.0)
+
+
+# ---------------------------------------------------------------- desenho
+func _draw() -> void:
+	draw_rect(Rect2(0, 0, 320, 180), Color(PRETO, 0.68))
+	_moldura()
+	Fonte.centralizado(self, "TEND THE ALGAE", PAINEL.position.x + PAINEL.size.x / 2.0, PAINEL.position.y + 5,
+		AMARELO)
+	var certos := 0
+	for i in NOMES.size():
+		certos += 1 if _na_faixa(i) else 0
+	Fonte.desenhar(self, "%d/2" % certos, PAINEL.position + Vector2(12, 5), VERDE_LIMA)
+	draw_rect(BOTAO_X.grow(1), PRETO)
+	draw_rect(BOTAO_X.grow_individual(-1, -1, -1, -1), VERMELHO)
+	for k in 4:
+		draw_rect(Rect2(BOTAO_X.position + Vector2(2 + k, 2 + k), Vector2.ONE), BRANCO)
+		draw_rect(Rect2(BOTAO_X.position + Vector2(5 - k, 2 + k), Vector2.ONE), BRANCO)
+	draw_rect(Rect2(JANELA - Vector2.ONE, TAM_JANELA + Vector2(2, 2)), PRETO)
+	draw_texture(TEX_REATOR, JANELA)
+	for i in TUBOS.size():
+		_luz_uv(i)
+		_tubo(i)
+	draw_texture(TEX_VIDRO, JANELA)
+	for i in TUBOS.size():
+		_faixa(i)
+		_led(i)
+	_selecao()
+	_visor()
+	var y_txt := JANELA.y + TAM_JANELA.y + 5
 	if acabou:
-		Fonte.centralizado(textos, mensagem, 160, 138, VERDE, 2)
+		Fonte.centralizado(self, "BIOREACTORS BALANCED!", 160, y_txt, VERDE_LIMA)
+	else:
+		Fonte.centralizado(self, "LEFT/RIGHT PICK A TUBE - UP/DOWN FEED IT", 160, y_txt, BRANCO_SUJO)
+
+
+func _px(p: Vector2, cor: Color) -> void:
+	draw_rect(Rect2(p.floor(), Vector2.ONE), cor)
+
+
+## Brilho da faixa de LED roxo: mais forte quanto mais luz e nutrientes o tubo recebe, tremendo ao ajustar.
+func _luz_uv(i: int) -> void:
+	var r: Rect2 = LUZES_UV[i]
+	var forca: float = 0.15 + 0.45 * niveis[i]
+	if i == selecionado and ajuste != 0.0:
+		forca += 0.1 * sin(t * 30.0)
+	draw_rect(Rect2(JANELA + r.position, r.size), Color(ROXO, forca * 0.6))
+	draw_rect(Rect2(JANELA + r.position + Vector2(3, 1), Vector2(2, r.size.y - 2)), Color(ROSA, forca))
+
+
+## O líquido das algas: verde escuro com faixa mais clara do lado, superfície ondulando, grumos boiando e bolhas.
+func _tubo(i: int) -> void:
+	var r: Rect2 = TUBOS[i]
+	var base := JANELA + r.position
+	var topo := _superficie(i)
+	var dentro := _na_faixa(i)
+	var pulso := acabou and fmod(t + i * 0.2, 0.5) < 0.25
+	var corpo := VERDE if dentro else VERDE_ESC
+	var lado := VERDE_CLARO if dentro else VERDE
+	if pulso:
+		corpo = VERDE_CLARO
+		lado = VERDE_LIMA
+	for x in int(r.size.x):
+		var onda := roundf(sin(t * 4.0 + x * 0.6 + i * 2.0) * 0.7)
+		var y0 := clampf(topo + onda, 0.0, r.size.y)
+		var alto := r.size.y - y0
+		if alto <= 0.0:
+			continue
+		var cor := lado if x in [2, 3, 4] else corpo
+		draw_rect(Rect2(base + Vector2(x, y0), Vector2(1, alto)), Color(cor, 0.92))
+		draw_rect(Rect2(base + Vector2(x, y0), Vector2.ONE), VERDE_PALIDO if dentro else VERDE_CLARO)
+	for p in particulas:                          # grumos de alga boiando devagar
+		if p[0] != i:
+			continue
+		var py: float = topo + 2.0 + p[2] * (r.size.y - topo - 3.0) + sin(t * 1.3 + p[3]) * 1.5
+		if py > topo + 1.0 and py < r.size.y:
+			_px(base + Vector2(p[1] + sin(t * 0.8 + p[3]), py), MUSGO)
+	for b in bolhas:
+		if b[0] == i:
+			_px(base + Vector2(b[1], b[2]), VERDE_PALIDO)
+
+
+## Faixa verde: colchetes dos dois lados do tubo; acendem com o líquido dentro.
+func _faixa(i: int) -> void:
+	var r: Rect2 = TUBOS[i]
+	var y1 := JANELA.y + r.position.y + r.size.y - roundf(FAIXAS[i][1] * r.size.y)
+	var y2 := JANELA.y + r.position.y + r.size.y - roundf(FAIXAS[i][0] * r.size.y)
+	var dentro := _na_faixa(i)
+	var cor := VERDE_LIMA if dentro else VERDE_CLARO
+	var escura := VERDE if dentro else VERDE_ESC
+	for lado in [JANELA.x + r.position.x - 3, JANELA.x + r.end.x + 1]:
+		draw_rect(Rect2(lado - 1, y1 - 1, 4, y2 - y1 + 3), PRETO)
+		draw_rect(Rect2(lado, y1, 2, y2 - y1 + 1), escura)
+		draw_rect(Rect2(lado, y1, 2, 1), cor)
+		draw_rect(Rect2(lado, y2, 2, 1), cor)
+		if dentro:
+			draw_rect(Rect2(lado, y1, 1, y2 - y1 + 1), cor)
+	for y in [y1, y2]:                            # tracinhos no vidro marcando as pontas da faixa
+		for x in range(0, int(r.size.x), 2):
+			_px(Vector2(JANELA.x + r.position.x + x, y), Color(cor, 0.7))
+
+
+func _led(i: int) -> void:
+	var p: Vector2 = JANELA + LEDS[i]
+	draw_rect(Rect2(p - Vector2(1, 1), Vector2(4, 4)), PRETO)
+	var cor := VERDE_LIMA if _na_faixa(i) else (VERMELHO_CLARO if fmod(t + i * 0.2, 0.6) < 0.3 else VERMELHO)
+	draw_rect(Rect2(p, Vector2(2, 2)), cor)
+
+
+## Cantos amarelos em volta do tubo da vez, com uma setinha piscando em cima.
+func _selecao() -> void:
+	if acabou:
 		return
+	var r: Rect2 = TUBOS[selecionado]
+	var caixa := Rect2(JANELA + r.position - Vector2(6, 4), r.size + Vector2(12, 8))
+	var cor := BRANCO if t_troca > 0.0 else AMARELO
+	var canto := 4.0
+	for c in [caixa.position, Vector2(caixa.end.x - canto, caixa.position.y),
+			Vector2(caixa.position.x, caixa.end.y - 1), Vector2(caixa.end.x - canto, caixa.end.y - 1)]:
+		draw_rect(Rect2(c, Vector2(canto, 1)), cor)
+	for c in [caixa.position, Vector2(caixa.end.x - 1, caixa.position.y),
+			Vector2(caixa.position.x, caixa.end.y - canto), Vector2(caixa.end.x - 1, caixa.end.y - canto)]:
+		draw_rect(Rect2(c, Vector2(1, canto)), cor)
+	var cx := roundf(caixa.get_center().x)
+	var y := caixa.position.y - 5 + (1 if fmod(t, 0.6) < 0.3 else 0)
+	draw_rect(Rect2(cx - 2, y, 5, 1), cor)
+	draw_rect(Rect2(cx - 1, y + 1, 3, 1), cor)
+	_px(Vector2(cx, y + 2), cor)
 
-	Fonte.centralizado(textos, "ESQ/DIR ESCOLHE  |  CIMA/BAIXO REGULA", 160, 138, BRANCO)
+
+## Visor do rodapé: o nome de cada tubo embaixo dele (verde na faixa) e a barra de estabilidade.
+func _visor() -> void:
+	var v := Rect2(JANELA + VISOR.position, VISOR.size)
+	draw_rect(v.grow(1), PRETO)
+	draw_rect(v, NOITE)
+	for i in NOMES.size():
+		var cx: float = JANELA.x + TUBOS[i].get_center().x
+		var cor: Color = VERDE_LIMA if _na_faixa(i) else (BRANCO if i == selecionado else METAL)
+		Fonte.centralizado(self, NOMES[i], cx, v.position.y + 1, cor)
+	var barra := Rect2(v.position + Vector2(4, 9), Vector2(v.size.x - 8, 2))
+	draw_rect(barra.grow(1), CINZA_ESC)
+	draw_rect(barra, FUNDO)
+	var cheio := 1.0 if acabou else clampf(tempo_estavel / TEMPO_OK, 0.0, 1.0)
+	if cheio > 0.0:
+		var cor_barra := VERDE_LIMA if acabou and fmod(t, 0.3) < 0.15 else VERDE_CLARO
+		draw_rect(Rect2(barra.position, Vector2(roundf(barra.size.x * cheio), barra.size.y)), cor_barra)
 
 
-func _terminar(texto: String) -> void:
-	acabou = true
-	mensagem = texto
-	textos.queue_redraw()
-	await get_tree().create_timer(1.0).timeout
-	terminou.emit()
+func _moldura() -> void:
+	var p := PAINEL
+	draw_rect(p, PRETO)
+	draw_rect(p.grow(-1), CINZA)
+	draw_rect(Rect2(p.position + Vector2(1, 1), Vector2(p.size.x - 2, 1)), METAL_CLARO)
+	draw_rect(Rect2(p.position + Vector2(1, 1), Vector2(1, p.size.y - 2)), METAL)
+	draw_rect(Rect2(p.position + Vector2(2, p.size.y - 2), Vector2(p.size.x - 3, 1)), CINZA_ESC)
+	draw_rect(Rect2(p.position + Vector2(p.size.x - 2, 2), Vector2(1, p.size.y - 3)), CINZA_ESC)
+	for c in [Vector2(3, 3), Vector2(p.size.x - 6, 3), Vector2(3, p.size.y - 6), Vector2(p.size.x - 6, p.size.y - 6)]:
+		draw_rect(Rect2(p.position + c, Vector2(3, 3)), METAL)
+		draw_rect(Rect2(p.position + c + Vector2.ONE, Vector2.ONE), CINZA_ESC)
+	draw_rect(Rect2(p.position + Vector2(8, 3), Vector2(p.size.x - 16, 10)), FUNDO)
 
 
 func _criar_teclas() -> void:
-	var teclas := {
-		"esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT],
-		"cima": [KEY_W, KEY_UP], "baixo": [KEY_S, KEY_DOWN],
-		"usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]
-	}
+	# para a cena rodar sozinha com F6: no jogo, quem cria as teclas é o mapa
+	var teclas := {"esquerda": [KEY_A, KEY_LEFT], "direita": [KEY_D, KEY_RIGHT], "cima": [KEY_W, KEY_UP],
+		"baixo": [KEY_S, KEY_DOWN], "usar": [KEY_E, KEY_X, KEY_J, KEY_ENTER]}
 	for acao in teclas:
-		if not InputMap.has_action(acao):
-			InputMap.add_action(acao)
-			for k in teclas[acao]:
-				var ev := InputEventKey.new()
-				ev.physical_keycode = k
-				InputMap.action_add_event(acao, ev)
+		if InputMap.has_action(acao):
+			continue
+		InputMap.add_action(acao)
+		for k in teclas[acao]:
+			var ev := InputEventKey.new()
+			ev.physical_keycode = k
+			InputMap.action_add_event(acao, ev)
