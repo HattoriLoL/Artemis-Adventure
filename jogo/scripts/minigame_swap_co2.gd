@@ -49,10 +49,10 @@ const DESCIDA := 111.0                           # o filtro sai inteiro pela bor
 
 # cada passo: o que mostrar, qual tecla, se é "apertar" (conta apertos) ou "segurar" (conta segundos) e quanto precisa
 const PASSOS := [
-	{"texto": "UNLOCK THE FILTER: PRESS E 6 TIMES", "tecla": "usar", "tipo": "apertar", "quanto": 6.0},
-	{"texto": "PULL OUT THE OLD FILTER: HOLD DOWN", "tecla": "baixo", "tipo": "segurar", "quanto": 1.0},
-	{"texto": "SLIDE IN THE NEW FILTER: HOLD UP", "tecla": "cima", "tipo": "segurar", "quanto": 1.0},
-	{"texto": "LOCK THE FILTER: PRESS E", "tecla": "usar", "tipo": "apertar", "quanto": 1.0},
+	{"texto": "UNLOCK FILTER: TAP [E] 6 TIMES", "tecla": "usar", "tipo": "apertar", "quanto": 6.0},
+	{"texto": "PULL OUT OLD FILTER: HOLD [S / DOWN]", "tecla": "baixo", "tipo": "segurar", "quanto": 1.0},
+	{"texto": "SLIDE IN NEW FILTER: HOLD [W / UP]", "tecla": "cima", "tipo": "segurar", "quanto": 1.0},
+	{"texto": "LOCK THE FILTER: PRESS [E]", "tecla": "usar", "tipo": "apertar", "quanto": 1.0},
 ]
 const TECLAS := ["usar", "esquerda", "direita", "cima", "baixo"]
 const INTERVALO_DEMO := 0.2                      # no demo, tempo entre um aperto e outro
@@ -237,7 +237,7 @@ func _draw() -> void:
 	elif t_aviso > 0.0:
 		Fonte.centralizado(self, "WRONG KEY (%d/%d)" % [erros, MAX_ERROS], 160, y_txt, VERMELHO_CLARO)
 	else:
-		Fonte.centralizado(self, PASSOS[passo]["texto"], 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, PASSOS[passo]["texto"], 160, y_txt, BRANCO_SUJO, VERMELHO_CLARO)
 	_barra()
 
 

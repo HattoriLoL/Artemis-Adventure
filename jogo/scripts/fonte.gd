@@ -45,6 +45,69 @@ static func centralizado(ci: CanvasItem, t: String, cx: float, y: float, cor: Co
 	desenhar(ci, t, Vector2(round(cx - largura(t, esc) / 2.0), y), cor, esc)
 
 
+## Calcula a largura de um texto onde expressões entre colchetes ([E], [W/S]) viram teclas com badge.
+static func largura_com_teclas(t: String, esc := 1) -> int:
+	var total := 0
+	var i := 0
+	while i < t.length():
+		var abre := t.find("[", i)
+		if abre == -1:
+			total += largura(t.substr(i), esc)
+			break
+		if abre > i:
+			total += largura(t.substr(i, abre - i), esc)
+		var fecha := t.find("]", abre)
+		if fecha == -1:
+			total += largura(t.substr(abre), esc)
+			break
+		var rotulo := t.substr(abre + 1, fecha - abre - 1)
+		var w_tecla: int = largura(rotulo, esc) + 4 * esc
+		total += w_tecla + 2 * esc
+		i = fecha + 1
+	return total
+
+
+## Desenha texto onde expressões entre colchetes ([E], [W], [A/D]) viram teclas com contorno vermelho/destaque.
+static func desenhar_com_teclas(ci: CanvasItem, t: String, pos: Vector2, cor: Color, cor_tecla := Color("#cf573c"), esc := 1) -> void:
+	var x := pos.x
+	var y := pos.y
+	var i := 0
+	while i < t.length():
+		var abre := t.find("[", i)
+		if abre == -1:
+			desenhar(ci, t.substr(i), Vector2(x, y), cor, esc)
+			break
+		if abre > i:
+			var trecho := t.substr(i, abre - i)
+			desenhar(ci, trecho, Vector2(x, y), cor, esc)
+			x += largura(trecho, esc)
+		var fecha := t.find("]", abre)
+		if fecha == -1:
+			desenhar(ci, t.substr(abre), Vector2(x, y), cor, esc)
+			break
+		var rotulo := t.substr(abre + 1, fecha - abre - 1)
+		var w_rot := largura(rotulo, esc)
+		var w_tecla := w_rot + 4 * esc
+		var h_tecla := 7 * esc
+		var r_tecla := Rect2(x + 1 * esc, y - 1 * esc, w_tecla, h_tecla)
+
+		# Sombra preta, contorno da tecla com cor de destaque (vermelho) e interior escuro
+		ci.draw_rect(r_tecla.grow(1 * esc), Color(0.04, 0.05, 0.08, 0.85))
+		ci.draw_rect(r_tecla, cor_tecla)
+		ci.draw_rect(r_tecla.grow(-1 * esc), Color("#151d28"))
+		# Letra dentro da tecla desenhada em branco puro de alta nitidez
+		desenhar(ci, rotulo, Vector2(x + 3 * esc, y), Color("#ebede9"), esc, false)
+
+		x += w_tecla + 2 * esc
+		i = fecha + 1
+
+
+## Centraliza texto com teclas destacadas ([E], [W/S], etc.).
+static func centralizado_com_teclas(ci: CanvasItem, t: String, cx: float, y: float, cor: Color, cor_tecla := Color("#cf573c"), esc := 1) -> void:
+	var w := largura_com_teclas(t, esc)
+	desenhar_com_teclas(ci, t, Vector2(round(cx - w / 2.0), y), cor, cor_tecla, esc)
+
+
 static func _linha(ci: CanvasItem, s: String, pos: Vector2, cor: Color, esc: int) -> void:
 	var x := pos.x
 	for ch in s:
