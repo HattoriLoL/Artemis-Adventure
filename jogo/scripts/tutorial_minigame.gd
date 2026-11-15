@@ -1,6 +1,7 @@
 extends Control
 ## Tutorial de primeira vez de um minigame: aparece por cima do jogo antes do minigame abrir, só na primeira vez que o
-## jogador faz aquela tarefa (fica guardado em user://tutoriais.cfg; o menu de pausa pode zerar).
+## jogador faz aquela tarefa em cada missão (fica em Missao.tutoriais_vistos: missão nova, tutoriais de novo; o
+## "SHOW TUTORIALS AGAIN" do menu de pausa também zera).
 ## Mostra a ilustração da tarefa (assets/tutoriais/<id>.png, 120x80), os passos de como jogar com as teclas desenhadas
 ## como teclas de teclado ([E], [W]...) e um fato real: por que os astronautas fazem isso de verdade, com a fonte.
 ## Textos em dados/tutoriais.json, por id (o nome da cena do minigame sem "minigame_": agua, algas, tanques...).
@@ -11,7 +12,6 @@ signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
 const ARQUIVO_DADOS := "res://dados/tutoriais.json"
-const ARQUIVO_VISTOS := "user://tutoriais.cfg"
 const PASTA_ARTE := "res://assets/tutoriais/"
 
 const PRETO := Color("#090a14")
@@ -67,22 +67,17 @@ static func tem(id_: String) -> bool:
 
 
 static func ja_visto(id_: String) -> bool:
-	var cfg := ConfigFile.new()
-	return cfg.load(ARQUIVO_VISTOS) == OK and bool(cfg.get_value("vistos", id_, false))
+	return Missao.tutoriais_vistos.has("minigame/" + id_)
 
 
 static func marcar_visto(id_: String) -> void:
-	var cfg := ConfigFile.new()
-	cfg.load(ARQUIVO_VISTOS)
-	cfg.set_value("vistos", id_, true)
-	cfg.save(ARQUIVO_VISTOS)
+	Missao.tutoriais_vistos["minigame/" + id_] = true
 
 
-## Esquece os tutoriais vistos (todos voltam a aparecer na primeira vez de cada minigame), e também os cards de sala
-## (card_sala.gd guarda no mesmo arquivo).
+## Esquece os tutoriais vistos nesta missão (todos voltam a aparecer na primeira vez de cada minigame), e também
+## os cards de sala (card_sala.gd guarda no mesmo lugar).
 static func zerar() -> void:
-	var cfg := ConfigFile.new()
-	cfg.save(ARQUIVO_VISTOS)
+	Missao.tutoriais_vistos.clear()
 
 
 func _ready() -> void:

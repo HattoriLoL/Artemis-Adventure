@@ -23,6 +23,10 @@ var evento_solar: Dictionary = {}        # o evento real do DONKI usado como ref
 var blindagem := 0                       # quantas vezes a blindagem foi reforçada
 var tempestade: Dictionary = {}          # o que aconteceu: {"dia": 3, "abrigo": true, "dano": 5}; vazio = ainda não
 
+## Tutoriais dos minigames e cards de sala já vistos nesta missão ("minigame/agua", "sala/habitat"). Não fica em
+## arquivo: cada missão nova (inclusive o "jogar novamente" e reabrir o jogo) mostra todos de novo.
+var tutoriais_vistos: Dictionary = {}
+
 
 ## Relatório final: o que aconteceu de verdade durante a partida (registrado pelo ciclo_dias.gd conforme ocorre).
 ## um item por acontecimento: {"n": 0, "dia": 3, "tipo": "critico", "titulo": "POWER LOW", "descricao": "...", "impacto": "energia", "peso": 8}
@@ -65,6 +69,7 @@ func reiniciar() -> void:
 	evento_solar = {}
 	blindagem = 0
 	tempestade = {}
+	tutoriais_vistos = {}
 	eventos = []
 	decisao_impacto = {}
 	donki = {}
