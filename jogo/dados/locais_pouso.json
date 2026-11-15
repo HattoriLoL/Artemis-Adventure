@@ -7,7 +7,7 @@
   "cor": "#e8c170",
   "sol": 3,
   "gelo": 1,
-  "condicoes": {"energia": 80, "oxigenio": 65, "comida": 70, "condicao": 80, "geracao_solar": 1.0, "primeira_noite": 3, "dias_de_noite": 1, "gelo_por_coleta": 0.5}
+  "condicoes": {"energia": 75, "oxigenio": 65, "comida": 70, "condicao": 80, "geracao_solar": 1.0, "primeira_noite": 3, "dias_de_noite": 1, "gelo_por_coleta": 0.5}
  },
  {
   "id": "polo",
