@@ -18,6 +18,7 @@ var bot_espera := 0.0
 var t_usar := 0.0
 var lanterna_energia := 0.0        # (a versão de plataforma usa; aqui fica parada)
 var mult_vel := 1.0                # multiplicador da velocidade (aba DEV do menu de pausa)
+var bot_correr := false            # modo demo: o robô corre (alarme da erupção solar)
 
 var spr: AnimatedSprite2D
 var poeira: CPUParticles2D
@@ -64,8 +65,9 @@ func _ready() -> void:
 
 
 func usar() -> void:
+	# o astronauta para um instante na tarefa; por enquanto a folha só tem parado e andar (sem animação de usar)
 	t_usar = 0.45
-	spr.play("use_" + dir)
+	spr.play("idle_" + dir)
 
 
 func bot_quer_usar(_t: Dictionary) -> bool:
@@ -99,7 +101,7 @@ func _entrada(delta: float) -> Vector2:
 
 func _physics_process(delta: float) -> void:
 	var ent := Vector2.ZERO if t_usar > 0.0 else _entrada(delta)
-	var correndo := not demo and Input.is_action_pressed("correr")
+	var correndo := bot_correr if demo else Input.is_action_pressed("correr")
 	var vmax := (VEL_CORRER if correndo else VEL_ANDAR) * mult_vel
 	velocity = velocity.move_toward(ent * vmax, ACEL * mult_vel * delta)
 	move_and_slide()

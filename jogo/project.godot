@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.5", "GL Compatibility")
 Opcoes="*res://scripts/opcoes.gd"
 Prints="*res://scripts/prints.gd"
 Missao="*res://scripts/missao.gd"
+Recursos="*res://scripts/recursos.gd"
 
 [display]
 

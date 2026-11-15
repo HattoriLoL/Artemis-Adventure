@@ -65,6 +65,8 @@ func _ready() -> void:
 	luz = ColorRect.new()
 	luz.size = Vector2(8, 2)
 	luz.position = Vector2(dados["luz"][0] - 4, dados["luz"][1]) - position
+	luz.z_as_relative = false                      # a luz fica na parede da frente/verga, que vêm por cima da porta
+	luz.z_index = 1
 	add_child(luz)
 	for nome in ["pressao", "trava", "abrir", "fechar", "trancada"]:
 		var s := AudioStreamPlayer2D.new()

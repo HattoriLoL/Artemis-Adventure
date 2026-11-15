@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/escolha_pouso.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/pouso/fundo.png" id="2"]
 
 [node name="EscolhaPouso" type="Control"]
 layout_mode = 3
@@ -11,11 +12,12 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="Fundo" type="ColorRect" parent="."]
+[node name="Fundo" type="TextureRect" parent="."]
 layout_mode = 0
 offset_right = 320.0
 offset_bottom = 180.0
-color = Color(0.0352941, 0.0392157, 0.0784314, 1)
+mouse_filter = 2
+texture = ExtResource("2")
 
 [node name="Moldura" type="ColorRect" parent="."]
 layout_mode = 0

@@ -1,0 +1,13 @@
+{
+ "_leia": "Eventos solares reais registrados no NASA DONKI (Space Weather Database Of Notifications, Knowledge, Information), usados como referência para a erupção solar do jogo. A cada missão um é sorteado e aparece no alarme e no relatório final. Textos em inglês e só com caracteres da fonte 3x5. Ideia de usar o DONKI veio do PR #24 (IltonBJSilva).",
+ "eventos": [
+  {"data": "APR 21, 2023", "titulo": "M1.7 FLARE AND A FULL HALO CME",
+   "detalhe": "Two days later it caused the first severe geomagnetic storm (G4) of solar cycle 25."},
+  {"data": "MAY 2024", "titulo": "X-CLASS FLARES AND CMES FROM REGION 13664",
+   "detalhe": "The Gannon storm: the strongest geomagnetic storm on Earth since 2003."},
+  {"data": "SEP 10, 2017", "titulo": "X8.2 FLARE AND PROTON STORM",
+   "detalhe": "Its particles were strong enough to be measured on the ground (GLE 72)."},
+  {"data": "OCT 28, 2021", "titulo": "X1.0 FLARE AND PROTON STORM",
+   "detalhe": "The first ground level event of solar cycle 25 (GLE 73)."}
+ ]
+}

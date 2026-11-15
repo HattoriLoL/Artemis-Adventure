@@ -2,10 +2,12 @@ extends Control
 ## Minigame "calibrar as baterias" (CALIBRATE THE BATTERIES), no banco de baterias da Sala de Energia: um ponteiro vai e
 ## volta no mostrador; apertar E com ele na faixa verde calibra a bateria da vez (3 baterias, o ponteiro acelera a
 ## cada uma). Fora da faixa, o mostrador pisca vermelho, a bateria solta faíscas e o jogador tenta de novo.
-## Não dá para perder. Arte (paleta Apollo) em res://assets/minigames/baterias/; mostrador, cargas, faíscas, moldura e
-## texto animados aqui. Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc) e a variável `demo`.
+## Erros (taxa_erro) diminuem o que a tarefa rende; MAX_ERROS erros perdem a tarefa (sinal falhou). Arte (paleta Apollo) em res://assets/minigames/baterias/; mostrador, cargas, faíscas, moldura e
+## texto animados aqui. Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou` (X ou Esc), taxa_erro() e
+## a variável `demo`.
 
 signal terminou
+signal falhou
 signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
@@ -53,6 +55,7 @@ const VELOCIDADES := [70.0, 95.0, 120.0]         # velocidade do ponteiro em cad
 const TEMPO_ERRO := 0.3                          # quanto tempo o mostrador fica vermelho depois de um erro
 const TEMPO_CARGA := 0.45                        # tempo da carga subindo no visor ao calibrar
 const TEMPO_FIM := 1.2
+const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var bateria := 0                                 # bateria atual: 0, 1 ou 2 (3 = acabou)
@@ -68,6 +71,8 @@ var cargas := [0.0, 0.0, 0.0]                    # quanto do visor de cada bater
 var t_raio := [0.0, 0.0, 0.0]                    # arco elétrico entre os terminais logo depois de calibrar
 var faiscas: Array = []                          # [pos, vel, vida], na tela
 var rastro: Array = []                           # posições recentes do ponteiro (o rastro some atrás dele)
+var erros := 0                                   # apertos fora da faixa
+var perdeu := false                              # errou MAX_ERROS vezes
 
 
 func _ready() -> void:
@@ -100,7 +105,10 @@ func _process(delta: float) -> void:
 		t_fim -= delta
 		if t_fim < 0.0:
 			set_process(false)
-			terminou.emit()
+			if perdeu:
+				falhou.emit()
+			else:
+				terminou.emit()
 		queue_redraw()
 		return
 	_mover_ponteiro(delta)
@@ -129,6 +137,17 @@ func _mover_ponteiro(delta: float) -> void:
 		sentido = 1.0
 
 
+## Fração dos apertos que foram erros (os acertos são as baterias calibradas).
+func taxa_erro() -> float:
+	return erros / maxf(1.0, float(erros + bateria))
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça.
+func comecou() -> bool:
+	return erros > 0 or bateria > 0
+
+
 func _ponteiro_na_faixa(margem: float) -> bool:
 	return ponteiro_x >= faixa_x + margem and ponteiro_x <= faixa_x + LARGURA_FAIXA - margem
 
@@ -149,6 +168,11 @@ func _calibrar() -> void:
 
 func _errar() -> void:
 	t_erro = TEMPO_ERRO
+	erros += 1
+	if erros >= MAX_ERROS:
+		perdeu = true
+		acabou = true
+		t_fim = TEMPO_FIM
 	var topo := _canto_bateria(bateria) + Vector2(11, 1)
 	for k in 7:                                   # faíscas saindo dos terminais da bateria da vez
 		faiscas.append([topo + Vector2(randf_range(-6, 6), 0), Vector2(randf_range(-45, 45), randf_range(-70, -25)),
@@ -187,10 +211,13 @@ func _draw() -> void:
 	for f in faiscas:
 		draw_rect(Rect2(f[0].floor(), Vector2.ONE), AMARELO if f[2] > 0.15 else LARANJA_ESC)
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
-	if acabou:
+	if perdeu:
+		Fonte.centralizado(self, "TOO MANY ERRORS - TASK FAILED", 160, y_txt, VERMELHO_CLARO)
+	elif acabou:
 		Fonte.centralizado(self, "BATTERIES CALIBRATED!", 160, y_txt, VERDE_LIMA)
 	elif t_erro > 0.0:
-		Fonte.centralizado(self, "MISSED - TRY AGAIN", 160, y_txt, VERMELHO_CLARO)
+		Fonte.centralizado(self, "MISSED - TRY AGAIN (%d/%d)" % [erros, MAX_ERROS], 160, y_txt,
+			VERMELHO_CLARO)
 	else:
 		Fonte.centralizado(self, "PRESS E WHEN THE NEEDLE IS ON THE GREEN BAND", 160, y_txt, BRANCO_SUJO)
 
@@ -212,7 +239,7 @@ func _bateria(i: int) -> void:
 	var cor_topo: Color
 	if calibrada:
 		nivel = cargas[i]
-		var pulso := acabou and fmod(t + i * 0.15, 0.6) < 0.3
+		var pulso := acabou and not perdeu and fmod(t + i * 0.15, 0.6) < 0.3
 		cor = VERDE_LIMA if pulso else VERDE_CLARO
 		cor_topo = BRANCO if pulso else VERDE_LIMA
 	elif i == bateria:
@@ -258,7 +285,9 @@ func _mostrador() -> void:
 	draw_rect(b, VINHO if t_erro > 0.0 and fmod(t, 0.1) < 0.06 else AZUL_NOITE)
 	for x in range(0, int(b.size.x) + 1, 10):     # marcas da escala
 		draw_rect(Rect2(b.position + Vector2(x, b.size.y - (3 if x % 40 == 0 else 2)), Vector2(1, 3)), CINZA)
-	if not acabou:
+	if perdeu:
+		draw_rect(b, VINHO if fmod(t, 0.3) < 0.15 else VERMELHO)
+	elif not acabou:
 		var f := Rect2(b.position + Vector2(roundf(faixa_x), 0), Vector2(LARGURA_FAIXA, b.size.y))
 		var na_faixa := _ponteiro_na_faixa(0.0)
 		draw_rect(f, VERDE if na_faixa else VERDE_ESC)

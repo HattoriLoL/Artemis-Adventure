@@ -3,11 +3,14 @@ extends Control
 ## Do lado do canteiro há um trilho vertical. Segurar E (ou o clique) faz o JATO subir; soltar faz ele cair.
 ## A GOTA (a umidade certa) sobe e desce sozinha. Com a gota dentro do jato, o crescimento enche e as 3 alfaces
 ## crescem; fora, ele esvazia. Cheio: plantas regadas, a tarefa conclui. Vazio: as plantas murcham e a rodada
-## recomeça; depois de TENTATIVAS falhas o minigame fecha sem concluir (a tarefa continua no mapa).
+## recomeça; depois de TENTATIVAS falhas a tarefa é perdida (sinal falhou). O tempo com a gota fora do jato é a
+## taxa de erro (taxa_erro): diminui o que a tarefa rende.
 ## Arte do PixelAi (paleta Apollo) em res://assets/minigames/regar/; moldura, trilho e texto desenhados aqui.
-## Contrato com o mapa: sinal `terminou` (concluiu), sinal `cancelou` (fechou no X, no Esc ou falhou tudo) e `demo`.
+## Contrato com o mapa: sinais `terminou` (concluiu), `falhou` (murchou TENTATIVAS vezes) e `cancelou` (X ou Esc),
+## taxa_erro() e `demo`.
 
 signal terminou
+signal falhou
 signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
@@ -60,6 +63,7 @@ const ENCHE := 0.105                            # crescimento por segundo com a 
 const ESVAZIA := 0.075                          # crescimento perdido por segundo com a gota fora
 const COMECO := 0.3                             # crescimento no começo de cada rodada
 const TENTATIVAS := 3
+const MARGEM_ERRO := 4.0                        # a gota só conta como erro mais longe que isso do jato (px)
 
 var demo := false
 var e_liberado := false                         # o E que abriu o minigame ainda pode estar apertado
@@ -79,6 +83,9 @@ var cor_aviso := BRANCO
 var t_aviso := 0.0
 var t_impacto := 0.0                            # > 0 logo depois de o jato bater no fundo
 var forca_impacto := 0.0                        # 0 a 1: quão forte foi a batida (velocidade / VEL_MAX)
+var t_jogando := 0.0                            # tempo jogando, somando as rodadas
+var t_fora := 0.0                               # desse tempo, quanto a gota passou fora do jato
+var jogou := false                              # já subiu o jato alguma vez
 
 
 func _ready() -> void:
@@ -103,6 +110,7 @@ func _process(delta: float) -> void:
 	t_impacto = maxf(0.0, t_impacto - delta)
 	if estado == "jogando":
 		segurando = _quer_subir()
+		jogou = jogou or segurando
 		_mover_jato(delta)
 		_mover_gota(delta)
 		_crescer(delta)
@@ -165,7 +173,21 @@ func _gota_no_jato() -> bool:
 	return gota_y >= jato_y and gota_y <= jato_y + ALT_JATO
 
 
+## Fração do tempo de jogo com a gota longe do jato (mais que MARGEM_ERRO): passar raspando não conta.
+func taxa_erro() -> float:
+	return t_fora / maxf(0.001, t_jogando)
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça.
+func comecou() -> bool:
+	return jogou or tentativa > 1
+
+
 func _crescer(delta: float) -> void:
+	t_jogando += delta
+	if maxf(jato_y - gota_y, gota_y - (jato_y + ALT_JATO)) > MARGEM_ERRO:
+		t_fora += delta
 	crescimento += (ENCHE if _gota_no_jato() else -ESVAZIA) * delta
 	if crescimento >= 1.0:
 		crescimento = 1.0
@@ -179,7 +201,7 @@ func _crescer(delta: float) -> void:
 		if tentativa < TENTATIVAS:
 			_avisar("THE PLANTS WILTED! TRY AGAIN", VERMELHO_CLARO, 1.6)
 		else:
-			_avisar("THE PLANTS WILTED!", VERMELHO_CLARO, 1.6)
+			_avisar("THE PLANTS WILTED - TASK FAILED", VERMELHO_CLARO, 1.6)
 
 
 func _fim_da_pausa() -> void:
@@ -191,7 +213,7 @@ func _fim_da_pausa() -> void:
 		_nova_rodada()
 	else:
 		set_process(false)
-		cancelou.emit()
+		falhou.emit()
 
 
 func _avisar(txt: String, cor: Color, dur: float) -> void:
