@@ -114,5 +114,19 @@
     156
    ]
   }
+ ],
+ "objetos": [
+  {
+   "id": "chuveiro",
+   "png": "res://assets/objetos/chuveiro.png",
+   "x": 250,
+   "y": 98,
+   "solido": [
+    3,
+    40,
+    31,
+    12
+   ]
+  }
  ]
 }
