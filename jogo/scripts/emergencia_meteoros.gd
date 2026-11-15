@@ -23,7 +23,7 @@ const CINZA_ESC := Color("#394a50")
 const AZUL := Color("#73bed3")
 
 const DURACAO_JANELA: float = 25.0
-const DISTANCIA_USO: float = 34.0
+const DISTANCIA_USO: float = 36.0
 
 const SETORES: Array[String] = ["energia", "habitat", "suporte", "abrigo", "estufa"]
 
@@ -35,13 +35,13 @@ const NOMES_SETORES: Dictionary = {
 	"estufa": "GREENHOUSE"
 }
 
-# Coordenadas fixadas diretamente NAS PAREDES de cada sala, BEM LONGE das portas e corredores (zero tráfego)
+# Coordenadas montadas DIRETAMENTE NAS PAREDES (altura da parede, sem bloquear o chão ou passagens)
 const POSICOES_SETORES: Dictionary = {
-	"energia": Vector2(140, 104),
-	"habitat": Vector2(140, 508),
-	"suporte": Vector2(140, 906),
-	"abrigo": Vector2(686, 508),
-	"estufa": Vector2(686, 906)
+	"energia": Vector2(140, 92),
+	"habitat": Vector2(140, 494),
+	"suporte": Vector2(140, 892),
+	"abrigo": Vector2(686, 494),
+	"estufa": Vector2(686, 892)
 }
 
 var mapa: Node2D = null
@@ -70,31 +70,10 @@ var som_impacto: AudioStreamWAV = null
 var som_clank: AudioStreamWAV = null
 
 
-var corpos_colisao: Array[StaticBody2D] = []
-
-
 func _ready() -> void:
-	y_sort_enabled = true
+	# Sem colisão física no chão: a alavanca fica na parede e o astronauta anda 100% livre!
+	z_index = 0
 	_criar_audio()
-	_criar_colisoes_alavancas()
-
-
-func _criar_colisoes_alavancas() -> void:
-	# Cria corpos de colisão física sólida para as alavancas nas paredes
-	# Assim o personagem bate nelas e NUNCA mais as atravessa!
-	for s: String in SETORES:
-		var p: Vector2 = POSICOES_SETORES[s]
-		var corpo := StaticBody2D.new()
-		corpo.name = "AlavancaParede_" + s
-		corpo.position = p
-		var col := CollisionShape2D.new()
-		var shape := RectangleShape2D.new()
-		shape.size = Vector2(10.0, 8.0)
-		col.shape = shape
-		col.position = Vector2(0.0, 0.0)
-		corpo.add_child(col)
-		add_child(corpo)
-		corpos_colisao.append(corpo)
 
 
 func _criar_audio() -> void:
@@ -198,7 +177,7 @@ func disparar(setor_forcado: String = "") -> void:
 	else:
 		setor_atual = SETORES.pick_random()
 
-	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(140, 104))
+	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(140, 92))
 	tempo_restante = DURACAO_JANELA
 	ativa = true
 	alavanca_puxada = false
@@ -313,52 +292,50 @@ func _draw() -> void:
 
 
 func _desenhar_estacao_alavanca(p: Vector2, alvo_ativo: bool, alvo_resolvido: bool) -> void:
-	var pulso: float = (sin(t_animacao * 8.0) + 1.0) * 0.5
-	var cor_pulso: Color = VERMELHO.lerp(AMARELO, pulso)
+	# Interruptor/disjuntor sutil de parede (apenas 5x7 pixels)
+	# Fica meio escondido na chapa de aço da parede, sem caixas no chão nem obstrução!
+	var cor_pulso: Color = VERMELHO.lerp(AMARELO, (sin(t_animacao * 8.0) + 1.0) * 0.5)
 
-	# Painel discreto embutido na parede (apenas 6x8 pixels - elegante e sutil)
-	# Moldura de fixação metálica na chapa da parede
-	draw_rect(Rect2(p.x - 3, p.y - 4, 6, 8), PRETO)
+	# Placa metálica embutida na parede (5x7 px)
+	draw_rect(Rect2(p.x - 2, p.y - 3, 5, 7), PRETO)
 	draw_rect(Rect2(p.x - 2, p.y - 3, 4, 6), CINZA_ESC)
+	draw_rect(Rect2(p.x - 1, p.y - 2, 2, 4), Color("#10141f"))
 
-	# Fenda vertical do disjuntor / switch
-	draw_rect(Rect2(p.x - 1, p.y - 2, 2, 4), Color("#0a1017"))
-
-	# Manopla / Chave mecânica embutida
+	# Chave/alavanca pequena na parede
 	if alvo_resolvido and alavanca_puxada:
 		# Chave acionada para baixo (verde)
 		draw_rect(Rect2(p.x - 1, p.y + 1, 2, 2), VERDE_LIMA)
 	elif alvo_ativo:
-		# Chave armada para cima (pisca vermelho/amarelo em emergência)
-		var cor_chave := VERMELHO_CLARO if fmod(t_animacao, 0.2) < 0.1 else AMARELO
-		draw_rect(Rect2(p.x - 1, p.y - 3, 2, 2), cor_chave)
+		# Chave em alerta (pisca vermelho/amarelo em emergência)
+		var c_chave: Color = VERMELHO_CLARO if fmod(t_animacao, 0.2) < 0.1 else AMARELO
+		draw_rect(Rect2(p.x - 1, p.y - 2, 2, 2), c_chave)
 	else:
-		# Modo repouso / standby discreto (pequeno botão na cor do metal com detalhe bordô)
+		# Em repouso: botão neutro bordô camuflado na parede
 		draw_rect(Rect2(p.x - 1, p.y - 1, 2, 2), Color("#752438"))
 
-	# LED indicador de emergência no topo da caixinha (2x2 px)
+	# LED / Alarme no topo da caixinha
 	if alvo_ativo:
 		var aceso: bool = fmod(t_animacao, 0.24) < 0.12
-		var c_luz: Color = BRANCO if aceso else VERMELHO_CLARO
-		draw_circle(Vector2(p.x, p.y - 6), 4.5, Color(VERMELHO.r, VERMELHO.g, VERMELHO.b, 0.35))
-		draw_rect(Rect2(p.x - 1, p.y - 7, 2, 2), c_luz)
+		var c_led: Color = BRANCO if aceso else VERMELHO_CLARO
+		draw_circle(Vector2(p.x, p.y - 5), 3.5, Color(VERMELHO.r, VERMELHO.g, VERMELHO.b, 0.35))
+		draw_rect(Rect2(p.x - 1, p.y - 6, 2, 2), c_led)
 
-		# Seta tática flutuante e texto "LEVER" APENAS na alavanca da sala ameaçada
-		var y_flutuante: float = p.y - 13.0 + round(sin(t_animacao * 6.0) * 1.5)
+		# Seta indicadora compacta com "LEVER" apenas na sala ameaçada
+		var y_seta: float = p.y - 11.0 + round(sin(t_animacao * 6.0) * 1.5)
 		var pts := PackedVector2Array([
-			Vector2(p.x - 3, y_flutuante - 2),
-			Vector2(p.x + 3, y_flutuante - 2),
-			Vector2(p.x, y_flutuante + 2)
+			Vector2(p.x - 3, y_seta - 2),
+			Vector2(p.x + 3, y_seta - 2),
+			Vector2(p.x, y_seta + 2)
 		])
 		draw_polygon(pts, [cor_pulso])
-		Fonte.centralizado(self, "LEVER", p.x, y_flutuante - 8.0, AMARELO)
+		Fonte.centralizado(self, "LEVER", p.x, y_seta - 8.0, AMARELO)
 
 	elif alvo_resolvido and alavanca_puxada:
-		draw_circle(Vector2(p.x, p.y - 6), 3.0, Color(VERDE.r, VERDE.g, VERDE.b, 0.35))
-		draw_rect(Rect2(p.x - 1, p.y - 7, 2, 2), VERDE_LIMA)
+		draw_circle(Vector2(p.x, p.y - 5), 2.5, Color(VERDE.r, VERDE.g, VERDE.b, 0.35))
+		draw_rect(Rect2(p.x - 1, p.y - 6, 2, 2), VERDE_LIMA)
 	else:
-		# Em repouso: minúsculo ponto escuro, 100% discreto
-		draw_rect(Rect2(p.x - 0.5, p.y - 6.5, 1, 1), CINZA_ESC)
+		# Em repouso: ponto sutil escuro que se funde com a parede
+		draw_rect(Rect2(p.x - 0.5, p.y - 5.5, 1, 1), CINZA_ESC)
 
 
 func desenhar_hud(hud: Control, t: float) -> void:
