@@ -10,10 +10,12 @@ extends Control
 ## Arte (paleta Apollo, PixelAi) em res://assets/minigames/distribuicao/: fundo.png (192x121) com os 3 trilhos e
 ## alavanca.png / alavanca_sel.png. Se um arquivo faltar, o minigame desenha uma versão provisória no lugar dele.
 ## A carga, a faixa verde, os nomes dos canais e a barra de estabilidade são desenhados aqui.
-## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e `demo`.
+## Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou` (X ou Esc), taxa_erro(), comecou() e `demo`.
 
 signal terminou
 signal cancelou
+signal falhou                                    # nunca emitido aqui: com ele e comecou(), o mapa trata fechar
+                                                 # depois de começar como desistência (gasta a ação, não rende)
 
 const Fonte = preload("res://scripts/fonte.gd")
 const DIR_ARTE := "res://assets/minigames/distribuicao/"
@@ -61,6 +63,7 @@ var acabou := false
 var t := 0.0
 var t_fim := -1.0
 var t_demo := 0.0
+var mexeu := false                                 # já mexeu na carga de algum canal (comecou)
 var erros := 0                                     # vezes que o jogador tirou o canal escolhido da faixa
 var t_erro := 0.0                                  # aviso OVERSHOT! na tela
 var faiscas: Array = []                            # [pos, vel, vida] no canal fora da faixa mexido agora
@@ -125,6 +128,7 @@ func _controles(delta: float) -> void:
 		selecionado = mini(NOMES.size() - 1, selecionado + 1)
 	var ajuste := Input.get_axis("baixo", "cima")
 	if ajuste != 0.0:
+		mexeu = true
 		var estava := na_faixa(selecionado)
 		_mover(selecionado, ajuste * VELOCIDADE * delta)
 		if estava and not na_faixa(selecionado):    # passou do ponto: erro
@@ -140,6 +144,13 @@ func _mover(i: int, d: float) -> void:
 	for j in NOMES.size():
 		if j != i:
 			niveis[j] = clampf(niveis[j] - real * ACOPLAMENTO / 2.0, 0.0, 1.0)
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça. Sem isso, dava para fechar um preparo ruim e
+## jogar de novo até sair perfeito, e a perda de ganho por erro não valia nada.
+func comecou() -> bool:
+	return mexeu
 
 
 ## Fração de erros (3 canais para acertar): 1 erro ~ 94% do ganho, 2 ~ 75%, 3 ~ 62%.
