@@ -157,5 +157,17 @@
   "fato": "ON THE ISS, NASA'S XROOTS TEST GREW PLANTS WITH NO SOIL: WATER AND NUTRIENTS REACH THE ROOTS AS A MIST OR A THIN FLOW. IT COULD FEED BIGGER GARDENS ON FUTURE MISSIONS.",
   "fonte": "NASA - XROOTS ON THE ISS",
   "url": "https://science.nasa.gov/biological-physical/investigations/xroots/"
+ },
+ "vitais": {
+  "titulo": "CHECK THE CREW VITALS",
+  "passos": [
+   "[W] [S] CHANGE THE AMPLITUDE OF YOUR WAVE.",
+   "[A] [D] CHANGE ITS RATE (THE HEART BEATS PER MINUTE).",
+   "MATCH THE YELLOW WAVE FOR 2 SECONDS. 3 WAVES IN ALL.",
+   "TIME OUT ON A WAVE IS AN ERROR."
+  ],
+  "fato": "ON ARTEMIS I, TWO MANNEQUIN TORSOS, HELGA AND ZOHAR, FLEW AROUND THE MOON WITH OVER 5,600 RADIATION SENSORS. ZOHAR WORE A SHIELDING VEST AND HELGA DID NOT, TO MEASURE THE DOSE A CREW WOULD TAKE.",
+  "fonte": "NASA - ARTEMIS I SPACE RADIATION RESEARCH",
+  "url": "https://www.nasa.gov/general/artemis-i-space-radiation-research-to-help-moon-mars-explorers/"
  }
 }

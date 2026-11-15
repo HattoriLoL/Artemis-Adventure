@@ -17,6 +17,7 @@ const Fonte = preload("res://scripts/fonte.gd")
 const Ciclo = preload("res://scripts/ciclo_dias.gd")
 const EVENTOS := "res://dados/eventos_solares.json"
 const BLINDAGEM := "abrigo/blindagem"
+const VITAIS := "habitat/vitais"
 const HORIZONTE := 2                  # dias à frente que o modelo solar enxerga (o boletim só vê 1)
 
 const BRANCO := Color("#ebede9")
@@ -227,6 +228,8 @@ func _tarefas_do_dia(d: int) -> Array:
 		mapa.ciclo.regras["dias"][d - 1]["tarefas"].duplicate()
 	if d == Missao.dia_erupcao and Missao.dia >= d - 1 and not BLINDAGEM in ids:
 		ids.append(BLINDAGEM)
+	if d == Missao.dia_erupcao + 1 and Missao.dia >= Missao.dia_erupcao - 1 and not VITAIS in ids:
+		ids.append(VITAIS)
 	var nomes := []
 	for id in ids:
 		var tf: Dictionary = mapa._tarefa(id)
