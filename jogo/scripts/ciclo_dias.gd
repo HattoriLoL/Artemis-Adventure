@@ -1,10 +1,10 @@
 extends CanvasLayer
-## Ciclo da missão: 7 dias com 2 ações por dia (regras em res://dados/dias.json). Criado pelo mapa.gd.
+## Ciclo da missão: os dias de dias.json (hoje 5) com 2 ações por dia (regras em res://dados/dias.json). Criado pelo mapa.gd.
 ##   - manhã: boletim do controle da missão com as tarefas oferecidas no dia e o que cada uma rende;
 ##   - durante o dia: cada tarefa concluída gasta uma ação (registrar); sem ações, só resta dormir;
 ##   - noite (dormir na cama do habitat): o consumo do dia, a geração solar e o dano à saúde da equipe por recurso
 ##     baixo (Recursos.fechar_dia) e um resumo de quanto cada indicador mudou;
-##   - fim: um indicador zerou (missão abortada) ou o dia 7 terminou (concluída, ou com dificuldades se algum
+##   - fim: um indicador zerou (missão abortada) ou o último dia terminou (concluída, ou com dificuldades se algum
 ##     indicador terminou baixo). A tela do fim mostra o resultado e o diário da missão; E começa uma nova missão.
 ## Desenhado em código como o menu de pausa: moldura de metal, fonte 3x5 e cores da paleta.
 

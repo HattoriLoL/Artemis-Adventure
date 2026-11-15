@@ -1,6 +1,6 @@
 {
  "_leia": "Números provisórios para o balanceamento. Valores de 0 a 100. O consumo e a geração solar são cobrados no fechamento de cada dia (ao dormir). Os efeitos valem quando o jogador conclui a tarefa. A saúde da equipe (condicao) não tem consumo diário e dormir não mexe nela: só cai quando algo dá errado (queda_condicao_por_recurso_baixo, por recurso abaixo de limite_baixo na noite) e só sobe com cuidado (refeição, plantas).",
- "consumo_por_dia": {"energia": 15, "oxigenio": 13, "comida": 6},
+ "consumo_por_dia": {"energia": 18, "oxigenio": 16, "comida": 9},
  "geracao_solar_por_dia": 6,
  "limite_baixo": 25,
  "queda_condicao_por_recurso_baixo": 6,
