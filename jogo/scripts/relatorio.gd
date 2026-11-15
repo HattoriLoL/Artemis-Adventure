@@ -1,11 +1,11 @@
 
 extends RefCounted
-## Relatório final da missão, em 4 páginas: 01 OVERVIEW, 02 LOG, 03 SCIENCE, 04 DONKI.
+## Relatório final da missão, em 3 páginas: 01 OVERVIEW, 02 LOG, 03 DONKI (com a curiosidade científica).
 ## Só apresentação e análise do que aconteceu: quem controla a página, as teclas e o mouse é o ciclo_dias.gd.
 ##   - preparar(): chamado uma vez quando a missão termina. Registra o evento final, escolhe a decisão de maior impacto,
 ##     monta a história causal, a linha do tempo (3 a 5 acontecimentos) e a curiosidade, e guarda tudo em _cache;
 ##   - fundo() e desenhar(): desenham a tela (o ciclo_dias.gd desenha a moldura de metal entre os dois).
-## Os dados vêm da Missao (eventos, decisao_impacto, ciencia, donki), do Recursos e de dados/curiosidades.json.
+## Os dados vêm da Missao (eventos, decisao_impacto, donki), do Recursos e de dados/curiosidades.json.
 ## Textos em inglês e só com os caracteres que a fonte 3x5 tem (Fonte.GLIFOS).
  
 const Fonte = preload("res://scripts/fonte.gd")
@@ -28,8 +28,8 @@ const VERMELHO := Color("#cf573c")
 const AZUL := Color("#73bed3")
  
 # ---- layout (tudo dentro dos 320 x 180 do jogo)
-const PAGINAS := ["01 OVERVIEW", "02 LOG", "03 SCIENCE", "04 DONKI"]
-const COR_ABA := [AMARELO, AMARELO, AZUL, AZUL]
+const PAGINAS := ["01 OVERVIEW", "02 LOG", "03 DONKI"]
+const COR_ABA := [AMARELO, AMARELO, AZUL]
 const MOLDURA := Rect2(8, 6, 304, 160)
 const X0 := 18                     # começo do conteúdo
 const LARG := 284                  # largura do conteúdo
@@ -75,8 +75,6 @@ const CLAUSULA_DESCUIDO := {
 	"comida": "Food was not a priority, so the supplies ran low.",
 	"condicao": "Crew care was not a priority, so the crew wore down.",
 }
-const OBJETIVOS_PADRAO := ["LUNAR ICE INVESTIGATION", "REGOLITH ANALYSIS", "BIOLOGICAL EXPERIMENTS"]
- 
 ## Montado em preparar() e só lido em desenhar() (o ciclo redesenha a tela todo quadro).
 static var _cache: Dictionary = {}
  
@@ -222,7 +220,8 @@ static func fundo(ci: CanvasItem) -> void:
  
  
 static func aba_rect(i: int) -> Rect2:
-	return Rect2(16 + i * 72, 24, 72, 11)
+	var larg := 288.0 / PAGINAS.size()             # as abas dividem a largura da moldura
+	return Rect2(16 + i * larg, 24, larg, 11)
  
  
 ## Chamado depois de desenhar a moldura (MOLDURA): cabeçalho, abas, a página e os botões de baixo.
@@ -246,8 +245,6 @@ static func desenhar(ci: CanvasItem, pagina: int) -> void:
 		1:
 			_pagina_log(ci)
 		2:
-			_pagina_ciencia(ci)
-		3:
 			_pagina_donki(ci)
 	_navegacao(ci, pagina)
  
@@ -313,50 +310,17 @@ static func _pagina_log(ci: CanvasItem) -> void:
 	Fonte.desenhar(ci, "TRADE-OFF: " + str(d.get("tradeoff", "")), Vector2(r.position.x + 8, r.position.y + 28), METAL)
  
  
-## 03 SCIENCE: amostras e dados (ainda sem sistema de ciência: mostra "--"), objetivos e a curiosidade.
-static func _pagina_ciencia(ci: CanvasItem) -> void:
-	var c: Dictionary = Missao.ciencia
-	var amostras: Array = c.get("amostras", [])
-	var total := float(c.get("dados_totais", 0.0))
-	var v1 := str(amostras.size()) if not amostras.is_empty() else "--"
-	var v2 := "%d%%" % roundi(100.0 * float(c.get("dados_transmitidos", 0.0)) / total) if total > 0.0 else "--"
-	_cartao_numero(ci, Rect2(X0, Y0, 140, 28), "SAMPLES COLLECTED", v1)
-	_cartao_numero(ci, Rect2(X0 + 144, Y0, 140, 28), "DATA TRANSMITTED", v2)
-	Fonte.desenhar(ci, "RESEARCH OBJECTIVES", Vector2(X0, 74), AZUL)
-	var objetivos: Array = c.get("objetivos", [])
-	if objetivos.is_empty():
-		objetivos = OBJETIVOS_PADRAO.map(func(n): return {"nome": n, "feito": false})
-	var y := 83
-	for o in objetivos:
-		ci.draw_rect(Rect2(X0, y + 1, 3, 3), AZUL)
-		Fonte.desenhar(ci, str(o["nome"]), Vector2(X0 + 8, y), BRANCO)
-		var estado := "DONE" if o.get("feito", false) else "PENDING"
-		Fonte.desenhar(ci, estado, Vector2(X0 + LARG - Fonte.largura(estado), y), VERDE if o.get("feito", false) else METAL)
-		y += 8
-	if c.get("objetivos", []).is_empty():
-		Fonte.desenhar(ci, "RESEARCH RESULTS WILL APPEAR WHEN THE SCIENCE SYSTEM IS READY.", Vector2(X0, 109), METAL)
-	var cur: Dictionary = _cache["curiosidade"]
-	var r := Rect2(X0, 117, LARG, 44)
-	ci.draw_rect(r, FUNDO)
-	_borda(ci, r, CINZA_ESC)
-	ci.draw_rect(Rect2(r.position.x, r.position.y, 2, r.size.y), AMARELO)
-	Fonte.desenhar(ci, "SCIENTIFIC FACT", Vector2(r.position.x + 8, r.position.y + 4), AMARELO)
-	Fonte.desenhar(ci, str(cur.get("titulo", "")), Vector2(r.position.x + 8, r.position.y + 12), BRANCO)
-	var ls := _quebrar(str(cur.get("texto", "")), LARG - 16)
-	for i in mini(ls.size(), 3):
-		Fonte.desenhar(ci, ls[i], Vector2(r.position.x + 8, r.position.y + 20 + i * 8), METAL_CLARO)
- 
- 
-## 04 DONKI: espaço reservado para o evento de clima espacial (Missao.donki vazio = integração pendente).
+## 03 DONKI: o evento real de clima espacial em que a erupção da missão se baseou (Missao.donki; vazio =
+## integração pendente) e, embaixo, a curiosidade científica escolhida pela decisão de maior impacto.
 static func _pagina_donki(ci: CanvasItem) -> void:
 	var dk: Dictionary = Missao.donki
 	var pronto := not dk.is_empty()
-	var r := Rect2(X0, Y0, LARG, 86)
+	var r := Rect2(X0, Y0, LARG, 70)
 	ci.draw_rect(r, FUNDO)
 	_borda(ci, r, AZUL)
 	Fonte.desenhar(ci, "SPACE WEATHER DATABASE", Vector2(r.position.x + 8, r.position.y + 5), BRANCO)
-	Fonte.desenhar(ci, "NASA OPEN DATA", Vector2(r.position.x + 8, r.position.y + 13), METAL)
-	ci.draw_rect(Rect2(r.position.x + 4, r.position.y + 23, r.size.x - 8, 1), CINZA_ESC)
+	Fonte.desenhar(ci, "NASA OPEN DATA", Vector2(r.end.x - 8 - Fonte.largura("NASA OPEN DATA"), r.position.y + 5), METAL)
+	ci.draw_rect(Rect2(r.position.x + 4, r.position.y + 14, r.size.x - 8, 1), CINZA_ESC)
 	var fonte_txt := "--"
 	if pronto:
 		fonte_txt = "LIVE DATA" if dk.get("fonte", "") == "ao_vivo" else "ARCHIVED DATA"
@@ -364,29 +328,39 @@ static func _pagina_donki(ci: CanvasItem) -> void:
 		["EVENT DATE", str(dk.get("data", "--"))], ["DATA SOURCE", fonte_txt if pronto else "LIVE / ARCHIVED"]]
 	for i in campos.size():
 		var x: float = r.position.x + 8 + i * 94
-		Fonte.desenhar(ci, campos[i][0], Vector2(x, r.position.y + 29), METAL)
-		Fonte.desenhar(ci, campos[i][1], Vector2(x, r.position.y + 37), BRANCO)
-	ci.draw_rect(Rect2(r.position.x + 4, r.position.y + 49, r.size.x - 8, 1), CINZA_ESC)
+		Fonte.desenhar(ci, campos[i][0], Vector2(x, r.position.y + 18), METAL)
+		Fonte.desenhar(ci, campos[i][1], Vector2(x, r.position.y + 26), BRANCO)
+	ci.draw_rect(Rect2(r.position.x + 4, r.position.y + 36, r.size.x - 8, 1), CINZA_ESC)
 	var etiqueta := "INTEGRATION PENDING" if not pronto else ("LIVE EVENT" if dk.get("fonte", "") == "ao_vivo" else "ARCHIVED EVENT")
 	var cor_et := Color("#d98a3d") if not pronto else VERDE
-	var er := Rect2(r.position.x + 8, r.position.y + 55, Fonte.largura(etiqueta) + 8, 9)
+	var er := Rect2(r.position.x + 8, r.position.y + 40, Fonte.largura(etiqueta) + 8, 9)
 	ci.draw_rect(er, Color(cor_et, 0.25))
 	_borda(ci, er, cor_et)
 	Fonte.desenhar(ci, etiqueta, Vector2(er.position.x + 4, er.position.y + 2), cor_et)
+	Fonte.desenhar(ci, "CME / SEP / GST / FLR", Vector2(r.end.x - 8 - Fonte.largura("CME / SEP / GST / FLR"),
+		er.position.y + 2), AZUL)
 	var nota := "The related space weather event will appear here once the DONKI connection is implemented."
 	if pronto:
 		nota = str(dk.get("relacao", ""))
-	var y := r.position.y + 69
-	for l in _quebrar(nota, r.size.x - 16):
+	var y := r.position.y + 53
+	for l in _quebrar(nota, r.size.x - 16).slice(0, 2):
 		Fonte.desenhar(ci, l, Vector2(r.position.x + 8, y), METAL_CLARO)
 		y += 8
-	y = Y0 + 94
-	for l in _quebrar("DONKI reports space weather events such as flares and solar storms. It does not measure conditions on the lunar surface.", LARG):
-		Fonte.desenhar(ci, l, Vector2(X0, y), METAL)
-		y += 8
-	Fonte.desenhar(ci, "EVENT TYPES: CME / SEP / GST / FLR", Vector2(X0, y + 4), AZUL)
- 
- 
+	Fonte.desenhar(ci, "DONKI tracks flares and solar storms, not the lunar surface.", Vector2(X0, Y0 + 73), METAL)
+	# curiosidade científica (antes ficava na página de ciência)
+	var cur: Dictionary = _cache["curiosidade"]
+	var rc := Rect2(X0, Y0 + 83, LARG, 39)
+	ci.draw_rect(rc, FUNDO)
+	_borda(ci, rc, CINZA_ESC)
+	ci.draw_rect(Rect2(rc.position.x, rc.position.y, 2, rc.size.y), AMARELO)
+	Fonte.desenhar(ci, "SCIENTIFIC FACT:", Vector2(rc.position.x + 8, rc.position.y + 4), AMARELO)
+	Fonte.desenhar(ci, str(cur.get("titulo", "")), Vector2(rc.position.x + 12 + Fonte.largura("SCIENTIFIC FACT:"),
+		rc.position.y + 4), BRANCO)
+	var ls := _quebrar(str(cur.get("texto", "")), LARG - 16)
+	for i in mini(ls.size(), 3):
+		Fonte.desenhar(ci, ls[i], Vector2(rc.position.x + 8, rc.position.y + 13 + i * 8), METAL_CLARO)
+
+
 ## Botões de baixo (fora da moldura) e o número da página. O ciclo_dias.gd lê as teclas e o mouse.
 static func _navegacao(ci: CanvasItem, pagina: int) -> void:
 	var ultima := pagina == PAGINAS.size() - 1
@@ -425,13 +399,6 @@ static func _botao(ci: CanvasItem, r: Rect2, txt: String, cor: Color) -> void:
 	ci.draw_rect(r, FUNDO)
 	_borda(ci, r, cor)
 	Fonte.centralizado(ci, txt, r.get_center().x, r.position.y + 3, cor)
- 
- 
-static func _cartao_numero(ci: CanvasItem, r: Rect2, rotulo: String, valor: String) -> void:
-	ci.draw_rect(r, FUNDO)
-	_borda(ci, r, CINZA_ESC)
-	Fonte.desenhar(ci, rotulo, Vector2(r.position.x + 6, r.position.y + 5), METAL)
-	Fonte.desenhar(ci, valor, Vector2(r.position.x + 6, r.position.y + 14), AZUL, 2)
  
  
 ## Ícones de 7x7 (sol ou gelo), `n` de 3 acesos e o resto apagado (como na tela de pouso).

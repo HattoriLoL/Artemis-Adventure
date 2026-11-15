@@ -29,9 +29,6 @@ var tempestade: Dictionary = {}          # o que aconteceu: {"dia": 3, "abrigo":
 var eventos: Array = []
 ## a decisão de maior impacto (escolhida no fim por Relatorio.preparar): {"tipo", "titulo", "texto", "tradeoff", "curiosidade", ...}
 var decisao_impacto: Dictionary = {}
-## Resultado científico. Ainda não existe sistema de ciência: o relatório mostra "--" enquanto isto estiver vazio.
-## objetivos: [{"nome": "LUNAR ICE INVESTIGATION", "feito": false}, ...]  (vazio = o relatório mostra os 3 padrão como pendentes)
-var ciencia := {"amostras": [], "objetivos": [], "dados_transmitidos": 0.0, "dados_totais": 0.0}
 ## Evento da NASA DONKI usado como referência. Vazio = integração pendente.
 ## Quando existir: {"id": "...", "tipo": "CME", "data": "2026-03-04", "fonte": "ao_vivo" ou "arquivo", "relacao": "texto curto"}
 var donki: Dictionary = {}
@@ -70,6 +67,5 @@ func reiniciar() -> void:
 	tempestade = {}
 	eventos = []
 	decisao_impacto = {}
-	ciencia = {"amostras": [], "objetivos": [], "dados_transmitidos": 0.0, "dados_totais": 0.0}
 	donki = {}
 
