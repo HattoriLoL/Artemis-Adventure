@@ -41,6 +41,7 @@ var portas := []
 var obstaculos: Array[Rect2] = []  # colisão dos objetos soltos das salas (o robô do demo desvia deles)
 var marcas := {}
 var jogador: CharacterBody2D
+var camera: Camera2D = null
 var hud: Control
 var camada_ui: CanvasLayer
 var ciclo: CicloDias               # ciclo_dias.gd: dias, ações, boletim, noite e fim da missão
@@ -232,6 +233,7 @@ func _jogador() -> void:
 	cam.offset = Vector2(0, -14)
 	jogador.add_child(cam)
 	cam.make_current()
+	camera = cam
 
 
 func _navegacao() -> void:
