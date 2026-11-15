@@ -11,8 +11,12 @@ extends CanvasLayer
 signal noite_fechou                # o jogador saiu do resumo da noite e o dia seguinte começou (o mapa clareia)
 
 const Fonte = preload("res://scripts/fonte.gd")
+const Relatorio = preload("res://scripts/relatorio.gd")
 const ARQUIVO := "res://dados/dias.json"
 const TELA_POUSO := "res://cenas/escolha_pouso.tscn"
+const EVENTOS_SOLARES := "res://dados/eventos_solares.json"
+const BLINDAGEM := "abrigo/blindagem"         # o dia da erupção sempre oferece reforçar a blindagem
+const LARANJA := Color("#de9e41")
 
 const PRETO := Color("#090a14")
 const FUNDO := Color("#151d28")
@@ -28,11 +32,6 @@ const AZUL := Color("#73bed3")
 
 const ESPERA := 0.4                # o E que abriu o painel (ou o de antes) não pode já fechá-lo
 const ESPERA_DEMO := 1.6
-const TITULOS_FIM := {"concluida": "MISSION COMPLETE", "dificuldades": "MISSION COMPLETE WITH DIFFICULTIES",
-	"abortada": "MISSION ABORTED"}
-const CORES_FIM := {"concluida": VERDE, "dificuldades": AMARELO, "abortada": VERMELHO}
-const CAUSAS := {"energia": "The base lost all power", "oxigenio": "The oxygen ran out",
-	"comida": "The food ran out", "condicao": "The crew became too sick to work"}
 
 var mapa: Node2D                   # o mapa.gd (quem cria preenche)
 var regras: Dictionary = {}
@@ -43,6 +42,11 @@ var resumo := {}                   # da última noite: {"antes": {...}, "depois"
 var t_painel := 0.0
 var quadro_fechou := -1
 var tela: Control
+var pagina := 0                    # página do relatório final (0 a 3)
+var baixos_antes := {}             # indicadores que já estavam baixos no fechamento do dia anterior (evento só na queda)
+
+const TEXTOS_CRITICO := {"energia": "Power reserves fell below the safe level.", "oxigenio": "Oxygen reserves fell below the safe level.",
+	"comida": "Food stores ran low.", "condicao": "The health of the crew dropped to a low level."}
 
 
 func _ready() -> void:
@@ -52,6 +56,7 @@ func _ready() -> void:
 	tela.size = Vector2(320, 180)
 	tela.visible = false
 	tela.draw.connect(_desenha)
+	tela.gui_input.connect(_clique_relatorio)
 	add_child(tela)
 
 
@@ -89,19 +94,57 @@ func iniciar() -> void:
 	Missao.historico = []
 	Missao.resultado = ""
 	Missao.causa = ""
+	Missao.blindagem = 0
+	Missao.tempestade = {}
+	Missao.eventos = []
+	Missao.decisao_impacto = {}
+	baixos_antes = {}
+	Missao.registrar_evento(1, "pouso", "LANDING", "The crew landed at the %s and set up the base." % str(
+		Missao.dados_local.get("titulo", "site")).to_lower(), "", 10)
+	_sortear_erupcao()
 	_comecar_dia()
 
 
+## O dia da erupção solar (entre radiacao.dia_min e dia_max) e o evento real do DONKI que serve de referência.
+func _sortear_erupcao() -> void:
+	var r: Dictionary = Recursos.regras.get("radiacao", {})
+	if r.is_empty():
+		Missao.dia_erupcao = 0
+		return
+	Missao.dia_erupcao = randi_range(int(r["dia_min"]), mini(int(r["dia_max"]), total_dias()))
+	Missao.alarme_apos = int(r.get("alarme_apos", [1]).pick_random())
+	var eventos: Array = JSON.parse_string(FileAccess.get_file_as_string(EVENTOS_SOLARES))["eventos"]
+	Missao.evento_solar = eventos.pick_random()
+
+
+## Hoje é o dia da erupção e o alarme ainda não tocou (ele toca depois da tarefa sorteada ou quando o jogador vai
+## dormir antes disso).
+func erupcao_pendente() -> bool:
+	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty()
+
+
+## Hoje é o dia da erupção, ela ainda não aconteceu e o jogador já fez a tarefa sorteada (1ª ou 2ª): o alarme toca.
+func erupcao_agora() -> bool:
+	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty() and acoes >= Missao.alarme_apos
+
+
 ## Uma tarefa foi concluída: gasta uma ação e entra no diário do dia.
-func registrar(tf: Dictionary) -> void:
+func registrar(tf: Dictionary, perdeu := false, fator := 1.0) -> void:
 	acoes += 1
 	Missao.historico[-1]["acoes"].append(str(tf["texto"]))
+	Missao.historico[-1]["ids"].append(str(tf.get("id", "")))
+	var nome := str(tf["texto"]).replace(" (FAILED)", "").to_lower()
+	if perdeu:
+		Missao.registrar_evento(Missao.dia, "falha", "TASK FAILED", "The crew failed to %s." % nome, "", 3)
+	elif fator < 1.0:
+		Missao.registrar_evento(Missao.dia, "erros", "SLOPPY WORK", "Mistakes cut the result of: %s." % nome, "", 2)
 
 
 ## Aba DEV: devolve as ações do dia.
 func zerar_dia() -> void:
 	acoes = 0
 	Missao.historico[-1]["acoes"].clear()
+	Missao.historico[-1]["ids"].clear()
 
 
 ## Dormir (o mapa já escureceu a tela): a cama (id_cama, vazio = aba DEV), o consumo do dia e o resumo da noite.
@@ -110,17 +153,64 @@ func fechar_dia(id_cama := "") -> void:
 	if id_cama != "":
 		Recursos.aplicar(id_cama)
 	var partes := Recursos.fechar_dia()
+	if Missao.dia == Missao.dia_erupcao:
+		if Missao.tempestade.is_empty():           # dormiu sem fazer nada no dia da erupção: pego fora do Abrigo
+			Missao.tempestade = {"dia": Missao.dia, "abrigo": false, "dormindo": true}
+		Missao.tempestade["dano"] = Recursos.ferir("condicao", Recursos.dano_tempestade(Missao.tempestade["abrigo"]))
+		_registrar_tempestade()
 	resumo = {"antes": antes, "depois": Recursos.valores.duplicate(), "solar": partes["solar"],
-		"desgaste": partes["desgaste"]}
+		"desgaste": partes["desgaste"], "tempestade": Missao.tempestade if Missao.dia == Missao.dia_erupcao else {}}
 	Missao.historico[-1]["valores"] = Recursos.valores.duplicate()
+	_registrar_noite(partes)
 	_abrir("noite")
+
+
+## Acontecimentos do fechamento do dia para o relatório: indicador que ficou baixo agora e equipe machucada.
+func _registrar_noite(partes: Dictionary) -> void:
+	for nome in Recursos.NOMES:
+		var baixo := Recursos.baixo(nome)
+		if baixo and not baixos_antes.get(nome, false):
+			Missao.registrar_evento(Missao.dia, "critico", "%s LOW" % Recursos.ROTULOS[nome], TEXTOS_CRITICO[nome], nome, 8)
+		baixos_antes[nome] = baixo
+	if partes["desgaste"] > 0.0 and not baixos_antes.get("desgaste", false):
+		Missao.registrar_evento(Missao.dia, "desgaste", "CREW HURT", "Low supplies started to hurt the crew.", "condicao", 6)
+		baixos_antes["desgaste"] = true
+
+
+## A erupção solar na linha do tempo do relatório (uma linha de até ~68 caracteres na página LOG).
+func _registrar_tempestade() -> void:
+	var tp: Dictionary = Missao.tempestade
+	var dano := roundi(tp.get("dano", 0.0))
+	var txt := "A proton storm hit. The crew made it to the shelter: -%d health." % dano
+	if not tp.get("abrigo", false):
+		txt = "A proton storm hit the crew outside the shelter: -%d health." % dano
+	Missao.registrar_evento(Missao.dia, "tempestade", "SOLAR STORM", txt, "condicao", 9)
+
+
+## Página 04 DONKI do relatório: o evento real (eventos_solares.json) em que a erupção da missão se baseou.
+## Missao.donki fica no formato que o relatorio.gd espera: {"id", "tipo", "data", "fonte", "relacao"}.
+func _preparar_donki() -> void:
+	var ev: Dictionary = Missao.evento_solar
+	if ev.is_empty():
+		return
+	var relacao := "This mission's solar storm was modeled on it: %s." % str(ev["titulo"]).to_lower()
+	if Missao.tempestade.is_empty():
+		relacao = "The solar storm forecast for this mission was modeled on it, but the mission ended first."
+	if ev.has("velocidade"):
+		relacao += " Its CME left the Sun at %d km/s." % int(ev["velocidade"])
+	Missao.donki = {"id": str(ev.get("cme", "")), "tipo": "CME + PROTON STORM", "data": str(ev["data"]),
+		"fonte": "arquivo", "relacao": relacao}
 
 
 func _comecar_dia() -> void:
 	hoje = regras["dias"][Missao.dia - 1]["tarefas"].duplicate()
+	if Missao.dia == Missao.dia_erupcao and not BLINDAGEM in hoje:
+		hoje.append(BLINDAGEM)
 	acoes = 0
 	Recursos.noite = eh_noite(Missao.dia)
-	Missao.historico.append({"dia": Missao.dia, "noite": Recursos.noite, "acoes": [], "valores": {}})
+	Missao.historico.append({"dia": Missao.dia, "noite": Recursos.noite, "acoes": [], "ids": [], "valores": {}})
+	if Recursos.noite and not eh_noite(Missao.dia - 1):
+		Missao.registrar_evento(Missao.dia, "noite", "LUNAR NIGHT", "The sun faded and the solar panels stopped making power.", "energia", 5)
 	mapa.novo_dia()
 	_abrir("manha")
 
@@ -154,7 +244,10 @@ func _terminar(resultado: String, causa := "") -> void:
 	Missao.resultado = resultado
 	Missao.causa = causa
 	mapa.fim = true
-	print("Missao: ", resultado, " no dia ", Missao.dia, " ", Recursos.valores)
+	pagina = 0
+	_preparar_donki()
+	Relatorio.preparar(regras["dias"])
+	print("Missao: ", resultado, " no dia ", Missao.dia, " ", Recursos.valores, " erupcao=", Missao.dia_erupcao, " ", Missao.tempestade)
 	_abrir("fim")
 	if mapa.demo:
 		await get_tree().create_timer(4.0).timeout
@@ -183,16 +276,57 @@ func _process(delta: float) -> void:
 	tela.queue_redraw()
 	if t_painel < ESPERA:
 		return
+	if painel == "fim":
+		_navegar_relatorio()
+		return
 	if Input.is_action_just_pressed("usar") or (mapa.demo and painel != "fim" and t_painel > ESPERA_DEMO):
 		_avancar()
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if painel == "" or t_painel < ESPERA:
+	if painel == "" or painel == "fim" or t_painel < ESPERA:   # no fim, o mouse é tratado em _clique_relatorio
 		return
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		get_viewport().set_input_as_handled()
 		_avancar()
+
+
+## Relatório final: esquerda / direita trocam de página, E avança e, na última página, começa a nova missão.
+func _navegar_relatorio() -> void:
+	if Input.is_action_just_pressed("direita"):
+		_pagina(1)
+	elif Input.is_action_just_pressed("esquerda"):
+		_pagina(-1)
+	elif Input.is_action_just_pressed("usar"):
+		if pagina < Relatorio.PAGINAS.size() - 1:
+			_pagina(1)
+		else:
+			_avancar()
+
+
+func _pagina(delta: int) -> void:
+	pagina = clampi(pagina + delta, 0, Relatorio.PAGINAS.size() - 1)
+	tela.queue_redraw()
+
+
+## Mouse no relatório: botões BACK / NEXT (ou NEW MISSION na última página) e as abas.
+func _clique_relatorio(ev: InputEvent) -> void:
+	if painel != "fim" or t_painel < ESPERA:
+		return
+	if not (ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT):
+		return
+	var p: Vector2 = ev.position
+	if Relatorio.BOTAO_VOLTAR.has_point(p):
+		_pagina(-1)
+	elif pagina == Relatorio.PAGINAS.size() - 1 and Relatorio.BOTAO_NOVA.has_point(p):
+		_avancar()
+	elif pagina < Relatorio.PAGINAS.size() - 1 and Relatorio.BOTAO_PROXIMO.has_point(p):
+		_pagina(1)
+	else:
+		for i in Relatorio.PAGINAS.size():
+			if Relatorio.aba_rect(i).has_point(p):
+				pagina = i
+				tela.queue_redraw()
 
 
 # ---------------------------------------------------------------- desenho
@@ -212,7 +346,8 @@ func _desenha_manha() -> void:
 	var largura := 252
 	var boletim := quebrar(str(regras["dias"][Missao.dia - 1]["boletim"]), largura - 16)
 	var baixos := Recursos.NOMES.filter(func(n): return Recursos.baixo(n))
-	var linhas := boletim.size() + 2 + hoje.size()
+	var clima := _clima_espacial(largura - 16)
+	var linhas := boletim.size() + 2 + hoje.size() + clima.size()
 	if Recursos.noite:
 		linhas += 1
 	if not baixos.is_empty():
@@ -227,6 +362,9 @@ func _desenha_manha() -> void:
 		y += 8
 	for l in boletim:
 		Fonte.desenhar(tela, l, Vector2(x, y), BRANCO)
+		y += 8
+	for l in clima:
+		Fonte.desenhar(tela, l, Vector2(x, y), VERMELHO if Missao.dia == Missao.dia_erupcao else LARANJA)
 		y += 8
 	y += 4
 	Fonte.desenhar(tela, "TODAY'S TASKS - YOU HAVE TIME FOR %d:" % acoes_por_dia(), Vector2(x, y), METAL)
@@ -246,11 +384,24 @@ func _desenha_manha() -> void:
 	Fonte.centralizado(tela, "E: START THE DAY", 160, r.end.y + 4, METAL)
 
 
+## Previsão do clima espacial no boletim: na véspera da erupção, o aviso; no dia, o que fazer quando o alarme tocar.
+func _clima_espacial(largura: float) -> Array[String]:
+	if Missao.dia_erupcao == 0:
+		return []
+	if Missao.dia == Missao.dia_erupcao - 1:
+		return quebrar("SPACE WEATHER: solar activity rising. A solar storm is likely tomorrow. Reinforcing the shielding cuts the dose. Details on the navigation computer.", largura)
+	if Missao.dia == Missao.dia_erupcao:
+		return quebrar("SOLAR STORM TODAY: when the alarm sounds, run to the shielded shelter.", largura)
+	return []
+
+
 ## Resumo da noite: cada indicador antes e depois (barra, números e diferença), a geração solar e o desgaste.
 func _desenha_noite() -> void:
 	var largura := 216
 	var linhas := Recursos.NOMES.size() + 2
 	if resumo["desgaste"] > 0.0:
+		linhas += 1
+	if not resumo["tempestade"].is_empty():
 		linhas += 1
 	var r := _painel(largura, 18 + linhas * 8 + 6)
 	moldura(tela, r)
@@ -271,51 +422,22 @@ func _desenha_noite() -> void:
 	if resumo["desgaste"] > 0.0:
 		Fonte.desenhar(tela, "LOW SUPPLIES HURT THE CREW: %+d HEALTH" % -roundi(resumo["desgaste"]),
 			Vector2(x, y), VERMELHO)
+		y += 8
+	if not resumo["tempestade"].is_empty():
+		var tp: Dictionary = resumo["tempestade"]
+		var onde := "SHELTERED" if tp["abrigo"] else "CAUGHT OUTSIDE"
+		Fonte.desenhar(tela, "SOLAR STORM, %s: %+d HEALTH" % [onde, -roundi(tp.get("dano", 0.0))], Vector2(x, y),
+			LARANJA if tp["abrigo"] else VERMELHO)
 	var dica := "E: MISSION RESULT" if _ultima_noite() else "E: NEXT DAY"
 	Fonte.centralizado(tela, dica, 160, r.end.y + 4, METAL)
 
 
-## Fim da missão: resultado, causa, local, indicadores finais e o diário (o que foi feito em cada dia).
+## Fim da missão: o relatório de 4 páginas (relatorio.gd) dentro da mesma moldura de metal dos outros painéis.
 func _desenha_fim() -> void:
 	tela.draw_rect(Rect2(0, 0, 320, 180), PRETO)
-	var r := Rect2(8, 6, 304, 160)
-	moldura(tela, r)
-	var res := Missao.resultado
-	Fonte.centralizado(tela, TITULOS_FIM[res], 160, r.position.y + 5, CORES_FIM[res])
-	var x := r.position.x + 10
-	var y := r.position.y + 19
-	for l in quebrar(_frase_fim(), r.size.x - 20):
-		Fonte.desenhar(tela, l, Vector2(x, y), BRANCO)
-		y += 8
-	Fonte.desenhar(tela, "LANDING SITE: " + str(Missao.dados_local.get("titulo", "")), Vector2(x, y), METAL)
-	y += 12
-	for nome in Recursos.NOMES:
-		_linha_indicador(nome, Vector2(x, y), x + 150, Recursos.valores[nome])
-		y += 8
-	y += 4
-	Fonte.desenhar(tela, "MISSION LOG", Vector2(x, y), AMARELO)
-	y += 8
-	for d in Missao.historico:
-		var feito := ", ".join(PackedStringArray(d["acoes"])) if not d["acoes"].is_empty() else "NO TASKS DONE"
-		var txt := "DAY %d: %s" % [d["dia"], feito]
-		Fonte.desenhar(tela, txt, Vector2(x, y), BRANCO if not d["acoes"].is_empty() else CINZA)
-		if d["noite"]:
-			Fonte.desenhar(tela, "NIGHT", Vector2(r.end.x - 10 - Fonte.largura("NIGHT"), y), AZUL)
-		y += 8
-	Fonte.centralizado(tela, "E: NEW MISSION", 160, r.end.y + 4, METAL)
-
-
-func _frase_fim() -> String:
-	match Missao.resultado:
-		"abortada":
-			return "%s on day %d. The mission was aborted and the crew returned to Orion." % [
-				CAUSAS[Missao.causa], Missao.dia]
-		"dificuldades":
-			var baixos := Recursos.NOMES.filter(func(n): return Recursos.baixo(n))
-			var nomes := PackedStringArray(baixos.map(func(n): return Recursos.ROTULOS[n]))
-			return "The crew made it to day %d, but the base is in bad shape. Running low: %s." % [
-				total_dias(), ", ".join(nomes)]
-	return "All systems held for %d days. The base is ready for the next crew." % total_dias()
+	Relatorio.fundo(tela)
+	moldura(tela, Relatorio.MOLDURA)
+	Relatorio.desenhar(tela, pagina)
 
 
 ## Nome, barra de 60 px e valor do indicador. Com `antes`, mostra a parte perdida em vermelho escuro ou a ganha
