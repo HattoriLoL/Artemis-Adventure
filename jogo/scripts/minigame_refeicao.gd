@@ -198,8 +198,8 @@ func _draw() -> void:
 	if acabou:
 		Fonte.centralizado(self, "MEAL READY!", 160, y_txt, VERDE_LIMA)
 	elif t_queima > 0.0 or temp > QUEIMA:
-		Fonte.centralizado(self, "BURNED! (%d) RELEASE E TO COOL" % queimas, 160, y_txt,
-			VERMELHO_CLARO if fmod(t, 0.3) < 0.18 else LARANJA)
+		Fonte.centralizado_com_teclas(self, "BURNED! (%d) RELEASE [E] TO COOL" % queimas, 160, y_txt,
+			VERMELHO_CLARO if fmod(t, 0.3) < 0.18 else LARANJA, VERMELHO)
 	elif na_faixa():
 		Fonte.centralizado(self, "PERFECT TEMPERATURE - KEEP IT THERE", 160, y_txt, VERDE_LIMA)
 	elif temp > FAIXA_MAX:
