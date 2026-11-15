@@ -1,0 +1,161 @@
+{
+	"agua": {
+		"titulo": "REFILL THE WATER",
+		"passos": [
+			"HOLD [E] TO OPEN THE TAP.",
+			"RELEASE IT WHEN THE WATER IS ON THE GREEN MARK.",
+			"TOO MUCH WATER SPILLS - THAT IS AN ERROR."
+		],
+		"fato": "THE ISS NOW RECOVERS 98 PERCENT OF ITS WATER, EVEN FROM URINE, SWEAT AND BREATH. ASTRONAUTS DRINK IT, AND IT IS CLEANER THAN TAP WATER.",
+		"fonte": "NASA - ISS WATER RECOVERY 98 PERCENT",
+		"url": "https://www.nasa.gov/missions/station/iss-research/nasa-achieves-water-recovery-milestone-on-international-space-station/"
+	},
+	"algas": {
+		"titulo": "TEND THE ALGAE",
+		"passos": [
+			"[A] [D] PICK A TUBE.",
+			"[W] [S] GIVE IT MORE OR LESS NUTRIENTS AND LIGHT.",
+			"KEEP BOTH TUBES IN THE GREEN FOR 2 SECONDS.",
+			"PUSHING ONE OUT OF THE GREEN IS AN ERROR."
+		],
+		"fato": "ON THE ISS, ESA GREW SPIRULINA ALGAE IN A TUBE BATHED IN LIGHT. IT MADE OXYGEN AS FAST AS ON EARTH - A FUTURE SOURCE OF AIR AND FOOD.",
+		"fonte": "ESA - MELISSA SPIRULINA ON THE ISS",
+		"url": "https://www.esa.int/Science_Exploration/Human_and_Robotic_Exploration/Research/Green_smoothies_in_space"
+	},
+	"align_panels": {
+		"titulo": "AIM THE SOLAR PANELS",
+		"passos": [
+			"[A] [D] TURN THE PANEL.",
+			"POINT IT AT THE SUN AND HOLD IT THERE UNTIL IT LOCKS.",
+			"LOCK ALL 3 PANELS, ONE AT A TIME."
+		],
+		"fato": "AT THE LUNAR POLES THE SUN BARELY RISES ABOVE THE HORIZON AND HILLS CAST SHADOWS. NASA IS DEVELOPING TALL VERTICAL SOLAR ARRAYS TO CATCH ITS LIGHT.",
+		"fonte": "NASA - VERTICAL SOLAR ARRAYS",
+		"url": "https://www.nasa.gov/technology/nasa-industry-to-mature-vertical-solar-array-technologies-for-lunar-surface/"
+	},
+	"blindagem": {
+		"titulo": "REINFORCE THE SHIELDING",
+		"passos": [
+			"[W] [A] [S] [D] SLIDE THE HEAVY PLATE. IT KEEPS MOVING FOR A WHILE.",
+			"STOP IT RIGHT OVER THE GLOWING LEAK AND PRESS [E] TO BOLT IT.",
+			"3 PLATES. MISALIGNED OR TOO SLOW IS AN ERROR."
+		],
+		"fato": "IN A SOLAR STORM, ARTEMIS CREWS BUILD A SHELTER IN ORION FROM BAGS OF FOOD, WATER AND SUPPLIES WITHIN AN HOUR, AND MAY STAY UP TO 24 HOURS.",
+		"fonte": "NASA - ORION RADIATION SHELTER",
+		"url": "https://www.nasa.gov/missions/artemis/orion/scientists-and-engineers-evaluate-orion-radiation-protection-plan/"
+	},
+	"calibrate_batt": {
+		"titulo": "CALIBRATE THE BATTERIES",
+		"passos": [
+			"A NEEDLE SWINGS ON THE DIAL.",
+			"PRESS [E] WHEN IT IS IN THE GREEN ZONE.",
+			"3 BATTERIES. IT GETS FASTER EACH TIME.",
+			"OUTSIDE THE GREEN IS AN ERROR."
+		],
+		"fato": "THE ISS CIRCLES EARTH ABOUT EVERY 90 MINUTES AND CAN SPEND UP TO 35 MINUTES IN SHADOW. BATTERIES CHARGED IN SUNLIGHT KEEP IT RUNNING.",
+		"fonte": "NASA - ISS ELECTRIC POWER SYSTEM",
+		"url": "https://ntrs.nasa.gov/api/citations/20000063506/downloads/20000063506.pdf"
+	},
+	"chuveiro": {
+		"titulo": "REMOVE THE MOON DUST",
+		"passos": [
+			"THE 4 AIR JETS LIGHT UP ONE AT A TIME.",
+			"PRESS THE KEY OF THE LIT JET: [W] TOP, [A] LEFT, [D] RIGHT, [S] FLOOR.",
+			"WRONG KEY OR TOO SLOW IS AN ERROR."
+		],
+		"fato": "MOON DUST IS ABRASIVE AND CLINGS TO EVERYTHING. ON APOLLO 17 IT GAVE HARRISON SCHMITT SNEEZES AND WATERY EYES - HE CALLED IT LUNAR HAY FEVER.",
+		"fonte": "NASA - MEASURING MOON DUST",
+		"url": "https://www.nasa.gov/technology/tech-transfer-spinoffs/measuring-moon-dust-to-fight-air-pollution-2/"
+	},
+	"distribuicao": {
+		"titulo": "BALANCE THE POWER",
+		"passos": [
+			"[A] [D] PICK A CHANNEL.",
+			"[W] [S] RAISE OR LOWER ITS LOAD.",
+			"KEEP ALL 3 CHANNELS IN THE GREEN FOR 2 SECONDS."
+		],
+		"fato": "ISS POWER FLOWS IN INDEPENDENT CHANNELS. MAIN BUS SWITCHING UNITS ROUTE IT ACROSS THE STATION, AND IN AN EMERGENCY CAN TIE THE CHANNELS TOGETHER.",
+		"fonte": "NASA - ISS ELECTRIC POWER SYSTEM",
+		"url": "https://ntrs.nasa.gov/api/citations/20000063506/downloads/20000063506.pdf"
+	},
+	"estufa": {
+		"titulo": "WATER THE PLANTS",
+		"passos": [
+			"HOLD [E] TO RAISE THE WATER JET. RELEASE TO LOWER IT.",
+			"KEEP THE MOVING DROP INSIDE THE JET.",
+			"FILL THE BAR TO GROW THE LETTUCE. IF IT EMPTIES, THEY WILT."
+		],
+		"fato": "ISS VEGGIE LETTUCE GROWS IN SMALL PILLOWS WITH FERTILIZER. EACH GOT ABOUT 100 ML OF WATER TO START GROWING, THEN MORE WATER IS ADDED OVER TIME.",
+		"fonte": "NASA - VEGGIE ACTIVATED ON ISS",
+		"url": "https://www.nasa.gov/missions/station/veggie-plant-growth-system-activated-on-international-space-station/"
+	},
+	"oxigenio": {
+		"titulo": "BALANCE THE AIR",
+		"passos": [
+			"[A] [D] PICK A GAS: O2, N2 OR CO2.",
+			"[W] [S] TURN ITS VALVE UP OR DOWN.",
+			"THE LEVELS DRIFT. KEEP ALL 3 IN THE GREEN FOR 2 SECONDS.",
+			"PUSHING ONE OUT OF THE GREEN IS AN ERROR."
+		],
+		"fato": "IN SPACE NO PLANTS CLEAN THE AIR, SO MACHINES MUST REMOVE CO2. ON THE ISS, HIGHER CO2 LEVELS HAVE BEEN LINKED TO CREW HEADACHES.",
+		"fonte": "NASA - CO2 MEDICAL TECHNICAL BRIEF",
+		"url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf"
+	},
+	"paineis": {
+		"titulo": "CLEAN THE SOLAR PANELS",
+		"passos": [
+			"[W] [A] [S] [D] MOVE THE BRUSH.",
+			"PASS IT OVER THE DUST TO WIPE IT AWAY.",
+			"CLEAN ALL 3 PANELS."
+		],
+		"fato": "ON MARS, DUST SLOWLY BUILT UP ON THE SOLAR PANELS OF NASA'S INSIGHT LANDER UNTIL ITS BATTERIES RAN OUT. THE MISSION ENDED IN 2022.",
+		"fonte": "NASA - INSIGHT MISSION RETIRED",
+		"url": "https://www.nasa.gov/missions/insight/nasa-retires-insight-mars-lander-mission-after-years-of-science/"
+	},
+	"refeicao": {
+		"titulo": "PREPARE A MEAL",
+		"passos": [
+			"HOLD [E] TO HEAT. RELEASE TO COOL DOWN.",
+			"KEEP THE THERMOMETER IN THE GREEN ZONE.",
+			"THE FOOD ONLY COOKS IN THE GREEN, UNTIL THE BAR IS FULL."
+		],
+		"fato": "ISS CREWS ADD WATER TO DRIED FOOD PACKETS AND HEAT US PACKETS IN A SUITCASE-LIKE FOOD WARMER, SINCE THEY DO NOT FIT THE RUSSIAN TABLE WARMERS.",
+		"fonte": "NASA - SPACE FOOD FACT SHEET",
+		"url": "https://www.nasa.gov/wp-content/uploads/2015/05/167750main_fs_spacefood508c.pdf"
+	},
+	"swap_co2": {
+		"titulo": "SWAP THE CO2 FILTER",
+		"passos": [
+			"PRESS [E] 6 TIMES TO UNLOCK.",
+			"HOLD [S] TO PULL THE OLD FILTER OUT.",
+			"HOLD [W] TO PUSH THE NEW ONE IN.",
+			"PRESS [E] TO LOCK IT. WRONG KEY IS AN ERROR."
+		],
+		"fato": "ON APOLLO 13 THE SQUARE CO2 CANISTERS OF THE COMMAND MODULE DID NOT FIT THE ROUND HOLES OF THE LUNAR MODULE. THE CREW BUILT AN ADAPTER WITH DUCT TAPE.",
+		"fonte": "NASA - HOUSTON WE'VE HAD A PROBLEM",
+		"url": "https://www.nasa.gov/history/houston-weve-had-a-problem/"
+	},
+	"tanques": {
+		"titulo": "CHECK THE TANKS",
+		"passos": [
+			"[A] [D] PICK A VALVE: 2 CROSSFEEDS OR THE PURGE.",
+			"[W] [S] OPEN IT ONE WAY OR THE OTHER. [E] VENTS GAS FAST.",
+			"KEEP ALL 3 TANKS BETWEEN 55 AND 72 PSI FOR 2 SECONDS."
+		],
+		"fato": "STIRRING THE SUPER COLD OXYGEN AND HYDROGEN TANKS THAT FED THE FUEL CELLS WAS ROUTINE. ON APOLLO 13, A BANG CAME DURING ONE OF THESE STIRS.",
+		"fonte": "NASA - HOUSTON WE'VE HAD A PROBLEM",
+		"url": "https://www.nasa.gov/history/houston-weve-had-a-problem/"
+	},
+ "irrigacao": {
+  "titulo": "FIX THE IRRIGATION",
+  "passos": [
+   "ARROWS OR [W][A][S][D] MOVE THE CURSOR.",
+   "[E] TURNS THE PIPE UNDER IT.",
+   "LEAD THE WATER FROM THE TANK TO ALL 3 BEDS. ANY PATH WORKS.",
+   "TURNS ARE LIMITED - EXTRA TURNS ARE ERRORS."
+  ],
+  "fato": "ON THE ISS, NASA'S XROOTS TEST GREW PLANTS WITH NO SOIL: WATER AND NUTRIENTS REACH THE ROOTS AS A MIST OR A THIN FLOW. IT COULD FEED BIGGER GARDENS ON FUTURE MISSIONS.",
+  "fonte": "NASA - XROOTS ON THE ISS",
+  "url": "https://science.nasa.gov/biological-physical/investigations/xroots/"
+ }
+}

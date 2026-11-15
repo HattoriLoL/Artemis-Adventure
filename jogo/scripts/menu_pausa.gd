@@ -140,7 +140,7 @@ func _itens() -> Array:
 			var tela_cheia := {"id": "tela_cheia", "texto": "FULLSCREEN", "liga": Opcoes.tela_cheia}
 			if not Opcoes.pode_tela_cheia():           # dentro da aba Game do editor a janela não é do jogo
 				tela_cheia = {"id": "tela_cheia", "texto": "FULLSCREEN", "fixo": "EDITOR"}
-			return [tela_cheia, {"id": "voltar", "texto": "BACK"}]
+			return [tela_cheia, {"id": "tutoriais", "texto": "SHOW TUTORIALS AGAIN"}, {"id": "voltar", "texto": "BACK"}]
 		"dev":
 			var sala: String = _salas()[i_sala]
 			var mg := "NONE" if minigames.is_empty() else _nome_minigame(minigames[i_minigame])
@@ -150,6 +150,7 @@ func _itens() -> Array:
 				{"id": "tudo_feito", "texto": "FINISH ALL TASKS"},
 				{"id": "zerar", "texto": "RESET TODAY"},
 				{"id": "fim_dia", "texto": "END THE DAY"},
+				{"id": "meteoros", "texto": "METEOR SHOWER NOW"},
 				{"id": "erupcao", "texto": "SOLAR STORM NOW"},
 				{"id": "minigame", "texto": "MINIGAME", "valor": mg},
 				{"id": "noclip", "texto": "NOCLIP", "liga": noclip},
@@ -259,6 +260,9 @@ func _ativar(id: String) -> void:
 			if confirmar_sair:
 				get_tree().quit()
 			confirmar_sair = true
+		"tutoriais":
+			preload("res://scripts/tutorial_minigame.gd").zerar()
+			_avisar("TUTORIALS WILL SHOW AGAIN")
 		"tela_cheia":
 			if Opcoes.pode_tela_cheia():
 				Opcoes.definir_tela_cheia(not Opcoes.tela_cheia)
@@ -283,6 +287,10 @@ func _ativar(id: String) -> void:
 		"fim_dia":
 			_fechar()
 			mapa.encerrar_dia()
+		"meteoros":
+			_fechar()
+			if mapa.get("emergencia") != null:
+				mapa.get("emergencia").disparar()
 		"minigame":
 			if minigames.is_empty():
 				_avisar("NO MINIGAMES")
