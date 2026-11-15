@@ -43,6 +43,10 @@ var armado := false                              # E apertado com o tutorial abe
 var armado_clique := false                       # o mesmo para o clique
 var info := {}
 var arte: Texture2D
+# textos do painel (o card de sala, card_sala.gd, troca por outros)
+var rotulo_passos := "HOW TO PLAY"
+var texto_acao := " TO START"
+var texto_voltar := "ESC: BACK"
 
 
 ## Id do tutorial de um minigame a partir do caminho da cena ("res://cenas/minigame_agua.tscn" -> "agua").
@@ -74,7 +78,8 @@ static func marcar_visto(id_: String) -> void:
 	cfg.save(ARQUIVO_VISTOS)
 
 
-## Esquece os tutoriais vistos (todos voltam a aparecer na primeira vez de cada minigame).
+## Esquece os tutoriais vistos (todos voltam a aparecer na primeira vez de cada minigame), e também os cards de sala
+## (card_sala.gd guarda no mesmo arquivo).
 static func zerar() -> void:
 	var cfg := ConfigFile.new()
 	cfg.save(ARQUIVO_VISTOS)
@@ -128,9 +133,9 @@ func _draw() -> void:
 		Fonte.desenhar(self, "PRESS", Vector2(PAINEL.position.x + 10, 164), AMARELO)
 		var x := PAINEL.position.x + 10 + Fonte.largura("PRESS ")
 		x += _tecla("E", Vector2(x, 162))
-		Fonte.desenhar(self, " TO START", Vector2(x, 164), AMARELO)
-	var volta := "ESC: BACK"
-	Fonte.desenhar(self, volta, Vector2(PAINEL.end.x - 10 - Fonte.largura(volta), 164), METAL)
+		Fonte.desenhar(self, texto_acao, Vector2(x, 164), AMARELO)
+	if texto_voltar != "":
+		Fonte.desenhar(self, texto_voltar, Vector2(PAINEL.end.x - 10 - Fonte.largura(texto_voltar), 164), METAL)
 
 
 func _moldura() -> void:
@@ -167,7 +172,7 @@ func _arte() -> void:
 
 
 func _passos() -> void:
-	Fonte.desenhar(self, "HOW TO PLAY", PASSOS.position, AZUL_CLARO)
+	Fonte.desenhar(self, rotulo_passos, PASSOS.position, AZUL_CLARO)
 	var y := PASSOS.position.y + 10
 	for p in info.get("passos", []):
 		draw_rect(Rect2(PASSOS.position.x, y + 2, 2, 2), AMARELO)
