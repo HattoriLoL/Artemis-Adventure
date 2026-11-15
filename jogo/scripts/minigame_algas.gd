@@ -1,12 +1,14 @@
 extends Control
 ## Minigame "cuidar das algas" (TEND THE ALGAE), nos biorreatores do Suporte à Vida: deixar os 2 tubos (TUBE A e
 ## TUBE B) dentro da faixa verde de fotossíntese ao mesmo tempo por 2 segundos. Esquerda / direita escolhem o tubo,
-## cima / baixo aumentam ou diminuem o fluxo de nutrientes e luz dele. Não dá para perder.
+## cima / baixo aumentam ou diminuem o fluxo de nutrientes e luz dele. Passar do ponto (empurrar um tubo para fora
+## da faixa) é erro: taxa_erro diminui o que a tarefa rende e MAX_ERROS erros a perdem (sinal falhou).
 ## Arte (paleta Apollo) em res://assets/minigames/algas/; líquido das algas, bolhas de fotossíntese, luz UV, faixas,
-## seleção, luzes, barra de estabilidade, moldura e textos animados aqui. Contrato com o mapa: sinais `terminou` e
-## `cancelou` (X ou Esc) e a variável `demo`.
+## seleção, luzes, barra de estabilidade, moldura e textos animados aqui. Contrato com o mapa: sinais `terminou`,
+## `falhou` e `cancelou` (X ou Esc), taxa_erro() e a variável `demo`.
 
 signal terminou
+signal falhou
 signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
@@ -50,6 +52,8 @@ const INICIO := [0.20, 0.85]                     # cada tubo começa fora da fai
 const VEL_AJUSTE := 0.50                         # quanto o jogador sobe ou desce por segundo
 const TEMPO_OK := 2.0                            # segundos com os 2 tubos na faixa para terminar
 const TEMPO_FIM := 1.3
+const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
+const TEMPO_ERRO := 0.6                          # quanto tempo o aviso de erro fica na tela
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var niveis: Array = []
@@ -59,6 +63,11 @@ var t_demo := 0.0
 var acabou := false
 var t := 0.0
 var t_fim := -1.0
+var acertos := 0                                 # vezes que o jogador levou um item para dentro da faixa
+var erros := 0                                   # vezes que o jogador passou do ponto (empurrou para fora)
+var estava: Array = []                           # cada item estava na faixa no quadro anterior?
+var t_erro := 0.0
+var perdeu := false
 var ajuste := 0.0                                # -1, 0 ou 1: o jogador está tirando ou pondo nutrientes
 var bolhas: Array = []                           # [tubo, x, y, vel]: bolhas de oxigênio subindo, dentro do tubo
 var particulas: Array = []                       # [tubo, x, y, fase]: grumos de alga boiando no líquido
@@ -70,6 +79,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_criar_teclas()
 	niveis = INICIO.duplicate()
+	for i in niveis.size():
+		estava.append(_na_faixa(i))
 	for i in TUBOS.size():
 		var r: Rect2 = TUBOS[i]
 		for k in 9:
@@ -89,19 +100,27 @@ func _input(ev: InputEvent) -> void:
 func _process(delta: float) -> void:
 	t += delta
 	t_troca = maxf(0.0, t_troca - delta)
+	t_erro = maxf(0.0, t_erro - delta)
 	_animar_bolhas(delta)
 	if acabou:
 		ajuste = 0.0
 		t_fim -= delta
 		if t_fim < 0.0:
 			set_process(false)
-			terminou.emit()
+			if perdeu:
+				falhou.emit()
+			else:
+				terminou.emit()
 		queue_redraw()
 		return
 	if demo:
 		_jogar_sozinho(delta)
 	else:
 		_controles(delta)
+	_contar_lances()
+	if perdeu:
+		queue_redraw()
+		return
 	if _todos_na_faixa():
 		tempo_estavel += delta
 		if tempo_estavel >= TEMPO_OK:
@@ -122,6 +141,35 @@ func _controles(delta: float) -> void:
 		t_troca = 0.2
 	ajuste = Input.get_axis("baixo", "cima")
 	niveis[selecionado] = clampf(niveis[selecionado] + ajuste * VEL_AJUSTE * delta, 0.0, 1.0)
+
+
+## Erro: o jogador empurrou o item da vez para fora da faixa (passou do ponto). Acerto: levou ele para dentro.
+## Sair da faixa sozinho (sem o jogador mexer) não conta.
+func _contar_lances() -> void:
+	for i in niveis.size():
+		var dentro := _na_faixa(i)
+		if i == selecionado and ajuste != 0.0 and dentro != estava[i]:
+			if dentro:
+				acertos += 1
+			else:
+				erros += 1
+				t_erro = TEMPO_ERRO
+				if erros >= MAX_ERROS:
+					perdeu = true
+					acabou = true
+					t_fim = TEMPO_FIM
+		estava[i] = dentro
+
+
+## Fração dos lances que passaram do ponto.
+func taxa_erro() -> float:
+	return erros / maxf(1.0, float(erros + acertos))
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça.
+func comecou() -> bool:
+	return erros > 0 or acertos > 0
 
 
 func _na_faixa(i: int) -> bool:
@@ -204,8 +252,13 @@ func _draw() -> void:
 	_selecao()
 	_visor()
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
-	if acabou:
+	if perdeu:
+		Fonte.centralizado(self, "TOO MANY ERRORS - TASK FAILED", 160, y_txt, VERMELHO_CLARO)
+	elif acabou:
 		Fonte.centralizado(self, "BIOREACTORS BALANCED!", 160, y_txt, VERDE_LIMA)
+	elif t_erro > 0.0:
+		Fonte.centralizado(self, "OVERSHOT! (%d/%d)" % [erros, MAX_ERROS], 160, y_txt,
+			VERMELHO_CLARO)
 	else:
 		Fonte.centralizado(self, "LEFT/RIGHT PICK A TUBE - UP/DOWN FEED IT", 160, y_txt, BRANCO_SUJO)
 
@@ -230,7 +283,7 @@ func _tubo(i: int) -> void:
 	var base := JANELA + r.position
 	var topo := _superficie(i)
 	var dentro := _na_faixa(i)
-	var pulso := acabou and fmod(t + i * 0.2, 0.5) < 0.25
+	var pulso := acabou and not perdeu and fmod(t + i * 0.2, 0.5) < 0.25
 	var corpo := VERDE if dentro else VERDE_ESC
 	var lado := VERDE_CLARO if dentro else VERDE
 	if pulso:
@@ -316,7 +369,7 @@ func _visor() -> void:
 	var barra := Rect2(v.position + Vector2(4, 9), Vector2(v.size.x - 8, 2))
 	draw_rect(barra.grow(1), CINZA_ESC)
 	draw_rect(barra, FUNDO)
-	var cheio := 1.0 if acabou else clampf(tempo_estavel / TEMPO_OK, 0.0, 1.0)
+	var cheio := 1.0 if acabou and not perdeu else clampf(tempo_estavel / TEMPO_OK, 0.0, 1.0)
 	if cheio > 0.0:
 		var cor_barra := VERDE_LIMA if acabou and fmod(t, 0.3) < 0.15 else VERDE_CLARO
 		draw_rect(Rect2(barra.position, Vector2(roundf(barra.size.x * cheio), barra.size.y)), cor_barra)

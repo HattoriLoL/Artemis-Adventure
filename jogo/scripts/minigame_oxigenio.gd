@@ -1,12 +1,14 @@
 extends Control
 ## Minigame "equilibrar o ar" (BALANCE THE AIR), no console de gases do Suporte à Vida: deixar O2, N2 e CO2 dentro
 ## das faixas verdes ao mesmo tempo por 2 segundos. Esquerda / direita escolhem o tubo, cima / baixo giram o volante
-## e sobem ou descem o gás. Os níveis mudam sozinhos devagar (O2 e N2 descem, CO2 sobe). Não dá para perder.
+## e sobem ou descem o gás. Os níveis mudam sozinhos devagar (O2 e N2 descem, CO2 sobe). Passar do ponto (empurrar
+## um gás para fora da faixa) é erro: taxa_erro diminui o que a tarefa rende e MAX_ERROS erros a perdem (falhou).
 ## Arte (paleta Apollo) em res://assets/minigames/oxigenio/; gás, bolhas, faixas, seleção, volantes, luzes, barra de
-## estabilidade, moldura e textos animados aqui. Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc) e a
-## variável `demo`.
+## estabilidade, moldura e textos animados aqui. Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou`
+## (X ou Esc), taxa_erro() e a variável `demo`.
 
 signal terminou
+signal falhou
 signal cancelou
 
 const Fonte = preload("res://scripts/fonte.gd")
@@ -52,6 +54,8 @@ const DERIVA := [-0.03, -0.02, 0.04]                          # quanto cada nív
 const VEL_AJUSTE := 0.35                                      # quanto o jogador sobe ou desce por segundo
 const TEMPO_OK := 2.0                                         # segundos com as 3 na faixa para terminar
 const TEMPO_FIM := 1.3
+const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
+const TEMPO_ERRO := 0.6                          # quanto tempo o aviso de erro fica na tela
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var niveis: Array = []
@@ -61,6 +65,11 @@ var t_demo := 0.0
 var acabou := false
 var t := 0.0
 var t_fim := -1.0
+var acertos := 0                                 # vezes que o jogador levou um item para dentro da faixa
+var erros := 0                                   # vezes que o jogador passou do ponto (empurrou para fora)
+var estava: Array = []                           # cada item estava na faixa no quadro anterior?
+var t_erro := 0.0
+var perdeu := false
 var ajuste := 0.0                                # -1, 0 ou 1: para onde o volante da vez está girando
 var angulos := [0.0, 0.7, 1.4]                   # rotação de cada volante
 var bolhas: Array = []                           # [tubo, x, y, vel]: bolhas subindo no gás, dentro do console
@@ -72,6 +81,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_criar_teclas()
 	niveis = INICIO.duplicate()
+	for i in niveis.size():
+		estava.append(_na_faixa(i))
 
 
 func _input(ev: InputEvent) -> void:
@@ -87,13 +98,17 @@ func _input(ev: InputEvent) -> void:
 func _process(delta: float) -> void:
 	t += delta
 	t_troca = maxf(0.0, t_troca - delta)
+	t_erro = maxf(0.0, t_erro - delta)
 	_animar_bolhas(delta)
 	if acabou:
 		ajuste = 0.0
 		t_fim -= delta
 		if t_fim < 0.0:
 			set_process(false)
-			terminou.emit()
+			if perdeu:
+				falhou.emit()
+			else:
+				terminou.emit()
 		queue_redraw()
 		return
 	if demo:
@@ -103,6 +118,10 @@ func _process(delta: float) -> void:
 	angulos[selecionada] += ajuste * 6.0 * delta
 	for i in niveis.size():
 		niveis[i] = clampf(niveis[i] + DERIVA[i] * delta, 0.0, 1.0)
+	_contar_lances()
+	if perdeu:
+		queue_redraw()
+		return
 	if _todas_na_faixa():
 		tempo_ok += delta
 	else:
@@ -123,6 +142,35 @@ func _controles(delta: float) -> void:
 		t_troca = 0.2
 	ajuste = Input.get_axis("baixo", "cima")     # cima = +1, baixo = -1
 	niveis[selecionada] = clampf(niveis[selecionada] + ajuste * VEL_AJUSTE * delta, 0.0, 1.0)
+
+
+## Erro: o jogador empurrou o item da vez para fora da faixa (passou do ponto). Acerto: levou ele para dentro.
+## Sair da faixa sozinho (sem o jogador mexer) não conta.
+func _contar_lances() -> void:
+	for i in niveis.size():
+		var dentro := _na_faixa(i)
+		if i == selecionada and ajuste != 0.0 and dentro != estava[i]:
+			if dentro:
+				acertos += 1
+			else:
+				erros += 1
+				t_erro = TEMPO_ERRO
+				if erros >= MAX_ERROS:
+					perdeu = true
+					acabou = true
+					t_fim = TEMPO_FIM
+		estava[i] = dentro
+
+
+## Fração dos lances que passaram do ponto.
+func taxa_erro() -> float:
+	return erros / maxf(1.0, float(erros + acertos))
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça.
+func comecou() -> bool:
+	return erros > 0 or acertos > 0
 
 
 func _na_faixa(i: int) -> bool:
@@ -207,8 +255,13 @@ func _draw() -> void:
 	_selecao()
 	_visor()
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
-	if acabou:
+	if perdeu:
+		Fonte.centralizado(self, "TOO MANY ERRORS - TASK FAILED", 160, y_txt, VERMELHO_CLARO)
+	elif acabou:
 		Fonte.centralizado(self, "AIR BALANCED!", 160, y_txt, VERDE_LIMA)
+	elif t_erro > 0.0:
+		Fonte.centralizado(self, "OVERSHOT! (%d/%d)" % [erros, MAX_ERROS], 160, y_txt,
+			VERMELHO_CLARO)
 	else:
 		Fonte.centralizado(self, "LEFT/RIGHT PICK A GAS - UP/DOWN TURN THE VALVE", 160, y_txt, BRANCO_SUJO)
 
@@ -223,7 +276,7 @@ func _tubo(i: int) -> void:
 	var base := JANELA + r.position
 	var cores: Array = CORES_GAS[i]
 	var topo := _altura_gas(i)
-	var pulso := acabou and fmod(t + i * 0.15, 0.5) < 0.25
+	var pulso := acabou and not perdeu and fmod(t + i * 0.15, 0.5) < 0.25
 	for x in int(r.size.x):
 		var onda := roundf(sin(t * 5.0 + x * 0.9 + i) * 0.6)     # superfície mexendo um pouco
 		var y0 := clampf(topo + onda, 0.0, r.size.y)
@@ -315,7 +368,7 @@ func _visor() -> void:
 	var barra := Rect2(v.position + Vector2(4, 9), Vector2(v.size.x - 8, 2))
 	draw_rect(barra.grow(1), CINZA_ESC)
 	draw_rect(barra, FUNDO)
-	var cheio := 1.0 if acabou else clampf(tempo_ok / TEMPO_OK, 0.0, 1.0)
+	var cheio := 1.0 if acabou and not perdeu else clampf(tempo_ok / TEMPO_OK, 0.0, 1.0)
 	if cheio > 0.0:
 		var cor_barra := VERDE_LIMA if acabou and fmod(t, 0.3) < 0.15 else VERDE_CLARO
 		draw_rect(Rect2(barra.position, Vector2(roundf(barra.size.x * cheio), barra.size.y)), cor_barra)

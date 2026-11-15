@@ -40,7 +40,8 @@ func fator_solar() -> float:
 
 ## O que uma tarefa ou interação ("habitat/cama"...) vai mudar, sem aplicar: {"comida": -5.0, "condicao": 10.0}.
 ## O HUD mostra isso antes de o jogador apertar E (custo e benefício visíveis antes da escolha).
-func previa(id: String) -> Dictionary:
+## `fator` (0 a 1) reduz só os ganhos: é quanto o jogador leva depois dos erros no minigame (fator_erro).
+func previa(id: String, fator := 1.0) -> Dictionary:
 	var efeito: Dictionary = regras["efeitos"].get(id, {})
 	var mult := 1.0
 	if regras["multiplicadores"].has(id):      # ex.: a água rende mais no polo (gelo_por_coleta)
@@ -49,13 +50,25 @@ func previa(id: String) -> Dictionary:
 	var r := {}
 	for nome in efeito:
 		var v := float(efeito[nome])
-		r[nome] = v * mult if v > 0.0 else v    # o multiplicador só vale para ganhos, não para custos
+		r[nome] = v * mult * fator if v > 0.0 else v   # multiplicador e erros só valem para ganhos, não para custos
 	return r
 
 
+## Quanto do ganho de uma tarefa o jogador leva pela taxa de erro no minigame (0 = nenhum erro, 1 = só erros):
+## até "taxa_sem_perda" (20 por cento) leva tudo; acima disso cai em linha reta até nada em "taxa_sem_ganho".
+func fator_erro(taxa: float) -> float:
+	var r: Dictionary = regras.get("erros", {})
+	var livre := float(r.get("taxa_sem_perda", 0.2))
+	var zero := float(r.get("taxa_sem_ganho", 1.0))
+	if taxa <= livre:
+		return 1.0
+	return clampf(1.0 - (taxa - livre) / maxf(zero - livre, 0.001), 0.0, 1.0)
+
+
 ## Aplica o efeito de uma tarefa ou interação e devolve o que mudou de fato (perto de 100 ou de 0, muda menos).
-func aplicar(id: String) -> Dictionary:
-	var efeito := previa(id)
+## `fator` < 1 quando o minigame teve erros (fator_erro).
+func aplicar(id: String, fator := 1.0) -> Dictionary:
+	var efeito := previa(id, fator)
 	var mudancas := {}
 	for nome in efeito:
 		var v: float = efeito[nome]

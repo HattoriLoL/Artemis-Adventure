@@ -19,6 +19,11 @@
   "estufa/regar": {"comida": 5, "condicao": 5, "oxigenio": 3},
   "abrigo/blindagem": {"condicao": 5}
  },
+ "erros": {
+  "_leia": "Erros nos minigames: até taxa_sem_perda (20 por cento dos lances errados) a tarefa rende tudo; acima disso o ganho cai em linha reta até zero em taxa_sem_ganho. Perder o minigame (sinal falhou) gasta a ação e não rende nada. Custos (valores negativos) são cobrados inteiros.",
+  "taxa_sem_perda": 0.2,
+  "taxa_sem_ganho": 1.0
+ },
  "multiplicadores": {
   "energia/paineis": "geracao_solar",
   "energia/terminal": "geracao_solar",
