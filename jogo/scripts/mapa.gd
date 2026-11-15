@@ -153,7 +153,7 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
 			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", "")),
-			"icone": _icone(nome + "/" + str(tf["id"])), "icone_mini": _icone(nome + "/" + str(tf["id"]) + "_mini")}
+			"icone": _icone(nome + "/" + str(tf["id"]))}
 		tarefas.append(item)
 		var m := Polygon2D.new()                     # seta amarela pulando sobre a tarefa (como no Among Us)
 		m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
@@ -170,9 +170,8 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		interacoes.append(item)
 
 
-## Ícone da tarefa: res://assets/icones/<sala>_<tarefa>.png (7x7, lista do HUD) e <sala>_<tarefa>_mini.png (5x5,
-## minimapa). Sem arquivo, null (a lista volta ao quadradinho e o minimapa à cruz amarela). Desenhados em
-## arte/icones_tarefas.py.
+## Ícone 7x7 da tarefa (lista do HUD e minimapa): res://assets/icones/<sala>_<tarefa>.png. Sem arquivo, null (a
+## lista volta ao quadradinho e o minimapa à cruz amarela). Desenhados em arte/icones_tarefas.py.
 func _icone(id: String) -> Texture2D:
 	var c := "res://assets/icones/%s.png" % id.replace("/", "_")
 	return load(c) if ResourceLoader.exists(c) else null
@@ -655,8 +654,8 @@ func _desenha_hud() -> void:
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
 
 
-## Minimapa no canto de baixo à direita: a base inteira, o ícone de cada tarefa que dá para fazer agora (com moldura
-## amarela piscando; o mesmo ícone da lista no canto de cima) e o astronauta em branco. As tarefas são as mesmas da
+## Minimapa no canto de baixo à direita: a base inteira, o ícone de cada tarefa que dá para fazer agora (o mesmo da
+## lista no canto de cima) e o astronauta em branco. As tarefas são as mesmas da
 ## seta amarela: oferecidas hoje, não feitas, com ação sobrando.
 ## Some com os minigames, os painéis do dia (boletim, noite, fim) e enquanto ele dorme.
 func _desenha_minimapa() -> void:
@@ -673,15 +672,12 @@ func _desenha_minimapa() -> void:
 		if tf.is_empty():
 			continue
 		var m := _no_minimapa(tf["pos"])
-		var ic: Texture2D = tf.get("icone_mini") if tf.get("icone_mini") else tf.get("icone")
-		if ic:                                     # o ícone da lista (versão pequena), fixo, com contorno piscando
+		var ic: Texture2D = tf.get("icone")
+		if ic:                                     # o mesmo ícone da lista, sozinho (sem moldura nem fundo)
 			var tam_ic := ic.get_size()
 			var meio := (tam_ic / 2.0).floor()
 			var c := m.clamp(MINI_POS + meio, MINI_POS + TEX_MINIMAPA.get_size() - tam_ic + meio)
-			var r := Rect2(c - meio, tam_ic)
-			hud.draw_rect(r.grow(1), AMARELO if aceso else CONTORNO)
-			hud.draw_rect(r, CONTORNO)
-			hud.draw_texture(ic, r.position)
+			hud.draw_texture(ic, c - meio)
 		elif aceso:
 			hud.draw_rect(Rect2(m + Vector2(-1, -2), Vector2(3, 5)), CONTORNO)    # cruz amarela com contorno
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
