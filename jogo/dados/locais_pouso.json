@@ -1,0 +1,32 @@
+[
+ {
+  "id": "borda",
+  "titulo": "Crater rim",
+  "vantagem": "Good sun exposure. The panels make more power.",
+  "risco": "Little ice nearby. The crew will struggle to get water.",
+  "cor": "#e8c170",
+  "sol": 3,
+  "gelo": 1,
+  "condicoes": {"energia": 75, "oxigenio": 65, "comida": 70, "condicao": 80, "geracao_solar": 1.0, "primeira_noite": 3, "dias_de_noite": 1, "gelo_por_coleta": 0.5}
+ },
+ {
+  "id": "polo",
+  "titulo": "Shadowed south pole",
+  "vantagem": "Ice close by to collect water and to study.",
+  "risco": "Long periods without light. The base relies more on batteries.",
+  "cor": "#73bed3",
+  "sol": 1,
+  "gelo": 3,
+  "condicoes": {"energia": 60, "oxigenio": 75, "comida": 70, "condicao": 80, "geracao_solar": 0.7, "primeira_noite": 2, "dias_de_noite": 3, "gelo_por_coleta": 1.5}
+ },
+ {
+  "id": "planicie",
+  "titulo": "Middle plain",
+  "vantagem": "A balance of sunlight, access and safety.",
+  "risco": "Not great at any resource. Every choice must be balanced.",
+  "cor": "#a8b5b2",
+  "sol": 2,
+  "gelo": 2,
+  "condicoes": {"energia": 70, "oxigenio": 70, "comida": 70, "condicao": 80, "geracao_solar": 0.85, "primeira_noite": 3, "dias_de_noite": 2, "gelo_por_coleta": 1.0}
+ }
+]

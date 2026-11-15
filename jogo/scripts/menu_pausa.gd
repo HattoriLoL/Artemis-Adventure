@@ -1,7 +1,8 @@
 extends CanvasLayer
 ## Menu de pausa (Esc): continuar, opções (tela cheia) e sair. Em build de debug (rodando pelo editor) aparece também
-## a aba DEV, com atalhos para testar o jogo: ir para uma sala, concluir/zerar tarefas, abrir um minigame direto,
-## atravessar paredes, correr mais, destravar as portas e desenhar FPS, posição, colisões e a grade de navegação.
+## a aba DEV, com atalhos para testar o jogo: ir para uma sala, concluir/refazer as tarefas do dia, encerrar o dia,
+## abrir um minigame direto, atravessar paredes, correr mais, destravar as portas e desenhar FPS, posição, colisões
+## e a grade de navegação.
 ## O jogo fica pausado (get_tree().paused) enquanto o menu está aberto; este nó roda sempre.
 ## Teclado: W/S ou setas escolhem, A/D trocam o valor, E/Enter confirma, Esc volta. O mouse também funciona.
 ## Desenhado em código, como o HUD e o minigame da estufa: moldura de metal, fonte 3x5 e cores da paleta.
@@ -147,7 +148,9 @@ func _itens() -> Array:
 				{"id": "ir", "texto": "GO TO", "valor": str(mapa.salas[sala]["dados"].get("titulo", sala))},
 				{"id": "sala_feita", "texto": "FINISH ROOM TASKS"},
 				{"id": "tudo_feito", "texto": "FINISH ALL TASKS"},
-				{"id": "zerar", "texto": "RESET TASKS"},
+				{"id": "zerar", "texto": "RESET TODAY"},
+				{"id": "fim_dia", "texto": "END THE DAY"},
+				{"id": "erupcao", "texto": "SOLAR STORM NOW"},
 				{"id": "minigame", "texto": "MINIGAME", "valor": mg},
 				{"id": "noclip", "texto": "NOCLIP", "liga": noclip},
 				{"id": "vel", "texto": "SPEED", "valor": "%dX" % int(VELOCIDADES[i_vel])},
@@ -271,11 +274,15 @@ func _ativar(id: String) -> void:
 		"tudo_feito":
 			_concluir(mapa.tarefas)
 		"zerar":
-			mapa.feitas.clear()
-			mapa.usadas.clear()
-			for m in mapa.marcas.values():
-				m.visible = true
-			_avisar("TASKS RESET")
+			mapa.zerar_dia()
+			_avisar("TODAY'S TASKS AND ACTIONS RESET")
+		"erupcao":
+			_fechar()
+			if not mapa.erupcao_agora_dev():
+				mapa._avisar("CAN'T START THE STORM NOW")
+		"fim_dia":
+			_fechar()
+			mapa.encerrar_dia()
 		"minigame":
 			if minigames.is_empty():
 				_avisar("NO MINIGAMES")

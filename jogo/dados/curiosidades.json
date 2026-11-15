@@ -1,0 +1,36 @@
+
+{
+  "_leia": "Curiosidade científica do relatório final. A chave é a decisão de maior impacto da partida (polo, borda, planicie, energia_baixa, oxigenio_baixa, comida_baixa, condicao_baixa); sem relação, usa o local de pouso. Só letras sem acento, números e . ! : - / ? > ' , + ( ) % para caber na fonte do jogo. Cada texto cabe em 3 linhas (até uns 195 caracteres).",
+  "polo": {
+	"titulo": "WATER ON THE MOON",
+	"texto": "Permanently shadowed regions near the lunar poles can preserve water ice because they receive very little sunlight. NASA's Artemis program looks at the south polar region."
+  },
+  "borda": {
+	"titulo": "LUNAR SUNLIGHT",
+	"texto": "Some crater rims near the lunar poles stay in sunlight for long stretches of the year. Illumination is a key factor when planning where to land and where to place solar panels."
+  },
+  "planicie": {
+	"titulo": "CHOOSING A LANDING SITE",
+	"texto": "Mission planners weigh light, terrain, communication and distance to science targets when choosing a lunar landing site. No site is perfect, so every choice is a compromise."
+  },
+  "energia_baixa": {
+	"titulo": "SURVIVING THE LUNAR NIGHT",
+	"texto": "A night on the Moon lasts about 14 Earth days. Missions survive it with batteries, heaters and sometimes nuclear power sources, because solar panels make no power in the dark."
+  },
+  "oxigenio_baixa": {
+	"titulo": "LIFE SUPPORT",
+	"texto": "The International Space Station recycles water and splits it into oxygen with electrolysis. It also removes CO2 from the air to keep the cabin breathable for the crew."
+  },
+  "comida_baixa": {
+	"titulo": "GROWING FOOD IN SPACE",
+	"texto": "Astronauts on the International Space Station have grown and eaten lettuce and other crops. Fresh food from onboard gardens could reduce resupply needs on long missions."
+  },
+  "condicao_baixa": {
+	"titulo": "CREW HEALTH",
+	"texto": "Mission planners track crew sleep, workload and exercise. Astronauts exercise about two hours a day on the space station, because tired or weak crews make more mistakes."
+  },
+  "padrao": {
+	"titulo": "SPACE OPERATIONS",
+	"texto": "Real space missions plan for power, air, food and crew health together, because a problem in one of them quickly spreads to the others."
+  }
+}
