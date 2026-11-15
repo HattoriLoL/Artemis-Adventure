@@ -15,6 +15,7 @@ const VERMELHO := Color("#cf573c")
 const ESCURO := Color("#394a50")
 const AZUL := Color("#73bed3")
 const SEM_SOL := "NO SUN TODAY: NO EFFECT"
+const TEMPO_CONFIRMAR := 3.0       # quanto tempo o "E AGAIN: END THE DAY NOW" espera o segundo E
 
 var mapa: Dictionary
 var salas := {}                    # nome -> {"dados": ..., "pos": Vector2}
@@ -36,6 +37,7 @@ var demo := false
 var t := 0.0
 var escuro := 0.0
 var dormindo := false
+var confirmar_dormir := 0.0        # > 0: o jogador apertou E na cama com ações sobrando; outro E encerra o dia
 var sala_atual := ""
 var fim := false
 var variacoes := {}                # indicador -> [quanto mudou, tempo na tela]: o "+15" ao lado da barra
@@ -135,8 +137,11 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		add_child(m)
 		marcas[item["id"]] = m
 	for it in dados.get("interacoes", []):
-		interacoes.append({"sala": nome, "id": nome + "/" + str(it["id"]), "texto": it["texto"],
-			"acao": it.get("acao", ""), "pos": pos + Vector2(it["x"], it["y"])})
+		var item := {"sala": nome, "id": nome + "/" + str(it["id"]), "texto": it["texto"],
+			"acao": it.get("acao", ""), "pos": pos + Vector2(it["x"], it["y"])}
+		if it.has("acordar"):                        # cama: onde o astronauta aparece de manhã (fora do alcance do E)
+			item["acordar"] = pos + Vector2(it["acordar"][0], it["acordar"][1])
+		interacoes.append(item)
 
 
 func _jogador() -> void:
@@ -270,6 +275,7 @@ func _perto(lista: Array, feito: Dictionary) -> Dictionary:
 func _process(delta: float) -> void:
 	t += delta
 	t_aviso = max(0.0, t_aviso - delta)
+	confirmar_dormir = max(0.0, confirmar_dormir - delta)
 	for nome in variacoes.keys():
 		variacoes[nome][1] -= delta
 		if variacoes[nome][1] <= 0.0:
@@ -377,10 +383,16 @@ func _concluir_tarefa(tf: Dictionary, fator := 1.0, perdeu := false) -> void:
 
 
 func _interagir(it: Dictionary) -> void:
-	usadas[it["id"]] = true
 	if it["acao"] == "dormir":
+		# com ações sobrando, o primeiro E só pergunta: dormir encerra o dia e as ações que sobraram se perdem
+		if ciclo.acoes_restantes() > 0 and confirmar_dormir <= 0.0:
+			confirmar_dormir = TEMPO_CONFIRMAR
+			return
+		confirmar_dormir = 0.0
+		usadas[it["id"]] = true
 		encerrar_dia(it["id"])
 	else:
+		usadas[it["id"]] = true
 		Recursos.aplicar(it["id"])
 
 
@@ -396,7 +408,17 @@ func encerrar_dia(id_cama := "") -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "escuro", 1.0, 0.8)
 	await tw.finished
+	_levantar(id_cama)
 	ciclo.fechar_dia(id_cama)
+
+
+## Com a tela escura, o astronauta sai da cama para o ponto "acordar": de manhã ele não fica em cima dela, onde um
+## E a mais (o mesmo que fecha o boletim) faria dormir de novo e perder o dia.
+func _levantar(id_cama: String) -> void:
+	for it in interacoes:
+		if it["id"] == id_cama and it.has("acordar"):
+			jogador.global_position = it["acordar"]
+			jogador.reset_physics_interpolation()
 
 
 func _amanhecer() -> void:
@@ -513,7 +535,12 @@ func _desenha_hud() -> void:
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
-	if not tf.is_empty() and not dormindo:
+	if not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
+		var n := ciclo.acoes_restantes()
+		Fonte.centralizado(hud, "E AGAIN: END THE DAY NOW", 160, 154, AMARELO)
+		Fonte.centralizado(hud, "%d %s LEFT WILL BE LOST" % [n, "ACTION" if n == 1 else "ACTIONS"], 160, 162,
+			VERMELHO)
+	elif not tf.is_empty() and not dormindo:
 		var efeito := texto_previa(tf["id"])
 		var y_e := 160 if efeito == "" else 154
 		Fonte.centralizado(hud, "E: " + str(tf["texto"]), 160, y_e, AMARELO)
