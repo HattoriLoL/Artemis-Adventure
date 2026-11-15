@@ -104,6 +104,13 @@
    "y": 100,
    "texto": "REMOVE THE MOON DUST",
    "minigame": "res://cenas/minigame_chuveiro.tscn"
+  },
+  {
+   "id": "vitais",
+   "x": 276,
+   "y": 128,
+   "texto": "CHECK THE CREW VITALS",
+   "minigame": "res://cenas/minigame_vitais.tscn"
   }
  ],
  "inicio": [

@@ -16,6 +16,7 @@ const ARQUIVO := "res://dados/dias.json"
 const TELA_POUSO := "res://cenas/escolha_pouso.tscn"
 const EVENTOS_SOLARES := "res://dados/eventos_solares.json"
 const BLINDAGEM := "abrigo/blindagem"         # o dia da erupção sempre oferece reforçar a blindagem
+const VITAIS := "habitat/vitais"              # e o dia seguinte a ela, o exame dos sinais vitais da tripulação
 const LARANJA := Color("#de9e41")
 
 const PRETO := Color("#090a14")
@@ -206,6 +207,8 @@ func _comecar_dia() -> void:
 	hoje = regras["dias"][Missao.dia - 1]["tarefas"].duplicate()
 	if Missao.dia == Missao.dia_erupcao and not BLINDAGEM in hoje:
 		hoje.append(BLINDAGEM)
+	if Missao.dia_erupcao > 0 and Missao.dia == Missao.dia_erupcao + 1 and not VITAIS in hoje:
+		hoje.append(VITAIS)
 	acoes = 0
 	Recursos.noite = eh_noite(Missao.dia)
 	Missao.historico.append({"dia": Missao.dia, "noite": Recursos.noite, "acoes": [], "ids": [], "valores": {}})
@@ -392,6 +395,8 @@ func _clima_espacial(largura: float) -> Array[String]:
 		return quebrar("SPACE WEATHER: solar activity rising. A solar storm is likely tomorrow. Reinforcing the shielding cuts the dose. Details on the navigation computer.", largura)
 	if Missao.dia == Missao.dia_erupcao:
 		return quebrar("SOLAR STORM TODAY: when the alarm sounds, run to the shielded shelter.", largura)
+	if Missao.dia == Missao.dia_erupcao + 1:
+		return quebrar("AFTER THE STORM: the crew took a radiation dose. Check their vitals at the bunks in the habitat.", largura)
 	return []
 
 
