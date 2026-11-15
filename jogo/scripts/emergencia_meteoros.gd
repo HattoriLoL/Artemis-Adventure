@@ -6,7 +6,7 @@ extends Node2D
 ## Gera uma estação de emergência com contorno pulsante na sala sorteada.
 ## Se o jogador interagir a tempo (tecla E), os escudos seguram o impacto sem danos.
 ## Se o tempo zerar, a base sofre tremor de tela (0.5s) e avaria nos recursos.
-## Atalho F8 disponível para teste imediato de debug.
+## Para testar sem esperar o sorteio: aba DEV do menu de pausa (só rodando pelo editor).
 
 const Fonte = preload("res://scripts/fonte.gd")
 
