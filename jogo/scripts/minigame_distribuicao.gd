@@ -37,11 +37,11 @@ const JANELA := Vector2(64, 29)                   # canto do fundo (192x121) na 
 const TAM_JANELA := Vector2(192, 121)
 const BOTAO_X := Rect2(245, 17, 8, 8)
 # dentro do fundo: o x do centro de cada trilho, o topo e a base da fenda e o y das plaquinhas dos nomes
-const TRILHOS_X := [52.0, 96.0, 140.0]
+const TRILHOS_X := [56.0, 96.0, 136.0]            # fendas do fundo.png em x 52..59, 92..99 e 132..139
 const FENDA_LARG := 8.0
-const FENDA_TOPO := 16.0
-const FENDA_BASE := 82.0
-const PLACA_Y := 88.0
+const FENDA_TOPO := 22.0
+const FENDA_BASE := 88.0                           # a fenda vai de y 22 a 87 (66 px)
+const PLACA_Y := 96.0                              # miolo das plaquinhas (30x7 com o canto em y 95)
 
 const NOMES := ["SUPPORT", "BASE", "SHIELDS"]
 const FAIXAS := [[0.40, 0.65], [0.50, 0.75], [0.35, 0.60]]   # faixa verde de cada canal (fração da fenda)
