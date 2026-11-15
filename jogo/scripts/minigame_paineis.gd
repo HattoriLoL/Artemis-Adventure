@@ -56,7 +56,7 @@ const TEMPO_ZERO := 45.0                         # aqui já não rende nada
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var pos_escova := Vector2(96, 54)
-var manchas: Array = []                          # {pos, placa, limpo (0 a 1), pixels: [[offset, cor, limiar]]}
+var manchas: Array = []                          # {pos, placa, limpo, fim, pixels: [[offset, cor, limiar]]}
 var por_placa := [0, 0, 0]                       # manchas que cada painel tinha no começo
 var t_brilho := [-1.0, -1.0, -1.0]
 var po: Array = []                               # nuvens de pó: [pos, vel, vida, vida_total], dentro do campo
@@ -142,7 +142,12 @@ func _criar_mancha(pos: Vector2, placa: int) -> Dictionary:
 	for k in randi_range(2, 5):                   # uns grãos soltos em volta
 		var a := randf() * TAU
 		pixels.append([(Vector2(cos(a), sin(a)) * (r + randf_range(1.0, 2.5))).round(), METAL, randf_range(0.1, 0.4)])
-	return {"pos": pos, "placa": placa, "limpo": 0.0, "pixels": pixels}
+	# a mancha sai quando o último pixel some (o maior limiar), e não em limpo = 1: senão ela ficava invisível mas
+	# contando, e o minigame não terminava depois de o jogador "limpar tudo"
+	var fim := 0.0
+	for px in pixels:
+		fim = maxf(fim, px[2])
+	return {"pos": pos, "placa": placa, "limpo": 0.0, "fim": minf(fim, 1.0), "pixels": pixels}
 
 
 ## x da borda esquerda e da direita da placa na linha y (dentro do campo).
@@ -178,7 +183,7 @@ func _limpar(delta: float) -> void:
 			continue
 		limpando = true
 		m["limpo"] += delta / TEMPO
-		if m["limpo"] >= 1.0:
+		if m["limpo"] >= m["fim"]:
 			manchas.erase(m)
 			_soltar_po(m["pos"], 6)
 			if _restam(m["placa"]) == 0:
