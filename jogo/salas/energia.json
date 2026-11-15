@@ -137,7 +137,8 @@
    "id": "tanques",
    "x": 100,
    "y": 128,
-   "texto": "CHECK THE TANKS"
+   "texto": "CHECK THE TANKS",
+   "minigame": "res://cenas/minigame_tanques.tscn"
   }
  ],
  "inicio": [
