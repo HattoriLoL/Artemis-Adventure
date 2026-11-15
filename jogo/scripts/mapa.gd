@@ -264,6 +264,12 @@ func _interface() -> void:
 	var menu := MenuPausa.new()                   # Esc; fica por último na árvore para ver o Esc antes do minigame
 	menu.mapa = self
 	add_child(menu)
+	var ilum := preload("res://scripts/iluminacao_emergencia.gd").new()
+	ilum.name = "IluminacaoEmergencia"
+	add_child(ilum)
+	var emerg := preload("res://scripts/emergencia_eletrica.gd").new()
+	emerg.name = "EmergenciaEletrica"
+	add_child(emerg)
 
 
 func pode_pausar() -> bool:
@@ -333,8 +339,15 @@ func _sala_de(pos: Vector2) -> String:
 func _perto(lista: Array, feito: Dictionary) -> Dictionary:
 	var melhor := {}
 	var dist := 20.0
+	var em_emergencia: bool = false
+	if has_node("EmergenciaEletrica"):
+		var em_node = get_node("EmergenciaEletrica")
+		if "emergencia_ativa" in em_node:
+			em_emergencia = bool(em_node.emergencia_ativa)
+
 	for item in lista:
-		if lista == tarefas and (feito.has(item["id"]) or not ciclo.disponivel(item["id"])):
+		var eh_terminal_emergencia: bool = em_emergencia and item.get("id") == "energia/terminal"
+		if lista == tarefas and not eh_terminal_emergencia and (feito.has(item["id"]) or not ciclo.disponivel(item["id"])):
 			continue
 		var d := jogador.global_position.distance_to(item["pos"])
 		if d < dist:
@@ -389,6 +402,13 @@ func _tarefa(id: String) -> Dictionary:
 
 
 func _usar(tf: Dictionary) -> void:
+	if tf.get("id") == "energia/terminal" and has_node("EmergenciaEletrica"):
+		var em_node = get_node("EmergenciaEletrica")
+		if "emergencia_ativa" in em_node and em_node.emergencia_ativa:
+			var tf_emerg: Dictionary = tf.duplicate()
+			tf_emerg["emergencia"] = true
+			abrir_minigame(tf.get("minigame", "res://cenas/minigame_terminal.tscn"), tf_emerg)
+			return
 	if tf.get("minigame", "") != "":
 		abrir_minigame(tf["minigame"], tf)
 		return
@@ -457,14 +477,18 @@ func _fechar_minigame(mg: Control) -> void:
 ## falhou; a tarefa gasta a ação do dia do mesmo jeito, mas não rende nada.
 func _concluir_tarefa(tf: Dictionary, fator := 1.0, perdeu := false) -> void:
 	jogador.usar()
-	feitas[tf["id"]] = true
+	var eh_emergencia: bool = bool(tf.get("emergencia", false))
+	if not eh_emergencia:
+		feitas[tf["id"]] = true
 	var texto := str(tf["texto"])
-	ciclo.registrar({"texto": texto + " (FAILED)"} if perdeu else tf)   # gasta uma das ações do dia
+	if not eh_emergencia:
+		ciclo.registrar({"texto": texto + " (FAILED)"} if perdeu else tf)   # gasta uma das ações do dia
 	_atualizar_marcas()
 	if perdeu:
 		_avisar("FAILED: " + texto)
 	else:
-		Recursos.aplicar(tf["id"], fator)
+		if not eh_emergencia:
+			Recursos.aplicar(tf["id"], fator)
 		_avisar(("DONE: " if fator >= 1.0 else "DONE WITH ERRORS: ") + texto)
 	if ciclo.acoes_restantes() == 0:
 		await get_tree().create_timer(2.0).timeout
