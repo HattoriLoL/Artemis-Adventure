@@ -77,9 +77,10 @@ func ocupado() -> bool:
 	return painel != "" or Engine.get_process_frames() == quadro_fechou
 
 
-## As noites do local (dias_de_noite) começam no dia primeira_noite: nelas os painéis não geram energia.
+## As noites são do local de pouso: começam no primeira_noite do local (sem ele, o de dias.json) e duram
+## dias_de_noite. Nelas os painéis não geram energia.
 func eh_noite(dia: int) -> bool:
-	var primeira := int(regras["primeira_noite"])
+	var primeira := int(Missao.condicoes.get("primeira_noite", regras["primeira_noite"]))
 	return dia >= primeira and dia < primeira + int(Missao.condicoes.get("dias_de_noite", 0))
 
 

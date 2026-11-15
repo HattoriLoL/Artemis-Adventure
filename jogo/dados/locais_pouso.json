@@ -7,7 +7,7 @@
   "cor": "#e8c170",
   "sol": 3,
   "gelo": 1,
-  "condicoes": {"energia": 80, "oxigenio": 65, "comida": 70, "condicao": 80, "geracao_solar": 1.0, "dias_de_noite": 1, "gelo_por_coleta": 0.5}
+  "condicoes": {"energia": 80, "oxigenio": 65, "comida": 70, "condicao": 80, "geracao_solar": 1.0, "primeira_noite": 5, "dias_de_noite": 1, "gelo_por_coleta": 0.5}
  },
  {
   "id": "polo",
@@ -17,7 +17,7 @@
   "cor": "#73bed3",
   "sol": 1,
   "gelo": 3,
-  "condicoes": {"energia": 60, "oxigenio": 75, "comida": 70, "condicao": 80, "geracao_solar": 0.7, "dias_de_noite": 3, "gelo_por_coleta": 1.5}
+  "condicoes": {"energia": 60, "oxigenio": 75, "comida": 70, "condicao": 80, "geracao_solar": 0.7, "primeira_noite": 3, "dias_de_noite": 3, "gelo_por_coleta": 1.5}
  },
  {
   "id": "planicie",
@@ -27,6 +27,6 @@
   "cor": "#a8b5b2",
   "sol": 2,
   "gelo": 2,
-  "condicoes": {"energia": 70, "oxigenio": 70, "comida": 70, "condicao": 80, "geracao_solar": 0.85, "dias_de_noite": 2, "gelo_por_coleta": 1.0}
+  "condicoes": {"energia": 70, "oxigenio": 70, "comida": 70, "condicao": 80, "geracao_solar": 0.85, "primeira_noite": 4, "dias_de_noite": 2, "gelo_por_coleta": 1.0}
  }
 ]
