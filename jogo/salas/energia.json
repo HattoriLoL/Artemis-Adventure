@@ -125,7 +125,8 @@
    "id": "terminal",
    "x": 62,
    "y": 106,
-   "texto": "RESTART THE TERMINAL"
+   "texto": "RESTART THE TERMINAL",
+   "minigame": "res://cenas/minigame_terminal.tscn"
   },
   {
    "id": "distribuicao",
