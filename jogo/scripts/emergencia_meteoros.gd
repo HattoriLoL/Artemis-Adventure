@@ -23,20 +23,25 @@ const CINZA_ESC := Color("#394a50")
 const AZUL := Color("#73bed3")
 
 const DURACAO_JANELA: float = 25.0
-const DISTANCIA_USO: float = 26.0
+const DISTANCIA_USO: float = 30.0
 
-const SETORES: Array[String] = ["energia", "abrigo", "suporte"]
+const SETORES: Array[String] = ["energia", "habitat", "suporte", "abrigo", "estufa"]
 
 const NOMES_SETORES: Dictionary = {
 	"energia": "POWER ROOM",
+	"habitat": "HABITAT",
+	"suporte": "LIFE SUPPORT",
 	"abrigo": "SHELTER",
-	"suporte": "LIFE SUPPORT"
+	"estufa": "GREENHOUSE"
 }
 
+# Coordenadas fixadas nas PAREDES SUPERIORES de cada sala (nunca no meio do chão!)
 const POSICOES_SETORES: Dictionary = {
-	"energia": Vector2(243, 153),
-	"abrigo": Vector2(776, 553),
-	"suporte": Vector2(248, 953)
+	"energia": Vector2(198, 106),
+	"habitat": Vector2(188, 508),
+	"suporte": Vector2(188, 906),
+	"abrigo": Vector2(696, 510),
+	"estufa": Vector2(686, 910)
 }
 
 var mapa: Node2D = null
@@ -157,6 +162,8 @@ func _process(delta: float) -> void:
 
 	if t_banner_resolucao > 0.0:
 		t_banner_resolucao = maxf(0.0, t_banner_resolucao - delta)
+		if t_banner_resolucao <= 0.0:
+			queue_redraw()
 
 
 func disparar(setor_forcado: String = "") -> void:
@@ -169,7 +176,7 @@ func disparar(setor_forcado: String = "") -> void:
 	else:
 		setor_atual = SETORES.pick_random()
 
-	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(243, 153))
+	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(198, 106))
 	tempo_restante = DURACAO_JANELA
 	ativa = true
 	alavanca_puxada = false
@@ -265,98 +272,98 @@ func _aplicar_dano_recursos() -> void:
 				Recursos.regras["efeitos"][id_emergencia] = {"condicao": -15.0, "oxigenio": -10.0}
 			"suporte":
 				Recursos.regras["efeitos"][id_emergencia] = {"oxigenio": -15.0, "condicao": -10.0}
+			"habitat":
+				Recursos.regras["efeitos"][id_emergencia] = {"comida": -10.0, "condicao": -15.0}
+			"estufa":
+				Recursos.regras["efeitos"][id_emergencia] = {"comida": -15.0, "oxigenio": -10.0}
 
 	Recursos.aplicar(id_emergencia)
 
 
 func _draw() -> void:
-	# Desenha as Alavancas de Emergência nas 3 salas da base
-	for s: String in SETORES:
-		var pos: Vector2 = POSICOES_SETORES[s]
-		var eh_alvo_ativo: bool = ativa and s == setor_atual
-		var eh_alvo_resolvido: bool = (t_banner_resolucao > 0.0) and (s == setor_atual)
-		_desenhar_estacao_alavanca(pos, eh_alvo_ativo, eh_alvo_resolvido)
+	# A alavanca na parede SÓ APARECE durante a emergência ativa e no feedback de resolução!
+	# Quando não há alarme, a sala fica 100% limpa, sem nenhum objeto no caminho.
+	if not ativa and t_banner_resolucao <= 0.0:
+		return
+
+	if setor_atual != "" and POSICOES_SETORES.has(setor_atual):
+		var pos: Vector2 = POSICOES_SETORES[setor_atual]
+		_desenhar_estacao_alavanca(pos, ativa, t_banner_resolucao > 0.0)
 
 
 func _desenhar_estacao_alavanca(p: Vector2, alvo_ativo: bool, alvo_resolvido: bool) -> void:
 	var pulso: float = (sin(t_animacao * 8.0) + 1.0) * 0.5
 	var cor_pulso: Color = VERMELHO.lerp(AMARELO, pulso)
 
-	# 1. Retículo / Perímetro Tático quando a emergência está ativa nesta sala
-	if alvo_ativo:
-		var r_tatico := Rect2(p.x - 13, p.y - 25, 26, 30)
-		draw_rect(r_tatico, Color(cor_pulso, 0.25), false, 1.0)
-		var d: float = 13.0
-		var tam_c: float = 4.0
-		# Cantoneiras táticas pulsantes
-		draw_line(p + Vector2(-d, -25), p + Vector2(-d + tam_c, -25), cor_pulso, 1.2)
-		draw_line(p + Vector2(-d, -25), p + Vector2(-d, -25 + tam_c), cor_pulso, 1.2)
-		draw_line(p + Vector2(d, -25), p + Vector2(d - tam_c, -25), cor_pulso, 1.2)
-		draw_line(p + Vector2(d, -25), p + Vector2(d, -25 + tam_c), cor_pulso, 1.2)
-		draw_line(p + Vector2(-d, 5), p + Vector2(-d + tam_c, 5), cor_pulso, 1.2)
-		draw_line(p + Vector2(-d, 5), p + Vector2(-d, 5 - tam_c), cor_pulso, 1.2)
-		draw_line(p + Vector2(d, 5), p + Vector2(d - tam_c, 5), cor_pulso, 1.2)
-		draw_line(p + Vector2(d, 5), p + Vector2(d, 5 - tam_c), cor_pulso, 1.2)
+	# 1. Demarcação tática no chão em frente à parede
+	var r_piso := Rect2(p.x - 12, p.y + 4, 24, 12)
+	draw_rect(r_piso, Color(cor_pulso, 0.15))
+	draw_rect(r_piso, Color(cor_pulso, 0.4), false, 1.0)
 
-	# 2. Pedestal Metálico e Caixa da Alavanca
-	draw_rect(Rect2(p.x - 8, p.y - 15, 16, 20), PRETO)
-	draw_rect(Rect2(p.x - 7, p.y - 14, 14, 18), CINZA_ESC)
-	draw_rect(Rect2(p.x - 6, p.y - 13, 12, 16), FUNDO)
+	# 2. Painel Embutido na Parede (Wall-mounted)
+	# Placa traseira de aço
+	draw_rect(Rect2(p.x - 8, p.y - 14, 16, 17), PRETO)
+	draw_rect(Rect2(p.x - 7, p.y - 13, 14, 15), CINZA_ESC)
+	draw_rect(Rect2(p.x - 6, p.y - 12, 12, 13), FUNDO)
 
-	# Faixas Zebradas de Perigo (Hazard Stripes) na base do console
+	# 4 Parafusos metálicos de fixação na parede
+	draw_rect(Rect2(p.x - 6, p.y - 12, 1, 1), BRANCO)
+	draw_rect(Rect2(p.x + 5, p.y - 12, 1, 1), BRANCO)
+	draw_rect(Rect2(p.x - 6, p.y - 1, 1, 1), CINZA)
+	draw_rect(Rect2(p.x + 5, p.y - 1, 1, 1), CINZA)
+
+	# Faixas zebradas de perigo na parte inferior da placa de parede
 	for stripe: int in 4:
-		var xs: float = p.x - 6.0 + float(stripe) * 3.0
-		draw_rect(Rect2(xs, p.y + 1, 2.0, 3.0), AMARELO if stripe % 2 == 0 else PRETO)
+		var xs: float = p.x - 5.0 + float(stripe) * 2.5
+		draw_rect(Rect2(xs, p.y - 4, 2.0, 3.0), AMARELO if stripe % 2 == 0 else PRETO)
 
-	# Canaleta / Fenda vertical de acionamento da alavanca
-	draw_rect(Rect2(p.x - 2, p.y - 11, 4, 10), Color("#0a1017"))
-	draw_rect(Rect2(p.x - 1, p.y - 10, 2, 8), PRETO)
+	# Canaleta / ranhura vertical da alavanca
+	draw_rect(Rect2(p.x - 2, p.y - 11, 4, 8), PRETO)
 
-	# Pivô da alavanca (eixo circular metálico)
-	var pivo := Vector2(p.x, p.y - 3)
-	draw_circle(pivo, 2.2, CINZA)
-	draw_circle(pivo, 1.2, BRANCO)
+	# Pivô central da alavanca na parede
+	var pivo := Vector2(p.x, p.y - 4)
+	draw_circle(pivo, 2.0, CINZA)
+	draw_circle(pivo, 1.0, BRANCO)
 
-	# 3. Braço e Manopla da Alavanca Mecânica
+	# 3. Braço e Manopla da Alavanca
 	var p_fim_braco: Vector2
 	var cor_manopla: Color
 
 	if alvo_resolvido and alavanca_puxada:
-		# Posição PUXADA PARA BAIXO (ativada / escudos travados)
-		p_fim_braco = pivo + Vector2(5.0, 3.0)
+		# Posição PUXADA PARA BAIXO (escudos acionados)
+		p_fim_braco = pivo + Vector2(4.0, 4.0)
 		draw_line(pivo, p_fim_braco, Color("#a8b5b2"), 1.8)
 		cor_manopla = VERDE_LIMA
-		draw_circle(p_fim_braco, 2.6, cor_manopla)
+		draw_circle(p_fim_braco, 2.4, cor_manopla)
 		draw_rect(Rect2(p_fim_braco.x - 0.5, p_fim_braco.y - 0.5, 1.0, 1.0), BRANCO)
 	elif alvo_ativo:
-		# Posição ARMADA PARA CIMA (aguardando puxar)
-		p_fim_braco = pivo + Vector2(-5.0, -7.0)
+		# Posição ARMADA PARA CIMA (aguardando acionamento)
+		p_fim_braco = pivo + Vector2(-4.0, -7.0)
 		draw_line(pivo, p_fim_braco, BRANCO, 1.8)
 		cor_manopla = VERMELHO_CLARO if fmod(t_animacao, 0.2) < 0.1 else AMARELO
-		draw_circle(p_fim_braco, 2.8, cor_manopla)
-		draw_circle(p_fim_braco, 1.4, BRANCO)
+		draw_circle(p_fim_braco, 2.6, cor_manopla)
+		draw_circle(p_fim_braco, 1.2, BRANCO)
 	else:
-		# Posição NEUTRA / REPOUSO em salas sem alarme
-		p_fim_braco = pivo + Vector2(0.0, -6.5)
-		draw_line(pivo, p_fim_braco, Color("#819796"), 1.6)
+		p_fim_braco = pivo + Vector2(0.0, -6.0)
+		draw_line(pivo, p_fim_braco, Color("#819796"), 1.5)
 		cor_manopla = Color("#852828")
-		draw_circle(p_fim_braco, 2.2, cor_manopla)
+		draw_circle(p_fim_braco, 2.0, cor_manopla)
 
-	# 4. Giroflex / Alerta no Topo da Caixa da Alavanca
-	var p_strobe := Vector2(p.x, p.y - 16)
-	draw_rect(Rect2(p.x - 3, p.y - 16, 6, 2), CINZA)
+	# 4. Giroflex / Alerta no topo da placa de parede
+	var p_strobe := Vector2(p.x, p.y - 15)
+	draw_rect(Rect2(p.x - 3, p.y - 15, 6, 2), CINZA)
 	if alvo_ativo:
 		var aceso: bool = fmod(t_animacao, 0.24) < 0.12
 		var c_luz: Color = BRANCO if aceso else VERMELHO_CLARO
-		draw_circle(p_strobe, 6.0, Color(VERMELHO.r, VERMELHO.g, VERMELHO.b, 0.35))
-		draw_rect(Rect2(p.x - 2, p.y - 19, 4, 3), c_luz)
+		draw_circle(p_strobe, 7.0, Color(VERMELHO.r, VERMELHO.g, VERMELHO.b, 0.35))
+		draw_rect(Rect2(p.x - 2, p.y - 18, 4, 3), c_luz)
 	elif alvo_resolvido and alavanca_puxada:
-		draw_circle(p_strobe, 4.0, Color(VERDE.r, VERDE.g, VERDE.b, 0.3))
-		draw_rect(Rect2(p.x - 2, p.y - 19, 4, 3), VERDE_LIMA)
+		draw_circle(p_strobe, 5.0, Color(VERDE.r, VERDE.g, VERDE.b, 0.35))
+		draw_rect(Rect2(p.x - 2, p.y - 18, 4, 3), VERDE_LIMA)
 	else:
-		draw_rect(Rect2(p.x - 2, p.y - 19, 4, 3), Color("#394a50"))
+		draw_rect(Rect2(p.x - 2, p.y - 18, 4, 3), Color("#394a50"))
 
-	# 5. Indicador Flutuante com Seta e Texto "LEVER" quando ativa
+	# 5. Indicador Flutuante com Seta e Texto "LEVER" quando em emergência
 	if alvo_ativo:
 		var y_flutuante: float = p.y - 25.0 + round(sin(t_animacao * 6.0) * 2.0)
 		var pts := PackedVector2Array([
