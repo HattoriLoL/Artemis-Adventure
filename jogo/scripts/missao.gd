@@ -68,4 +68,3 @@ func reiniciar() -> void:
 	eventos = []
 	decisao_impacto = {}
 	donki = {}
-

@@ -1,0 +1,56 @@
+[gd_scene format=3 uid="uid://citac88qq6wnl"]
+
+[ext_resource type="Script" uid="uid://bibg7aep84ijq" path="res://scripts/minigame_irrigacao.gd" id="1_irrig"]
+
+[node name="MinigameIrrigacao" type="Control" unique_id=1682721457]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_irrig")
+
+[node name="Fundo" type="ColorRect" parent="." unique_id=1756500975]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0.03529412, 0.039215688, 0.078431375, 1)
+
+[node name="Tanque" type="ColorRect" parent="." unique_id=102485470]
+layout_mode = 0
+offset_left = 52.0
+offset_top = 76.0
+offset_right = 80.0
+offset_bottom = 100.0
+color = Color(0.35686275, 0.60784316, 0.8352941, 1)
+
+[node name="Cama1" type="ColorRect" parent="." unique_id=64424264]
+layout_mode = 0
+offset_left = 244.0
+offset_top = 42.0
+offset_right = 272.0
+offset_bottom = 70.0
+color = Color(0.41960785, 0.2901961, 0.18039216, 1)
+
+[node name="Cama2" type="ColorRect" parent="." unique_id=1872812282]
+layout_mode = 0
+offset_left = 244.0
+offset_top = 74.0
+offset_right = 272.0
+offset_bottom = 102.0
+color = Color(0.41960785, 0.2901961, 0.18039216, 1)
+
+[node name="Cama3" type="ColorRect" parent="." unique_id=2041273863]
+layout_mode = 0
+offset_left = 244.0
+offset_top = 106.0
+offset_right = 272.0
+offset_bottom = 134.0
+color = Color(0.41960785, 0.2901961, 0.18039216, 1)
+
+[node name="Grade" type="Control" parent="." unique_id=842307216]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Textos" type="Control" parent="." unique_id=609406235]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
