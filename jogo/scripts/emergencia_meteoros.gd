@@ -123,8 +123,10 @@ func _sortear_dia() -> void:
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo:
-		if ev.physical_keycode == KEY_F8:
-			print("EmergenciaMeteoros: Disparo manual de teste (F8)")
+		# Teclas de atalho para simulação/teste:
+		# 'M' (Meteoro), '8' ou F12 (evitando F8 que fecha o jogo no editor do Godot)
+		if ev.physical_keycode in [KEY_M, KEY_8, KEY_F12, KEY_F8]:
+			print("EmergenciaMeteoros: Disparo manual de teste ativado via tecla")
 			disparar()
 			get_viewport().set_input_as_handled()
 
@@ -284,7 +286,7 @@ func _aplicar_dano_recursos() -> void:
 func _draw() -> void:
 	# As alavancas são equipamentos permanentes da base lunar fixados nas paredes!
 	# Nunca somem: em repouso ficam em standby; sob alarme, a sala alvo dispara o giroflex.
-	for s: String in SETORES:
+	for s in SETORES:
 		var pos: Vector2 = POSICOES_SETORES[s]
 		var eh_alvo_ativo: bool = ativa and (s == setor_atual)
 		var eh_alvo_resolvido: bool = (t_banner_resolucao > 0.0) and (s == setor_atual)
