@@ -47,6 +47,7 @@ const MARCA_PC := Vector2(13, -3)  # logo acima dos monitores da mesa (o ponto d
 const MESA_PC := Vector2(13, 50)   # pé da mesa, na borda de baixo da sala (no minimapa, longe do ícone do gás)
 var pc_visto_dia := 0              # o dia em que o jogador abriu o computador pela última vez
 var jogador: CharacterBody2D
+var camera: Camera2D = null
 var hud: Control
 var camada_ui: CanvasLayer
 var ciclo: CicloDias               # ciclo_dias.gd: dias, ações, boletim, noite e fim da missão
@@ -66,6 +67,20 @@ var confirmar_dormir := 0.0        # > 0: o jogador apertou E na cama com açõe
 var sala_atual := ""
 var fim := false
 var variacoes := {}                # indicador -> [quanto mudou, tempo na tela]: o "+15" ao lado da barra
+
+# Sistema de Emergência e Impacto no Casco (Blindagem)
+var emergencia_blindagem := false
+var tempo_emergencia_blindagem := 0.0
+var t_shake := 0.0
+var forca_shake := 0.0
+var t_alarme_audio := 0.0
+var player_alarme_mapa: AudioStreamPlayer = null
+var som_sirene_mapa: AudioStreamWAV = null
+var som_impacto_mapa: AudioStreamWAV = null
+var dia_sorteado_impacto := 3
+var tempo_espera_impacto := 18.0
+var tempo_dia_ativo := 0.0
+var impacto_ja_ocorreu := false
 
 # robô do modo demo: anda pelo caminho da grade de navegação
 var astar: AStarGrid2D
@@ -107,6 +122,8 @@ func _ready() -> void:
 		portas.append(porta)
 	_navegacao()
 	_interface()
+	_criar_audio_mapa()
+	_sortear_impacto()
 	Recursos.iniciar()                             # começa com as condições do local de pouso
 	Recursos.mudou.connect(_recursos_mudaram)
 	ciclo.noite_fechou.connect(_amanhecer)
@@ -241,6 +258,7 @@ func _jogador() -> void:
 	cam.offset = Vector2(0, -14)
 	jogador.add_child(cam)
 	cam.make_current()
+	camera = cam
 
 
 func _navegacao() -> void:
@@ -308,7 +326,15 @@ func travar(v: bool) -> void:
 func novo_dia() -> void:
 	feitas.clear()
 	usadas.clear()
+	tempo_dia_ativo = 0.0
 	_atualizar_marcas()
+
+
+func _sortear_impacto() -> void:
+	dia_sorteado_impacto = 3 if randf() < 0.6 else 4
+	tempo_espera_impacto = randf_range(14.0, 24.0)
+	tempo_dia_ativo = 0.0
+	impacto_ja_ocorreu = false
 
 
 ## Aba DEV: refaz o dia (tarefas e ações).
@@ -320,7 +346,7 @@ func zerar_dia() -> void:
 ## A seta amarela só aparece nas tarefas que dá para fazer agora.
 func _atualizar_marcas() -> void:
 	for id in marcas:
-		marcas[id].visible = ciclo.disponivel(id) and not feitas.has(id)
+		marcas[id].visible = (ciclo.disponivel(id) and not feitas.has(id)) or (emergencia_blindagem and id == "abrigo/blindagem")
 
 
 func _recursos_mudaram(_id: String, mudancas: Dictionary) -> void:
@@ -361,7 +387,8 @@ func _perto(lista: Array, feito: Dictionary) -> Dictionary:
 	var melhor := {}
 	var dist := 20.0
 	for item in lista:
-		if lista == tarefas and (feito.has(item["id"]) or not ciclo.disponivel(item["id"])):
+		var eh_emergencia_blindagem: bool = emergencia_blindagem and item.get("id") == "abrigo/blindagem"
+		if lista == tarefas and not eh_emergencia_blindagem and (feito.has(item["id"]) or not ciclo.disponivel(item["id"])):
 			continue
 		var d := jogador.global_position.distance_to(item["pos"])
 		if d < dist:
@@ -375,6 +402,39 @@ func _process(delta: float) -> void:
 	t_aviso = max(0.0, t_aviso - delta)
 	confirmar_dormir = max(0.0, confirmar_dormir - delta)
 	desistir = max(0.0, desistir - delta)
+
+	# Tremor mecânico de impacto (Screen Shake)
+	if t_shake > 0.0:
+		t_shake = maxf(0.0, t_shake - delta)
+		if camera != null:
+			if t_shake > 0.0:
+				camera.offset = Vector2(0, -14) + Vector2(randf_range(-forca_shake, forca_shake), randf_range(-forca_shake, forca_shake))
+			else:
+				camera.offset = Vector2(0, -14)
+
+	# Atualização do estado de emergência de impacto no casco
+	if emergencia_blindagem and not dormindo and not fim:
+		tempo_emergencia_blindagem -= delta
+		t_alarme_audio -= delta
+		if t_alarme_audio <= 0.0:
+			t_alarme_audio = 2.8
+			_tocar_sirene_mapa()
+
+		if tempo_emergencia_blindagem <= 0.0:
+			_falhar_emergencia_casco()
+
+		if hud != null:
+			hud.queue_redraw()
+
+	# Agendamento autônomo do impacto de meteoros no casco durante a missão
+	if not impacto_ja_ocorreu and not emergencia_blindagem:
+		if not dormindo and not em_minigame and not fim and not ciclo.ocupado():
+			if Missao.dia == dia_sorteado_impacto:
+				tempo_dia_ativo += delta
+				if tempo_dia_ativo >= tempo_espera_impacto:
+					impacto_ja_ocorreu = true
+					disparar_impacto_casco()
+
 	aviso_desistir.visible = em_minigame and desistir > 0.0
 	if aviso_desistir.visible:
 		aviso_desistir.queue_redraw()
@@ -385,6 +445,10 @@ func _process(delta: float) -> void:
 	for id in marcas:
 		var item := _tarefa(id)
 		marcas[id].position.y = item["pos"].y - 44 + round(sin(t * 5.0) * 1.5)
+		if emergencia_blindagem and id == "abrigo/blindagem":
+			marcas[id].color = VERMELHO if fmod(t, 0.3) < 0.15 else AMARELO
+		else:
+			marcas[id].color = AMARELO
 	if marca_pc:
 		marca_pc.visible = pc_nao_lido() and not tempestade.ativo
 		marca_pc.position.y = pc_item["pos"].y + MARCA_PC.y + round(sin(t * 5.0 + 1.5) * 1.5)
@@ -440,6 +504,14 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 	var cena_mg: PackedScene = load(caminho)
 	var mg: Control = cena_mg.instantiate()
 	mg.demo = demo
+
+	# Configura modo de crise no minigame se a emergência de casco estiver ativa
+	if emergencia_blindagem and tf.get("id") == "abrigo/blindagem":
+		if "modo_emergencia" in mg:
+			mg.modo_emergencia = "METEOR_IMPACT"
+		if "tempo_restante_emergencia" in mg:
+			mg.tempo_restante_emergencia = tempo_emergencia_blindagem
+
 	camada_ui.add_child(mg)
 	camada_ui.move_child(aviso_desistir, -1)       # o aviso de desistir fica por cima do minigame
 	desistir = 0.0
@@ -447,13 +519,17 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 	mg.terminou.connect(func():
 		var taxa := clampf(float(mg.taxa_erro()), 0.0, 1.0) if mg.has_method("taxa_erro") else 0.0
 		_fechar_minigame(mg)
-		if not tf.is_empty():
+		if emergencia_blindagem and tf.get("id") == "abrigo/blindagem":
+			_concluir_emergencia_casco()
+		elif not tf.is_empty():
 			_concluir_tarefa(tf, Recursos.fator_erro(taxa))
 	)
 	# falhou (errou demais, ou desistiu depois de começar): a tarefa é perdida, gasta a ação do dia e não rende nada
 	var falhar := func():
 		_fechar_minigame(mg)
-		if not tf.is_empty():
+		if emergencia_blindagem and tf.get("id") == "abrigo/blindagem":
+			_falhar_emergencia_casco()
+		elif not tf.is_empty():
 			_concluir_tarefa(tf, 0.0, true)
 	if mg.has_signal("falhou"):
 		mg.falhou.connect(falhar)
@@ -728,9 +804,12 @@ func _desenha_hud() -> void:
 		Fonte.centralizado(hud, "%d %s LEFT WILL BE LOST" % [n, "ACTION" if n == 1 else "ACTIONS"], 160, 162,
 			VERMELHO)
 	elif not tf.is_empty() and not dormindo:
+		var texto_acao := "E: " + str(tf["texto"])
+		if emergencia_blindagem and tf.get("id") == "abrigo/blindagem":
+			texto_acao = "E: REPAIR DAMAGED HULL (EMERGENCY)"
 		var efeito := texto_previa(tf["id"])
 		var y_e := 160 if efeito == "" else 154
-		Fonte.centralizado(hud, "E: " + str(tf["texto"]), 160, y_e, AMARELO)
+		Fonte.centralizado(hud, texto_acao, 160, y_e, AMARELO)
 		if efeito != "":                           # custo e benefício antes de fazer
 			Fonte.centralizado(hud, efeito, 160, y_e + 8, BRANCO)
 	if escuro > 0.0:
@@ -742,6 +821,26 @@ func _desenha_hud() -> void:
 		hud.draw_rect(Rect2(160 - w / 2.0, 54, w, 11), Color(0.035, 0.04, 0.08, 0.8))
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
 
+	# Efeito de Ambiente de Alarme Vermelho e Card de Emergência de Casco
+	if emergencia_blindagem and not em_minigame and not dormindo:
+		var pulso: float = (sin(t * 7.5) + 1.0) * 0.5
+		var alpha_luz: float = 0.07 + pulso * 0.16
+		hud.draw_rect(Rect2(0, 0, 320, 180), Color(0.85, 0.08, 0.08, alpha_luz))
+
+		var segs: int = int(ceilf(tempo_emergencia_blindagem))
+		var pisca_rapido: bool = fmod(t, 0.28) < 0.14
+		var cor_borda: Color = VERMELHO if pisca_rapido else Color("#cf573c")
+		var cor_header: Color = BRANCO if pisca_rapido else AMARELO
+		var bx: float = 320.0 - 5.0 - 64.0
+		var by: float = 180.0 - 5.0 - 78.0 - 24.0
+		var bw: float = 64.0
+		var bh: float = 22.0
+		hud.draw_rect(Rect2(bx, by, bw, bh), Color(0.04, 0.02, 0.02, 0.92))
+		hud.draw_rect(Rect2(bx, by, bw, bh), cor_borda, false, 1.0)
+		hud.draw_rect(Rect2(bx + 1, by + 1, 3, bh - 2), cor_borda)
+		Fonte.centralizado(hud, "[!] HULL BREACH", bx + bw / 2.0 + 1.0, by + 4.0, cor_header)
+		Fonte.centralizado(hud, "SHELTER %dS" % segs, bx + bw / 2.0 + 1.0, by + 13.0, cor_borda)
+
 
 ## Minimapa no canto de baixo à direita: a planta pequena com o ícone de cada tarefa que dá para fazer agora (o mesmo
 ## da lista no canto de cima; as mesmas da seta amarela) e o astronauta em branco. Some com os minigames, os painéis do
@@ -751,6 +850,10 @@ func _desenha_minimapa() -> void:
 		return
 	var canto := Vector2(320 - 5, 180 - 5) - TEX_MINIMAPA.get_size()
 	hud.draw_rect(Rect2(canto - Vector2(2, 2), TEX_MINIMAPA.get_size() + Vector2(4, 4)), Color(0.035, 0.04, 0.08, 0.7))
+	if emergencia_blindagem:
+		var pisca_borda: bool = fmod(t, 0.36) < 0.18
+		var cor_borda: Color = VERMELHO if pisca_borda else Color("#e8c170")
+		hud.draw_rect(Rect2(canto - Vector2(3, 3), TEX_MINIMAPA.get_size() + Vector2(6, 6)), cor_borda, false, 1.0)
 	_desenha_planta(TEX_MINIMAPA, canto)
 
 
@@ -759,6 +862,8 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 	hud.draw_texture(tex, canto)
 	var aceso := fmod(t, 0.8) < 0.55
 	for id in ciclo.hoje:
+		if id == "abrigo/blindagem" and emergencia_blindagem:
+			continue
 		if feitas.has(id) or not ciclo.disponivel(id) or tempestade.ativo:   # no alarme só o Abrigo importa
 			continue
 		var tf := _tarefa(id)
@@ -776,11 +881,13 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
 			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
+
 	if not pc_item.is_empty() and not tempestade.ativo:   # computador: monitorzinho, piscando com previsão nova
 		var pc := _na_planta(pc_item["pos"] + MESA_PC, tex, canto)
 		hud.draw_rect(Rect2(pc + Vector2(-2, -2), Vector2(5, 4)), CONTORNO)
 		var tela_pc := Color("#a4dddb") if (not pc_nao_lido() or aceso) else Color(AZUL, 0.3)
 		hud.draw_rect(Rect2(pc + Vector2(-1, -1), Vector2(3, 2)), tela_pc)
+
 	if tempestade.ativo and fmod(t, 0.5) < 0.3:   # erupção: o Abrigo pisca em vermelho
 		var ab: Dictionary = salas[Tempestade.SALA_ABRIGO]
 		var tam_ab: Array = ab["dados"]["tamanho"]
@@ -789,6 +896,19 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 		var r := Rect2(a, b - a + Vector2.ONE)
 		hud.draw_rect(r, Color(VERMELHO, 0.45))
 		hud.draw_rect(r, VERMELHO, false)
+
+	if emergencia_blindagem:
+		var tf_em := _tarefa("abrigo/blindagem")
+		if not tf_em.is_empty():
+			var m_em := _na_planta(tf_em["pos"], tex, canto)
+			var pisca_em: bool = fmod(t, 0.28) < 0.14
+			var cor_alerta: Color = VERMELHO if pisca_em else AMARELO
+			var r := 4.0 if pisca_em else 3.0
+			hud.draw_rect(Rect2(m_em - Vector2(r, r), Vector2(r * 2.0 + 1.0, r * 2.0 + 1.0)), CONTORNO, false, 1.0)
+			hud.draw_rect(Rect2(m_em - Vector2(r - 1.0, r - 1.0), Vector2((r - 1.0) * 2.0 + 1.0, (r - 1.0) * 2.0 + 1.0)), cor_alerta, false, 1.0)
+			hud.draw_rect(Rect2(m_em - Vector2(1, 1), Vector2(3, 3)), BRANCO if pisca_em else VERMELHO)
+			if pisca_em:
+				Fonte.desenhar(hud, "!", m_em + Vector2(5, -3), cor_alerta)
 	var j := _na_planta(jogador.global_position, tex, canto)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
@@ -847,3 +967,137 @@ func _desenha_recursos() -> void:
 			var xs := x0 - 4 - Fonte.largura(s)
 			hud.draw_rect(Rect2(xs - 3, y - 2, Fonte.largura(s) + 5, 9), Color(0.035, 0.04, 0.08, 0.85))
 			Fonte.desenhar(hud, s, Vector2(xs, y), Color("#a8ca58") if d > 0 else VERMELHO)
+
+
+# ---------------------------------------------------------------- emergência de impacto no casco
+func _unhandled_input(ev: InputEvent) -> void:
+	if ev is InputEventKey and ev.pressed and not ev.echo:
+		# Atalhos rápidos de desenvolvedor para simular a emergência: 'M' ou '8'
+		if ev.physical_keycode in [KEY_M, KEY_8]:
+			disparar_impacto_casco()
+			get_viewport().set_input_as_handled()
+
+
+func tremer_tela(duracao: float = 0.6, forca: float = 4.0) -> void:
+	t_shake = duracao
+	forca_shake = forca
+
+
+func disparar_impacto_casco(duracao: float = 35.0) -> void:
+	if emergencia_blindagem or dormindo or fim:
+		return
+	impacto_ja_ocorreu = true
+	emergencia_blindagem = true
+	tempo_emergencia_blindagem = duracao
+	t_alarme_audio = 0.0
+	tremer_tela(0.8, 4.5)
+	_tocar_impacto_mapa()
+	_avisar("[!] HULL BREACH IN SHELTER! REPAIR SHIELDING NOW")
+	_atualizar_marcas()
+	if hud != null:
+		hud.queue_redraw()
+
+
+func _concluir_emergencia_casco() -> void:
+	emergencia_blindagem = false
+	_parar_alarme_mapa()
+	_avisar("HULL REPAIRED // SHELTER AIRTIGHT! (+5 HP)")
+	Recursos.aplicar("abrigo/blindagem")
+	feitas["abrigo/blindagem"] = true
+	_atualizar_marcas()
+	if hud != null:
+		hud.queue_redraw()
+
+
+func _falhar_emergencia_casco() -> void:
+	emergencia_blindagem = false
+	_parar_alarme_mapa()
+	tremer_tela(1.2, 5.0)
+	_tocar_impacto_mapa()
+	_avisar("[!] HULL COLLAPSE // RADIATION LEAK (-15 HP)")
+	_alterar_recurso("condicao", -15.0)
+	_atualizar_marcas()
+	if hud != null:
+		hud.queue_redraw()
+
+
+func _alterar_recurso(nome: String, delta: float) -> void:
+	if Recursos.valores.has(nome):
+		var antes: float = Recursos.valores[nome]
+		Recursos.valores[nome] = clampf(antes + delta, 0.0, 100.0)
+		var diff: float = Recursos.valores[nome] - antes
+		if not is_equal_approx(diff, 0.0):
+			variacoes[nome] = [diff, 2.0]
+			Recursos.mudou.emit("emergencia", {nome: diff})
+
+
+func _criar_audio_mapa() -> void:
+	som_sirene_mapa = _sintetizar_sirene_mapa()
+	som_impacto_mapa = _sintetizar_impacto_mapa()
+	player_alarme_mapa = AudioStreamPlayer.new()
+	player_alarme_mapa.volume_db = -4.0
+	add_child(player_alarme_mapa)
+
+
+func _tocar_sirene_mapa() -> void:
+	if player_alarme_mapa != null and not em_minigame:
+		player_alarme_mapa.stream = som_sirene_mapa
+		player_alarme_mapa.play()
+
+
+func _parar_alarme_mapa() -> void:
+	if player_alarme_mapa != null and player_alarme_mapa.playing:
+		player_alarme_mapa.stop()
+
+
+func _tocar_impacto_mapa() -> void:
+	if player_alarme_mapa != null:
+		player_alarme_mapa.stream = som_impacto_mapa
+		player_alarme_mapa.play()
+
+
+static func _sintetizar_sirene_mapa() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var duracao: float = 0.55
+	var sample_count: int = int(duracao * 22050.0)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+
+	for i in sample_count:
+		var st: float = float(i) / 22050.0
+		var freq: float = 880.0 if fmod(st, 0.18) < 0.09 else 660.0
+		var onda: float = sin(st * freq * TAU)
+		var env: float = clampf(1.0 - (st / duracao) * 0.4, 0.0, 1.0)
+		var sample: float = onda * env * 0.55
+		var val: int = int(clampf(sample, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, val)
+
+	stream.data = data
+	return stream
+
+
+static func _sintetizar_impacto_mapa() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var duracao: float = 0.70
+	var sample_count: int = int(duracao * 22050.0)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+
+	for i in sample_count:
+		var st: float = float(i) / 22050.0
+		var ruido: float = randf_range(-1.0, 1.0)
+		var sub_bass: float = sin(st * 45.0 * TAU)
+		var onda: float = ruido * 0.60 + sub_bass * 0.40
+		var env: float = exp(-st * 4.8)
+		var sample: float = onda * env * 0.90
+		var val: int = int(clampf(sample, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, val)
+
+	stream.data = data
+	return stream

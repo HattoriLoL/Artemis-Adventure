@@ -151,6 +151,7 @@ func _itens() -> Array:
 				{"id": "zerar", "texto": "RESET TODAY"},
 				{"id": "fim_dia", "texto": "END THE DAY"},
 				{"id": "erupcao", "texto": "SOLAR STORM NOW"},
+				{"id": "simular_impacto", "texto": "SIMULATE HULL IMPACT (SHELTER)"},
 				{"id": "minigame", "texto": "MINIGAME", "valor": mg},
 				{"id": "noclip", "texto": "NOCLIP", "liga": noclip},
 				{"id": "vel", "texto": "SPEED", "valor": "%dX" % int(VELOCIDADES[i_vel])},
@@ -283,6 +284,10 @@ func _ativar(id: String) -> void:
 		"fim_dia":
 			_fechar()
 			mapa.encerrar_dia()
+		"simular_impacto":
+			_fechar()
+			if mapa != null and mapa.has_method("disparar_impacto_casco"):
+				mapa.disparar_impacto_casco()
 		"minigame":
 			if minigames.is_empty():
 				_avisar("NO MINIGAMES")

@@ -80,16 +80,40 @@ var tex_brecha_b: Texture2D
 var tex_placa: Texture2D
 var tex_placa_fixa: Texture2D
 
+var modo_emergencia: String = ""
+var tempo_restante_emergencia: float = 0.0
+
+var player_audio: AudioStreamPlayer = null
+var som_parafuso: AudioStreamWAV = null
+var som_erro: AudioStreamWAV = null
+var som_sucesso: AudioStreamWAV = null
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_criar_teclas()
+	_criar_audio()
 	tex_parede = _textura("parede")
 	tex_brecha = _textura("brecha")
 	tex_brecha_b = _textura("brecha_b")
 	tex_placa = _textura("placa")
 	tex_placa_fixa = _textura("placa_fixa")
 	_sortear_brechas()
+
+
+func _criar_audio() -> void:
+	player_audio = AudioStreamPlayer.new()
+	player_audio.volume_db = -3.0
+	add_child(player_audio)
+	som_parafuso = _sintetizar_som_parafuso()
+	som_erro = _sintetizar_som_erro()
+	som_sucesso = _sintetizar_som_sucesso()
+
+
+func _tocar_som(s: AudioStreamWAV) -> void:
+	if player_audio != null and s != null:
+		player_audio.stream = s
+		player_audio.play()
 
 
 func _textura(nome: String) -> Texture2D:
@@ -128,6 +152,8 @@ func _process(delta: float) -> void:
 	t += delta
 	t_erro = maxf(0.0, t_erro - delta)
 	t_parafuso = maxf(0.0, t_parafuso - delta)
+	if modo_emergencia != "" and tempo_restante_emergencia > 0.0:
+		tempo_restante_emergencia = maxf(0.0, tempo_restante_emergencia - delta)
 	if not e_liberado and not Input.is_action_pressed("usar"):
 		e_liberado = true
 	if not acabou:
@@ -192,10 +218,12 @@ func _parafusar() -> void:
 	t_parafuso = 0.5
 	vel = Vector2.ZERO
 	t_placa = TEMPO_PLACA
+	_tocar_som(som_parafuso)
 	if placa >= PLACAS:
 		acabou = true
 		t_fim = TEMPO_FIM
 		_avisar("SHELTER SHIELDED!", VERDE_LIMA)
+		_tocar_som(som_sucesso)
 	else:
 		pos = PARTIDA
 		mensagem = ""
@@ -205,6 +233,7 @@ func _errar(txt: String) -> void:
 	erros += 1
 	t_erro = 0.4
 	t_placa = TEMPO_PLACA
+	_tocar_som(som_erro)
 	if erros >= MAX_ERROS:
 		perdeu = true
 		acabou = true
@@ -247,8 +276,14 @@ func _animar(delta: float) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 320, 180), Color(PRETO, 0.68))
 	_moldura()
-	Fonte.centralizado(self, "REINFORCE THE SHIELDING", PAINEL.position.x + PAINEL.size.x / 2.0, PAINEL.position.y + 5,
-		AMARELO)
+	if modo_emergencia != "":
+		var pisca_hdr := fmod(t, 0.3) < 0.15
+		var txt_hdr := "[!] EMERGENCY HULL BREACH // %dS" % int(ceilf(tempo_restante_emergencia))
+		Fonte.centralizado(self, txt_hdr, PAINEL.position.x + PAINEL.size.x / 2.0, PAINEL.position.y + 5,
+			VERMELHO_CLARO if pisca_hdr else AMARELO)
+	else:
+		Fonte.centralizado(self, "REINFORCE THE SHIELDING", PAINEL.position.x + PAINEL.size.x / 2.0, PAINEL.position.y + 5,
+			AMARELO)
 	Fonte.desenhar(self, "%d/%d" % [placa, PLACAS], PAINEL.position + Vector2(12, 5), VERDE_LIMA)
 	draw_rect(BOTAO_X.grow(1), PRETO)
 	draw_rect(BOTAO_X.grow_individual(-1, -1, -1, -1), VERMELHO)
@@ -388,3 +423,69 @@ func _criar_teclas() -> void:
 			var ev := InputEventKey.new()
 			ev.physical_keycode = k
 			InputMap.action_add_event(acao, ev)
+
+
+# --- Síntese de áudio procedural sem dependências externas ---
+static func _sintetizar_som_parafuso() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var duracao: float = 0.35
+	var sample_count: int = int(duracao * 22050.0)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+	for i in sample_count:
+		var st: float = float(i) / 22050.0
+		var r: float = randf_range(-1.0, 1.0) * exp(-st * 16.0)
+		var thud: float = sin(st * 140.0 * TAU) * exp(-st * 22.0)
+		var drill: float = sin(st * 480.0 * TAU) * (0.6 if st < 0.22 else 0.0)
+		var sample: float = (r * 0.3 + thud * 0.4 + drill * 0.4) * 0.95
+		var val: int = int(clampf(sample, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, val)
+	stream.data = data
+	return stream
+
+
+static func _sintetizar_som_erro() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var duracao: float = 0.25
+	var sample_count: int = int(duracao * 22050.0)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+	for i in sample_count:
+		var st: float = float(i) / 22050.0
+		var freq: float = 140.0 if fmod(st, 0.08) < 0.04 else 105.0
+		var onda: float = sin(st * freq * TAU)
+		var env: float = exp(-st * 6.0)
+		var val: int = int(clampf(onda * env * 0.65, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, val)
+	stream.data = data
+	return stream
+
+
+static func _sintetizar_som_sucesso() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var duracao: float = 0.60
+	var sample_count: int = int(duracao * 22050.0)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+	for i in sample_count:
+		var st: float = float(i) / 22050.0
+		var f: float = 523.25
+		if st > 0.30:
+			f = 783.99
+		elif st > 0.15:
+			f = 659.25
+		var onda: float = sin(st * f * TAU) * 0.7 + sin(st * f * 2.0 * TAU) * 0.3
+		var env: float = exp(-st * 4.2)
+		var val: int = int(clampf(onda * env * 0.70, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, val)
+	stream.data = data
+	return stream
