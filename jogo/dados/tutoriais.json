@@ -145,5 +145,17 @@
 		"fato": "STIRRING THE SUPER COLD OXYGEN AND HYDROGEN TANKS THAT FED THE FUEL CELLS WAS ROUTINE. ON APOLLO 13, A BANG CAME DURING ONE OF THESE STIRS.",
 		"fonte": "NASA - HOUSTON WE'VE HAD A PROBLEM",
 		"url": "https://www.nasa.gov/history/houston-weve-had-a-problem/"
-	}
+	},
+ "irrigacao": {
+  "titulo": "FIX THE IRRIGATION",
+  "passos": [
+   "ARROWS OR [W][A][S][D] MOVE THE CURSOR.",
+   "[E] TURNS THE PIPE UNDER IT.",
+   "LEAD THE WATER FROM THE TANK TO ALL 3 BEDS. ANY PATH WORKS.",
+   "TURNS ARE LIMITED - EXTRA TURNS ARE ERRORS."
+  ],
+  "fato": "ON THE ISS, NASA'S XROOTS TEST GREW PLANTS WITH NO SOIL: WATER AND NUTRIENTS REACH THE ROOTS AS A MIST OR A THIN FLOW. IT COULD FEED BIGGER GARDENS ON FUTURE MISSIONS.",
+  "fonte": "NASA - XROOTS ON THE ISS",
+  "url": "https://science.nasa.gov/biological-physical/investigations/xroots/"
+ }
 }

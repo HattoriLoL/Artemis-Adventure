@@ -173,6 +173,13 @@
    "x": 192,
    "y": 120,
    "texto": "WATER THE PLANTS"
+  },
+  {
+   "id": "irrigacao",
+   "x": 72,
+   "y": 128,
+   "texto": "FIX THE IRRIGATION",
+   "minigame": "res://cenas/minigame_irrigacao.tscn"
   }
  ],
  "inicio": [

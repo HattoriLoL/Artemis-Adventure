@@ -17,6 +17,7 @@
   "habitat/agua": {"oxigenio": 8},
   "habitat/chuveiro": {"condicao": 8},
   "estufa/regar": {"comida": 5, "condicao": 5, "oxigenio": 3},
+  "estufa/irrigacao": {"comida": 5},
   "abrigo/blindagem": {},
   "emergencia/energia": {"energia": -20, "condicao": -10},
   "emergencia/suporte": {"oxigenio": -15, "condicao": -10},
