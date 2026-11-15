@@ -152,7 +152,8 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		_objeto(ob, pos, corpo)
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
-			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", ""))}
+			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", "")),
+			"icone": _icone(nome + "/" + str(tf["id"]))}
 		tarefas.append(item)
 		var m := Polygon2D.new()                     # seta amarela pulando sobre a tarefa (como no Among Us)
 		m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
@@ -167,6 +168,13 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		if it.has("acordar"):                        # cama: onde o astronauta aparece de manhã (fora do alcance do E)
 			item["acordar"] = pos + Vector2(it["acordar"][0], it["acordar"][1])
 		interacoes.append(item)
+
+
+## Ícone 7x7 da tarefa (lista do HUD e minimapa): res://assets/icones/<sala>_<tarefa>.png. Sem arquivo, null (a
+## lista volta ao quadradinho e o minimapa à cruz amarela). Desenhados em arte/icones_tarefas.py.
+func _icone(id: String) -> Texture2D:
+	var c := "res://assets/icones/%s.png" % id.replace("/", "_")
+	return load(c) if ResourceLoader.exists(c) else null
 
 
 ## Sprite que entra no Y-sort pela linha `base` (onde ele toca o chão), desenhado com o canto em `canto`.
@@ -596,7 +604,7 @@ func _desenha_hud() -> void:
 	largura = max(largura, Fonte.largura(rodape + " - " + acoes) + 10)
 	for tf in lista:
 		var extra: float = 0.0 if tf["sala"] == sala_atual else Fonte.largura(_titulo_sala(tf["sala"])) + 8
-		largura = max(largura, Fonte.largura(str(tf["texto"])) + 14 + extra)
+		largura = max(largura, Fonte.largura(str(tf["texto"])) + 17 + extra)
 	var linhas := lista.size() + 2
 	hud.draw_rect(Rect2(4, 3, largura, 2 + 8 * linhas), Color(0.035, 0.04, 0.08, 0.7))
 	var y := 6
@@ -605,8 +613,14 @@ func _desenha_hud() -> void:
 		y += 8
 		var feito := feitas.has(tf["id"])
 		var pode := ciclo.disponivel(tf["id"]) and not feito
-		hud.draw_rect(Rect2(8, y + 1, 3, 3), VERDE if feito else (AMARELO if pode else ESCURO))
-		Fonte.desenhar(hud, str(tf["texto"]), Vector2(14, y), BRANCO if pode else CINZA)
+		var ic: Texture2D = tf.get("icone")
+		if ic:                                     # o mesmo ícone do minimapa; feita = apagado com um visto verde
+			hud.draw_texture(ic, Vector2(7, y - 1), Color.WHITE if pode else Color(1, 1, 1, 0.35))
+			if feito:
+				_visto(Vector2(9, y + 1))
+		else:
+			hud.draw_rect(Rect2(8, y + 1, 3, 3), VERDE if feito else (AMARELO if pode else ESCURO))
+		Fonte.desenhar(hud, str(tf["texto"]), Vector2(17, y), BRANCO if pode else CINZA)
 		if tf["sala"] != sala_atual:
 			var s := _titulo_sala(tf["sala"])
 			Fonte.desenhar(hud, s, Vector2(4 + largura - 4 - Fonte.largura(s), y), ESCURO if not pode else CINZA)
@@ -640,8 +654,9 @@ func _desenha_hud() -> void:
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
 
 
-## Minimapa no canto de baixo à direita: a base inteira, um marcador amarelo piscando em cada tarefa que dá para
-## fazer agora (as mesmas da seta amarela: oferecidas hoje, não feitas, com ação sobrando) e o astronauta em branco.
+## Minimapa no canto de baixo à direita: a base inteira, o ícone de cada tarefa que dá para fazer agora (com moldura
+## amarela piscando; o mesmo ícone da lista no canto de cima) e o astronauta em branco. As tarefas são as mesmas da
+## seta amarela: oferecidas hoje, não feitas, com ação sobrando.
 ## Some com os minigames, os painéis do dia (boletim, noite, fim) e enquanto ele dorme.
 func _desenha_minimapa() -> void:
 	if em_minigame or fim or dormindo or escuro > 0.0 or ciclo.ocupado():
@@ -649,14 +664,22 @@ func _desenha_minimapa() -> void:
 	var tam := TEX_MINIMAPA.get_size()
 	hud.draw_rect(Rect2(MINI_POS - Vector2(2, 2), tam + Vector2(4, 4)), Color(0.035, 0.04, 0.08, 0.7))
 	hud.draw_texture(TEX_MINIMAPA, MINI_POS)
-	if fmod(t, 0.8) < 0.55:
-		for id in ciclo.hoje:
-			if feitas.has(id) or not ciclo.disponivel(id):
-				continue
-			var tf := _tarefa(id)
-			if tf.is_empty():
-				continue
-			var m := _no_minimapa(tf["pos"])
+	var aceso := fmod(t, 0.8) < 0.55
+	for id in ciclo.hoje:
+		if feitas.has(id) or not ciclo.disponivel(id):
+			continue
+		var tf := _tarefa(id)
+		if tf.is_empty():
+			continue
+		var m := _no_minimapa(tf["pos"])
+		var ic: Texture2D = tf.get("icone")
+		if ic:                                     # o ícone da lista, fixo, com a moldura amarela piscando
+			var c := m.clamp(MINI_POS + Vector2(3, 3), MINI_POS + TEX_MINIMAPA.get_size() - Vector2(4, 4))
+			var r := Rect2(c - Vector2(3, 3), Vector2(7, 7))
+			_moldura_px(r.grow(1), AMARELO if aceso else CONTORNO)
+			hud.draw_rect(r, CONTORNO)
+			hud.draw_texture(ic, r.position)
+		elif aceso:
 			hud.draw_rect(Rect2(m + Vector2(-1, -2), Vector2(3, 5)), CONTORNO)    # cruz amarela com contorno
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
@@ -664,6 +687,23 @@ func _desenha_minimapa() -> void:
 	var j := _no_minimapa(jogador.global_position)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
+
+
+## Moldura de 1 px por dentro do retângulo.
+func _moldura_px(r: Rect2, cor: Color) -> void:
+	hud.draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), cor)
+	hud.draw_rect(Rect2(r.position + Vector2(0, r.size.y - 1), Vector2(r.size.x, 1)), cor)
+	hud.draw_rect(Rect2(r.position, Vector2(1, r.size.y)), cor)
+	hud.draw_rect(Rect2(r.position + Vector2(r.size.x - 1, 0), Vector2(1, r.size.y)), cor)
+
+
+## Visto verde (5x4) com contorno escuro, por cima do ícone de uma tarefa feita.
+func _visto(p: Vector2) -> void:
+	for d in [Vector2(0, 1), Vector2(1, 0), Vector2(0, -1), Vector2(-1, 0)]:
+		for q in [Vector2(0, 2), Vector2(1, 3), Vector2(2, 2), Vector2(3, 1), Vector2(4, 0)]:
+			hud.draw_rect(Rect2(p + q + d, Vector2.ONE), CONTORNO)
+	for q in [Vector2(0, 2), Vector2(1, 3), Vector2(2, 2), Vector2(3, 1), Vector2(4, 0)]:
+		hud.draw_rect(Rect2(p + q, Vector2.ONE), VERDE)
 
 
 ## Posição no mapa -> pixel do minimapa na tela (preso dentro dele).
