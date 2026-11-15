@@ -1,0 +1,54 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/computador_navegacao.gd" id="1_pc"]
+
+[node name="ComputadorNavegacao" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_pc")
+
+[node name="OverlayEscuro" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.75)
+
+[node name="Moldura" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 308.0
+offset_bottom = 172.0
+color = Color(0.18, 0.22, 0.25, 1)
+
+[node name="Bisel" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 306.0
+offset_bottom = 170.0
+color = Color(0.09, 0.12, 0.15, 1)
+
+[node name="Tela" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 304.0
+offset_bottom = 168.0
+color = Color(0.025, 0.032, 0.055, 1)
+
+[node name="Textos" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

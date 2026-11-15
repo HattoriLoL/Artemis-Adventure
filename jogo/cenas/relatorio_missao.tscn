@@ -1,0 +1,54 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/relatorio_missao.gd" id="1_report"]
+
+[node name="RelatorioMissao" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_report")
+
+[node name="Fundo" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.024, 0.039, 0.059, 1)
+
+[node name="Moldura" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 5.0
+offset_right = 314.0
+offset_bottom = 175.0
+color = Color(0.11, 0.16, 0.2, 1)
+
+[node name="Bisel" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 7.0
+offset_top = 6.0
+offset_right = 313.0
+offset_bottom = 174.0
+color = Color(0.063, 0.09, 0.125, 1)
+
+[node name="Tela" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 7.0
+offset_right = 312.0
+offset_bottom = 173.0
+color = Color(0.031, 0.051, 0.078, 1)
+
+[node name="Textos" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

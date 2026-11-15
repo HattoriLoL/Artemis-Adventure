@@ -72,6 +72,8 @@ func _ready() -> void:
 		portas.append(porta)
 	_navegacao()
 	_interface()
+	var alarme := preload("res://scripts/alarme_solar.gd").new()
+	add_child(alarme)
 	_avisar("LUNAR BASE")
 
 
@@ -175,6 +177,53 @@ func _interface() -> void:
 	var menu := MenuPausa.new()                    # Esc; fica por último na árvore para ver o Esc antes do minigame
 	menu.mapa = self
 	add_child(menu)
+
+
+var nav_pc: Control = null
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_N:
+			if nav_pc != null and is_instance_valid(nav_pc):
+				nav_pc._fechar()
+			elif not em_minigame and not dormindo and not fim and Engine.get_process_frames() != quadro_fechou_minigame:
+				abrir_computador_navegacao()
+
+
+func abrir_computador_navegacao() -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var cena: PackedScene = load("res://cenas/computador_navegacao.tscn")
+	nav_pc = cena.instantiate()
+	if "mapa" in nav_pc:
+		nav_pc.mapa = self
+	nav_pc.fechou.connect(func():
+		em_minigame = false
+		quadro_fechou_minigame = Engine.get_process_frames()
+		hud.visible = true
+		jogador.set_physics_process(true)
+		nav_pc = null
+	)
+	camada_ui.add_child(nav_pc)
+
+
+func abrir_relatorio_missao() -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var cena: PackedScene = load("res://cenas/relatorio_missao.tscn")
+	var relatorio: Control = cena.instantiate()
+	relatorio.fechou.connect(func():
+		em_minigame = false
+		quadro_fechou_minigame = Engine.get_process_frames()
+		hud.visible = true
+		jogador.set_physics_process(true)
+	)
+	camada_ui.add_child(relatorio)
 
 
 func pode_pausar() -> bool:
@@ -288,6 +337,8 @@ func _concluir_tarefa(tf: Dictionary) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
 	marcas[tf["id"]].visible = false
+	if tf["id"] == "abrigo/blindagem" and has_node("/root/Missao"):
+		get_node("/root/Missao").blindagem_reforcada = true
 	_avisar("DONE: " + str(tf["texto"]))
 	var sala: String = tf["sala"]
 	var faltam := tarefas.filter(func(x): return x["sala"] == sala and not feitas.has(x["id"]))
@@ -313,7 +364,19 @@ func _interagir(it: Dictionary) -> void:
 		tw.tween_property(self, "escuro", 0.0, 0.8)
 		await tw.finished
 		dormindo = false
-		_avisar("RESTED")
+		if not demo:
+			usadas.erase(it["id"])
+		if has_node("/root/Missao"):
+			var m: Node = get_node("/root/Missao")
+			if m.dia_atual >= 7:
+				_avisar("7 DIAS CONCLUIDOS // GERANDO RELATORIO...")
+				await get_tree().create_timer(1.2).timeout
+				abrir_relatorio_missao()
+			else:
+				m.avancar_dia()
+				_avisar("SOL %d DE 7 // CLIMA ATUALIZADO [N]" % m.dia_atual)
+		else:
+			_avisar("RESTED")
 		_demo_fim()
 
 
@@ -390,7 +453,7 @@ func _desenha_hud() -> void:
 	largura = max(largura, Fonte.largura(titulo) + 14)
 	for tf in lista:
 		largura = max(largura, Fonte.largura(str(tf["texto"])) + 14)
-	var linhas := lista.size() + 2
+	var linhas := lista.size() + 3
 	hud.draw_rect(Rect2(4, 3, largura, 2 + 8 * linhas), Color(0.035, 0.04, 0.08, 0.7))
 	var y := 6
 	Fonte.desenhar(hud, titulo, Vector2(8, y), AMARELO)
@@ -401,6 +464,36 @@ func _desenha_hud() -> void:
 		Fonte.desenhar(hud, str(tf["texto"]), Vector2(14, y), CINZA if feito else BRANCO)
 	y += 8
 	Fonte.desenhar(hud, "BASE %d/%d" % [feitas.size(), tarefas.size()], Vector2(8, y), CINZA)
+	y += 8
+	Fonte.desenhar(hud, "[N] NAV-PC", Vector2(8, y), AMARELO)
+
+	# Telemetria de Clima Espacial (NASA DONKI) e Dia da Missão
+	var m: Node = get_node_or_null("/root/Missao")
+	var dia_missao: int = m.dia_atual if m else 1
+	var status_clima: Dictionary = m.obter_status_clima() if m else {}
+	var fase: String = str(status_clima.get("fase", "calmo"))
+	var cor_clima: Color = status_clima.get("cor", Color("#a8ca58"))
+	var txt_clima: String = str(status_clima.get("titulo", "SOL ESTAVEL"))
+
+	if fase == "impacto":
+		if sin(t * 6.0) > 0.0:
+			var txt_alerta := "[!] IMPACTO SOLAR ATIVO: VA AO ABRIGO [N]"
+			var w_alerta: float = Fonte.largura(txt_alerta) + 10.0
+			hud.draw_rect(Rect2(160.0 - w_alerta / 2.0, 3, w_alerta, 11), Color(0.65, 0.1, 0.1, 0.85))
+			Fonte.centralizado(hud, txt_alerta, 160, 6, BRANCO)
+	elif fase == "deteccao_cme":
+		if sin(t * 4.0) > -0.3:
+			var txt_alerta := "[!] ALERTA DONKI: CME EM TRANSITO [N]"
+			var w_alerta: float = Fonte.largura(txt_alerta) + 10.0
+			hud.draw_rect(Rect2(160.0 - w_alerta / 2.0, 3, w_alerta, 11), Color(0.65, 0.35, 0.05, 0.85))
+			Fonte.centralizado(hud, txt_alerta, 160, 6, BRANCO)
+	else:
+		var txt_status: String = "SOL %d/7 | %s" % [dia_missao, txt_clima]
+		var w_st: float = Fonte.largura(txt_status) + 10.0
+		var x_st: float = 316.0 - w_st
+		hud.draw_rect(Rect2(x_st, 3, w_st, 11), Color(0.035, 0.04, 0.08, 0.7))
+		Fonte.desenhar(hud, txt_status, Vector2(x_st + 5, 6), cor_clima)
+
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
