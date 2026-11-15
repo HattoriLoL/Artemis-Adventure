@@ -11,13 +11,15 @@ config_version=5
 [application]
 
 config/name="Artemis Outpost"
-run/main_scene="res://cenas/mapa.tscn"
+run/main_scene="res://cenas/escolha_pouso.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [autoload]
 
 Opcoes="*res://scripts/opcoes.gd"
 Prints="*res://scripts/prints.gd"
+Missao="*res://scripts/missao.gd"
+Recursos="*res://scripts/recursos.gd"
 
 [display]
 

@@ -94,7 +94,8 @@
    "id": "agua",
    "x": 270,
    "y": 72,
-   "texto": "REFILL THE WATER"
+   "texto": "REFILL THE WATER",
+   "minigame": "res://cenas/minigame_agua.tscn"
   }
  ],
  "inicio": [
@@ -106,8 +107,26 @@
    "id": "cama",
    "x": 136,
    "y": 168,
-   "texto": "SLEEP",
-   "acao": "dormir"
+   "texto": "SLEEP (END THE DAY)",
+   "acao": "dormir",
+   "acordar": [
+    164,
+    156
+   ]
+  }
+ ],
+ "objetos": [
+  {
+   "id": "chuveiro",
+   "png": "res://assets/objetos/chuveiro.png",
+   "x": 31,
+   "y": 62,
+   "solido": [
+    2,
+    0,
+    33,
+    52
+   ]
   }
  ]
 }

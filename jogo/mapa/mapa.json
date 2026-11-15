@@ -170,12 +170,12 @@
     34
    ],
    "painel_textura": [
-    183,
-    198,
+    0,
+    0,
     36,
     34
    ],
-   "textura": "res://assets/v3/salas/energia.png",
+   "textura": "res://assets/mapa/folha_baixo.png",
    "bloqueio": [
     230,
     244,
@@ -200,15 +200,15 @@
    "lado": "cima",
    "painel": [
     231,
-    54,
+    56,
     36,
-    34
+    31
    ],
    "painel_textura": [
     183,
-    6,
+    8,
     36,
-    34
+    31
    ],
    "textura": "res://assets/v3/salas/energia.png",
    "bloqueio": [
@@ -235,15 +235,15 @@
    "lado": "cima",
    "painel": [
     231,
-    454,
+    456,
     36,
-    34
+    31
    ],
    "painel_textura": [
     183,
-    6,
+    8,
     36,
-    34
+    31
    ],
    "textura": "res://assets/v3/salas/habitat.png",
    "bloqueio": [
@@ -275,12 +275,12 @@
     34
    ],
    "painel_textura": [
-    183,
-    198,
+    0,
+    0,
     36,
     34
    ],
-   "textura": "res://assets/v3/salas/habitat.png",
+   "textura": "res://assets/mapa/folha_baixo.png",
    "bloqueio": [
     226,
     644,
@@ -305,15 +305,15 @@
    "lado": "cima",
    "painel": [
     231,
-    854,
+    856,
     36,
-    34
+    31
    ],
    "painel_textura": [
     183,
-    6,
+    8,
     36,
-    34
+    31
    ],
    "textura": "res://assets/v3/salas/suporte.png",
    "bloqueio": [
@@ -345,12 +345,12 @@
     34
    ],
    "painel_textura": [
-    183,
-    198,
+    0,
+    0,
     36,
     34
    ],
-   "textura": "res://assets/v3/salas/suporte.png",
+   "textura": "res://assets/mapa/folha_baixo.png",
    "bloqueio": [
     230,
     1044,
@@ -375,15 +375,15 @@
    "lado": "cima",
    "painel": [
     759,
-    454,
+    456,
     36,
-    34
+    31
    ],
    "painel_textura": [
     183,
-    6,
+    8,
     36,
-    34
+    31
    ],
    "textura": "res://assets/v3/salas/abrigo.png",
    "bloqueio": [
@@ -415,12 +415,12 @@
     34
    ],
    "painel_textura": [
-    183,
-    198,
+    0,
+    0,
     36,
     34
    ],
-   "textura": "res://assets/v3/salas/abrigo.png",
+   "textura": "res://assets/mapa/folha_baixo.png",
    "bloqueio": [
     758,
     644,
@@ -445,15 +445,15 @@
    "lado": "cima",
    "painel": [
     759,
-    854,
+    856,
     36,
-    34
+    31
    ],
    "painel_textura": [
     183,
-    6,
+    8,
     36,
-    34
+    31
    ],
    "textura": "res://assets/v3/salas/estufa.png",
    "bloqueio": [
@@ -485,12 +485,12 @@
     34
    ],
    "painel_textura": [
-    183,
-    198,
+    0,
+    0,
     36,
     34
    ],
-   "textura": "res://assets/v3/salas/estufa.png",
+   "textura": "res://assets/mapa/folha_baixo.png",
    "bloqueio": [
     758,
     1044,
@@ -520,12 +520,12 @@
     34
    ],
    "painel_textura": [
-    183,
-    6,
+    0,
+    0,
     36,
     34
    ],
-   "textura": "res://assets/v3/salas/suporte.png",
+   "textura": "res://assets/mapa/porta_eclusa.png",
    "bloqueio": [
     758,
     82,
