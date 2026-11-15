@@ -1,653 +1,419 @@
 extends Control
-## Tela do "Computador de Navegação": Sistema Operacional da Estação Lunar (ARTEMIS-OS).
-## Possui 4 janelas/abas: Clima Espacial (NASA DONKI), Diário de Bordo, Previsão 7 Dias e Setores da Base.
+## Computador de navegação (ARTEMIS-OS), na mesa de monitores do Suporte (interação "computador" em
+## salas/suporte.json; consultar não gasta ação do dia). 4 janelas com o que a base sabe da missão:
+##   1 SPACE WEATHER  o Sol agora (calmo, CME detectada na véspera, tempestade, depois dela), a dose da erupção com a
+##                    blindagem de agora e o arquivo de eventos reais do NASA DONKI (dados/eventos_solares.json)
+##   2 MISSION LOG    o diário de cada dia (tarefas feitas e perdidas, a tempestade, os recursos no fim do dia)
+##   3 FORECAST       os dias da missão: sol ou noite lunar (pelo local de pouso), risco solar e tarefas previstas
+##   4 BASE STATUS    os 4 recursos, o que a noite vai cobrar deles e a blindagem
+## Nada aqui adianta o dia sorteado da erupção: ela só aparece a partir do boletim da véspera, como no resto do jogo.
+## O computador, o visual (barra ARTEMIS-OS, abas, barras de risco, efeito CRT) e o uso do NASA DONKI vieram do
+## PR #24 (IltonBJSilva); adaptado ao ciclo de 5 dias, aos textos em inglês e aos dados reais do jogo.
+## Contrato com o mapa: sinal `fechou` (Esc ou clique no X); o mapa preenche `mapa`.
 
 signal fechou
 
 const Fonte = preload("res://scripts/fonte.gd")
+const Ciclo = preload("res://scripts/ciclo_dias.gd")
+const EVENTOS := "res://dados/eventos_solares.json"
+const BLINDAGEM := "abrigo/blindagem"
 
 const BRANCO := Color("#ebede9")
 const AMARELO := Color("#e8c170")
 const VERDE := Color("#a8ca58")
 const VERMELHO := Color("#cf573c")
-const LARANJA := Color("#e88b35")
+const LARANJA := Color("#de9e41")
 const AZUL := Color("#73bed3")
 const CINZA := Color("#819796")
-const CINZA_ESCURO := Color("#354649")
-const PRETO_FUNDO := Color("#060a0f")
+const CINZA_ESC := Color("#394a50")
+const PRETO := Color("#090a14")
+const TELA := Color("#060a0f")
+const CAIXA := Color("#0d1622")
+const LINHA := Color("#182635")
 
-enum Aba {
-	CLIMA = 0,
-	DIARIO = 1,
-	PREVISAO = 2,
-	SETORES = 3
-}
+const ABAS := ["1 SPACE WEATHER", "2 MISSION LOG", "3 FORECAST", "4 BASE STATUS"]
+const BOTAO_X := Rect2(293, 14, 8, 8)
+const RODAPES := ["[1-4/TAB] WINDOW   [A/D] BROWSE DONKI EVENTS   [ESC] CLOSE",
+	"[1-4/TAB] WINDOW   [A/D] CHANGE DAY   [ESC] CLOSE",
+	"[1-4/TAB] WINDOW   [W/S] SELECT DAY   [ESC] CLOSE",
+	"[1-4/TAB] WINDOW   [ESC] CLOSE"]
 
-var aba_atual: int = Aba.CLIMA
-var indice_registro_donki: int = 0
-var dia_diario_selecionado: int = 1
-var dia_previsao_selecionado: int = 1
-var tempo_anim: float = 0.0
-var led_ativo: bool = true
-var mapa: Node = null
-
-@onready var textos: Control = $Textos
+var mapa: Node2D                       # o mapa.gd (quem abre preenche)
+var aba := 0
+var evento := 0                        # registro do DONKI na janela 1
+var dia_log := 1                       # dia na janela 2
+var dia_prev := 1                      # dia selecionado na janela 3
+var eventos: Array = []
+var t := 0.0
 
 
 func _ready() -> void:
-	textos.draw.connect(_desenhar_conteudo)
-	if has_node("/root/Missao"):
-		var m: Node = get_node("/root/Missao")
-		dia_diario_selecionado = m.dia_atual
-		dia_previsao_selecionado = m.dia_atual
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var dados: Variant = JSON.parse_string(FileAccess.get_file_as_string(EVENTOS))
+	if dados is Dictionary:
+		eventos = dados.get("eventos", [])
+	dia_log = maxi(1, Missao.dia)
+	dia_prev = dia_log
 
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		match event.keycode:
-			KEY_ESCAPE, KEY_N:
-				get_viewport().set_input_as_handled()
-				_fechar()
-			KEY_1:
-				_mudar_aba(Aba.CLIMA)
-			KEY_2:
-				_mudar_aba(Aba.DIARIO)
-			KEY_3:
-				_mudar_aba(Aba.PREVISAO)
-			KEY_4:
-				_mudar_aba(Aba.SETORES)
-			KEY_TAB, KEY_E:
-				_mudar_aba((aba_atual + 1) % 4)
-			KEY_Q:
-				_mudar_aba((aba_atual - 1 + 4) % 4)
-			KEY_UP, KEY_W:
-				get_viewport().set_input_as_handled()
-				if aba_atual == Aba.PREVISAO:
-					dia_previsao_selecionado = maxi(1, dia_previsao_selecionado - 1)
-					textos.queue_redraw()
-			KEY_DOWN, KEY_S:
-				get_viewport().set_input_as_handled()
-				if aba_atual == Aba.PREVISAO:
-					dia_previsao_selecionado = mini(7, dia_previsao_selecionado + 1)
-					textos.queue_redraw()
-			KEY_LEFT, KEY_A:
-				get_viewport().set_input_as_handled()
-				if aba_atual == Aba.DIARIO:
-					dia_diario_selecionado = maxi(1, dia_diario_selecionado - 1)
-					textos.queue_redraw()
-				elif aba_atual == Aba.CLIMA:
-					_trocar_registro_donki(-1)
-				elif aba_atual == Aba.PREVISAO:
-					dia_previsao_selecionado = maxi(1, dia_previsao_selecionado - 1)
-					textos.queue_redraw()
-			KEY_RIGHT, KEY_D:
-				get_viewport().set_input_as_handled()
-				if aba_atual == Aba.DIARIO:
-					dia_diario_selecionado = mini(7, dia_diario_selecionado + 1)
-					textos.queue_redraw()
-				elif aba_atual == Aba.CLIMA:
-					_trocar_registro_donki(1)
-				elif aba_atual == Aba.PREVISAO:
-					dia_previsao_selecionado = mini(7, dia_previsao_selecionado + 1)
-					textos.queue_redraw()
-			KEY_SPACE:
-				get_viewport().set_input_as_handled()
-				if aba_atual == Aba.CLIMA:
-					_trocar_registro_donki(1)
-				elif aba_atual == Aba.DIARIO:
-					dia_diario_selecionado = (dia_diario_selecionado % 7) + 1
-					textos.queue_redraw()
-				elif aba_atual == Aba.PREVISAO:
-					dia_previsao_selecionado = (dia_previsao_selecionado % 7) + 1
-					textos.queue_redraw()
+func _total() -> int:
+	return mapa.ciclo.total_dias() if mapa else 5
 
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var pos: Vector2 = event.position
-		# Clique nas Abas (y entre 23 e 33)
-		if pos.y >= 23 and pos.y <= 33:
-			if pos.x >= 20 and pos.x <= 84:
-				_mudar_aba(Aba.CLIMA)
-			elif pos.x >= 86 and pos.x <= 154:
-				_mudar_aba(Aba.DIARIO)
-			elif pos.x >= 156 and pos.x <= 226:
-				_mudar_aba(Aba.PREVISAO)
-			elif pos.x >= 228 and pos.x <= 298:
-				_mudar_aba(Aba.SETORES)
-		# Botão de Fechar no canto superior direito [X] (pos: 288, 14 a 22)
-		elif pos.y >= 13 and pos.y <= 22 and pos.x >= 284 and pos.x <= 300:
+
+func _input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		var p := get_local_mouse_position()
+		if BOTAO_X.grow(2).has_point(p):
 			_fechar()
-		# Clique nos seletores do Diário
-		elif aba_atual == Aba.DIARIO and pos.y >= 38 and pos.y <= 52:
-			if pos.x >= 20 and pos.x <= 110:
-				dia_diario_selecionado = maxi(1, dia_diario_selecionado - 1)
-				textos.queue_redraw()
-			elif pos.x >= 200 and pos.x <= 298:
-				dia_diario_selecionado = mini(7, dia_diario_selecionado + 1)
-				textos.queue_redraw()
-		# Clique para trocar registro da NASA DONKI
-		elif aba_atual == Aba.CLIMA and pos.y >= 134 and pos.y <= 146:
-			if pos.x >= 20 and pos.x <= 220:
-				_trocar_registro_donki(1)
-		# Clique nas linhas da Previsão (y de 47 a 110)
-		elif aba_atual == Aba.PREVISAO and pos.x >= 20 and pos.x <= 300:
-			if pos.y >= 47 and pos.y < 110:
-				var linha_idx: int = int((pos.y - 47) / 9.0) + 1
-				dia_previsao_selecionado = clampi(linha_idx, 1, 7)
-				textos.queue_redraw()
-
-
-func _mudar_aba(nova_aba: int) -> void:
+		for i in ABAS.size():
+			if _ret_aba(i).has_point(p):
+				aba = i
+		get_viewport().set_input_as_handled()
+		return
+	if not (ev is InputEventKey and ev.pressed and not ev.echo):
+		return
+	if ev.is_action_pressed("ui_cancel"):
+		_fechar()
+	else:
+		match ev.physical_keycode:
+			KEY_1, KEY_2, KEY_3, KEY_4:
+				aba = ev.physical_keycode - KEY_1
+			KEY_TAB:
+				aba = (aba + (ABAS.size() - 1 if ev.shift_pressed else 1)) % ABAS.size()
+			KEY_A, KEY_LEFT, KEY_W, KEY_UP:
+				_passar(-1)
+			KEY_D, KEY_RIGHT, KEY_S, KEY_DOWN:
+				_passar(1)
 	get_viewport().set_input_as_handled()
-	aba_atual = nova_aba
-	textos.queue_redraw()
 
 
-func _trocar_registro_donki(delta_idx: int) -> void:
-	var m: Node = get_node_or_null("/root/Missao")
-	if m and not m.eventos_donki.is_empty():
-		var total: int = m.eventos_donki.size()
-		indice_registro_donki = (indice_registro_donki + delta_idx + total) % total
-	textos.queue_redraw()
-
-
-func _process(delta: float) -> void:
-	tempo_anim += delta
-	if tempo_anim >= 0.4:
-		tempo_anim = 0.0
-		led_ativo = not led_ativo
-		textos.queue_redraw()
-
-
-func _desenhar_conteudo() -> void:
-	var m: Node = get_node_or_null("/root/Missao")
-	var dia_missao: int = m.dia_atual if m else 1
-	var status_clima: Dictionary = m.obter_status_clima() if m else {
-		"titulo": "SOL ESTAVEL",
-		"risco": "BAIXO",
-		"cor": VERDE,
-		"vento_solar": "340 KM/S",
-		"resumo": "SEM ERUPCOES.",
-		"detalhes": "FLUXO DE RAIOS-X EM NIVEL BASAL."
-	}
-
-	# 1. Barra de Título Superior da Estação (ARTEMIS-OS)
-	textos.draw_rect(Rect2(16, 12, 288, 12), Color("#0e151f"))
-	Fonte.desenhar(textos, "ARTEMIS-OS v2.4", Vector2(20, 15), AMARELO)
-	Fonte.desenhar(textos, "SHACKLETON BASE // SOL %d/7" % dia_missao, Vector2(100, 15), BRANCO)
-
-	# LED indicador de alerta solar
-	var cor_led: Color = status_clima.get("cor", VERDE)
-	if not led_ativo and cor_led == VERMELHO:
-		cor_led = Color(0.2, 0.05, 0.05)
-	textos.draw_rect(Rect2(272, 16, 4, 4), cor_led)
-	Fonte.desenhar(textos, "[X]", Vector2(288, 15), CINZA)
-
-	# 2. Barra de Abas (Janelas)
-	textos.draw_rect(Rect2(16, 24, 288, 11), Color("#131c26"))
-	_desenhar_aba_botao(Aba.CLIMA, "1:CLIMA DONKI", Rect2(18, 24, 66, 10))
-	_desenhar_aba_botao(Aba.DIARIO, "2:DIARIO BORDO", Rect2(86, 24, 68, 10))
-	_desenhar_aba_botao(Aba.PREVISAO, "3:PREVISAO 7D", Rect2(156, 24, 68, 10))
-	_desenhar_aba_botao(Aba.SETORES, "4:SETORES BASE", Rect2(226, 24, 72, 10))
-
-	# Linha separadora ciano
-	textos.draw_rect(Rect2(16, 35, 288, 1), Color("#285264"))
-
-	# 3. Conteúdo da Janela Ativa
-	match aba_atual:
-		Aba.CLIMA:
-			_desenhar_janela_clima(m, status_clima)
-		Aba.DIARIO:
-			_desenhar_janela_diario(m)
-		Aba.PREVISAO:
-			_desenhar_janela_previsao(dia_missao)
-		Aba.SETORES:
-			_desenhar_janela_setores(m)
-
-	# 4. Efeito CRT: scanlines sutis semi-transparentes
-	for y in range(36, 155, 3):
-		textos.draw_rect(Rect2(16, y, 288, 1), Color(0.0, 0.0, 0.0, 0.12))
-
-	# 5. Barra de Rodapé do Terminal
-	textos.draw_rect(Rect2(16, 155, 288, 13), Color("#0a0f16"))
-	textos.draw_rect(Rect2(16, 155, 288, 1), Color("#1b2b38"))
-	var info_rodape: String = "[1-4 / TAB] MUDAR JANELA  |  [N / ESC] FECHAR SISTEMA"
-	Fonte.desenhar(textos, info_rodape, Vector2(22, 158), CINZA)
-
-
-func _desenhar_aba_botao(aba: int, rotulo: String, ret: Rect2) -> void:
-	var ativa: bool = (aba_atual == aba)
-	if ativa:
-		textos.draw_rect(ret, Color("#1f3342"))
-		textos.draw_rect(Rect2(ret.position.x, ret.position.y + ret.size.y - 1, ret.size.x, 1), AMARELO)
-		Fonte.desenhar(textos, rotulo, ret.position + Vector2(3, 2), AMARELO)
-	else:
-		textos.draw_rect(ret, Color("#0d141d"))
-		Fonte.desenhar(textos, rotulo, ret.position + Vector2(3, 2), CINZA)
-
-
-# ------------------------------------------------------------- JANELA 1: CLIMA DONKI
-func _desenhar_janela_clima(m: Node, status: Dictionary) -> void:
-	# 1. Caixa de Status Atual compacta e elegante (y=38 a y=64)
-	var cor_status: Color = status.get("cor", VERDE)
-	textos.draw_rect(Rect2(20, 38, 280, 26), Color("#0d1622"))
-	textos.draw_rect(Rect2(20, 38, 3, 26), cor_status)
-	textos.draw_rect(Rect2(20, 38, 280, 1), Color("#182635"))
-	textos.draw_rect(Rect2(20, 63, 280, 1), Color("#182635"))
-
-	# Linha 1 (y=41)
-	Fonte.desenhar(textos, "STATUS: " + str(status.get("titulo", "")), Vector2(26, 41), cor_status)
-	Fonte.desenhar(textos, "VENTO: " + str(status.get("vento_solar", "")), Vector2(190, 41), BRANCO)
-
-	# Linha 2 (y=49)
-	Fonte.desenhar(textos, "RISCO: " + str(status.get("risco", "")), Vector2(26, 49), cor_status)
-	Fonte.desenhar(textos, "REDE NASA DONKI / SDO", Vector2(175, 49), CINZA)
-
-	# Linha 3 (y=57)
-	Fonte.desenhar(textos, "FASE: " + str(status.get("resumo", "")), Vector2(26, 57), BRANCO)
-
-	# 2. Título da Caixa de Registro da NASA (y=66)
-	Fonte.desenhar(textos, "REGISTRO HISTORICO SELECIONADO (NASA DONKI):", Vector2(22, 66), AMARELO)
-
-	# Dados do Evento Histórico da NASA
-	var lista_donki: Array = m.eventos_donki if (m and not m.eventos_donki.is_empty()) else []
-	var ev: Dictionary = {}
-	if not lista_donki.is_empty():
-		ev = lista_donki[indice_registro_donki % lista_donki.size()]
-	else:
-		ev = {
-			"id": "CME-2023-04-21",
-			"tipo": "EJICAO DE MASSA CORONAL (CME)",
-			"fonte": "NASA GODDARD CCMC / SOHO",
-			"data_real": "21/04/2023 - 18:12 UTC",
-			"velocidade": "1.100 KM/S",
-			"radiacao": "NIVEL CRITICO (CLASSE M1.7)",
-			"tempo_impacto": "DIA 4 (JANELA 24-36H)",
-			"descricao": "ONDA DE CHOQUE DE PLASMA SOLAR DETECTADA PELO OBSERVATORIO SDO.",
-			"acao": "RECOLHA A EQUIPE AO ABRIGO OU REFORCE A BLINDAGEM!"
-		}
-
-	# 3. Caixa de Registro da NASA bem distribuída (y=72 a y=120)
-	textos.draw_rect(Rect2(20, 72, 280, 48), Color("#080f18"))
-	textos.draw_rect(Rect2(20, 72, 3, 48), AMARELO)
-	textos.draw_rect(Rect2(20, 72, 280, 1), Color("#182635"))
-	textos.draw_rect(Rect2(20, 119, 280, 1), Color("#182635"))
-
-	# Distribuição interna confortável (passo de 11px: y=76, 87, 98, 109)
-	Fonte.desenhar(textos, "ID: " + str(ev.get("id", "")), Vector2(26, 76), BRANCO)
-	Fonte.desenhar(textos, "FONTE: " + str(ev.get("fonte", "")), Vector2(130, 76), CINZA)
-
-	Fonte.desenhar(textos, "TIPO: " + str(ev.get("tipo", "")), Vector2(26, 87), AMARELO)
-
-	Fonte.desenhar(textos, "VELOCIDADE: " + str(ev.get("velocidade", "")), Vector2(26, 98), BRANCO)
-	Fonte.desenhar(textos, "PREVISAO: " + str(ev.get("tempo_impacto", "")), Vector2(140, 98), AZUL)
-
-	Fonte.desenhar(textos, "RADIACAO: " + str(ev.get("radiacao", "")), Vector2(26, 109), LARANJA)
-
-	# 4. Diretriz operacional clara em y=126
-	var acao_limpa: String = str(ev.get("acao", "")).trim_prefix("ACAO: ").strip_edges()
-	textos.draw_rect(Rect2(20, 124, 280, 11), Color(0.04, 0.12, 0.08, 0.6))
-	textos.draw_rect(Rect2(20, 124, 3, 11), VERDE)
-	textos.draw_rect(Rect2(20, 124, 280, 1), Color("#133022"))
-	textos.draw_rect(Rect2(20, 134, 280, 1), Color("#133022"))
-	Fonte.desenhar(textos, "DIRETRIZ: " + acao_limpa, Vector2(26, 126), VERDE)
-
-	# 5. Instrução de troca "[ESPACO] TROCAR REGISTRO DA NASA (X/Y)" em y=138
-	var qtd: int = lista_donki.size() if not lista_donki.is_empty() else 1
-	var nav_txt: String = "[ESPACO] TROCAR REGISTRO DA NASA (%d/%d)" % [indice_registro_donki + 1, qtd]
-	Fonte.desenhar(textos, nav_txt, Vector2(22, 138), AMARELO)
-
-
-# ------------------------------------------------------------- JANELA 2: DIÁRIO DE BORDO
-func _desenhar_janela_diario(m: Node) -> void:
-	var y: float = 38.0
-
-	# 1. Seletor de dia: [<- A] SOL X DE 7 [D ->]
-	textos.draw_rect(Rect2(20, y, 280, 14), Color("#0e1722"))
-	Fonte.desenhar(textos, "[<- A] DIA ANTERIOR", Vector2(24, y + 3), AMARELO if dia_diario_selecionado > 1 else CINZA_ESCURO)
-	var txt_centro: String = "SOL %d DE 7" % dia_diario_selecionado
-	Fonte.centralizado(textos, txt_centro, 160, y + 3, BRANCO)
-	Fonte.desenhar(textos, "PROXIMO DIA [D ->]", Vector2(212, y + 3), AMARELO if dia_diario_selecionado < 7 else CINZA_ESCURO)
-
-	y += 17.0 # y = 55.0
-	var entrada: Dictionary = {}
-	if m and m.has_method("obter_entrada_diario"):
-		entrada = m.obter_entrada_diario(dia_diario_selecionado)
-	elif m and m.diario_entradas and m.diario_entradas.has(dia_diario_selecionado):
-		entrada = m.diario_entradas[dia_diario_selecionado]
-	else:
-		entrada = {
-			"titulo": "SOL %d: REGISTRO DE TELEMETRIA" % dia_diario_selecionado,
-			"autor": "CMD. LUNA / ARTEMIS BASE",
-			"texto": "SISTEMAS OPERACIONAIS EM ROTINA.",
-			"estado": "concluido"
-		}
-
-	var estado: String = entrada.get("estado", "concluido")
-	var cor_titulo: Color = AMARELO
-	var cor_badge: Color = VERDE
-	var texto_badge: String = "[CONCLUIDO]"
-
-	match estado:
-		"ativo":
-			cor_titulo = AMARELO
-			cor_badge = AMARELO
-			texto_badge = "[TURNO EM ANDAMENTO]"
-		"bloqueado":
-			cor_titulo = LARANJA
-			cor_badge = CINZA
-			texto_badge = "[FUTURO // BLOQUEADO]"
-		_:
-			cor_titulo = VERDE
-			cor_badge = VERDE
-			texto_badge = "[REGISTRO FINALIZADO]"
-
-	# Linha 1: Título completo do Sol
-	Fonte.desenhar(textos, str(entrada.get("titulo", "")), Vector2(22, y), cor_titulo)
-
-	y += 8.0 # y = 63.0
-	# Linha 2: Autor à esquerda e Tag de status à direita
-	Fonte.desenhar(textos, "REGISTRO: " + str(entrada.get("autor", "")), Vector2(22, y), CINZA)
-	Fonte.desenhar(textos, texto_badge, Vector2(178, y), cor_badge)
-
-	y += 8.0 # y = 71.0
-	# Caixa de texto do Diário (altura 72 px, de y=71 a y=143)
-	textos.draw_rect(Rect2(20, y, 280, 72), Color("#070d14"))
-	textos.draw_rect(Rect2(20, y, 280, 1), Color("#172635"))
-
-	var linhas: Array[String] = _quebrar_texto(str(entrada.get("texto", "")), 58)
-	var ly: float = y + 5.0 # ly começa em 76.0
-	for l in linhas:
-		if ly > 136.0:
-			break
-		Fonte.desenhar(textos, l, Vector2(24, ly), BRANCO)
-		ly += 9.0
-
-	# Linha de instrução de navegação em y=146
-	Fonte.desenhar(textos, "[A/D ou SETAS] NAVEGAR ENTRADAS DO DIARIO", Vector2(22, 146), CINZA)
-
-
-# ------------------------------------------------------------- JANELA 3: PREVISÃO 7 DIAS
-func _desenhar_janela_previsao(dia_atual: int) -> void:
-	var y: float = 37.0
-	Fonte.desenhar(textos, "CRONOGRAMA DO CICLO DE 7 DIAS // MODELO ENLIL / DONKI", Vector2(22, y), AZUL)
-
-	var cronograma := [
-		{
-			"dia": 1,
-			"fase": "SOL 1: ESTAVEL",
-			"risco": "BAIXO",
-			"barra": 2,
-			"cor": VERDE,
-			"obs": "VENTO 340 KM/S",
-			"titulo": "SOL 1: POUSO E ATIVACAO",
-			"vento": "340 KM/S",
-			"diretriz": "ROTINA NOMINAL. MONITORAR OBSERVATORIO SDO.",
-			"detalhe": "FLUXO DE RAIOS-X EM NIVEL BASAL. SEM AMEACAS."
-		},
-		{
-			"dia": 2,
-			"fase": "SOL 2: REG. ATIVA",
-			"risco": "MODERADO",
-			"barra": 4,
-			"cor": AMARELO,
-			"obs": "REGIAO ATIVA",
-			"titulo": "SOL 2: REGIAO AR-13283",
-			"vento": "415 KM/S",
-			"diretriz": "MANTER TELEMETRIA EM ALERTA E CHECAR BATERIAS.",
-			"detalhe": "MANCHA SOLAR ATIVA EM ROTACAO ALINHADA A LUA."
-		},
-		{
-			"dia": 3,
-			"fase": "SOL 3: CME DETECTADA",
-			"risco": "ELEVADO",
-			"barra": 7,
-			"cor": LARANJA,
-			"obs": "CME 1.100 KM/S",
-			"titulo": "SOL 3: ALERTA CME (24H)",
-			"vento": "1.100 KM/S",
-			"diretriz": "REFORCAR A BLINDAGEM DO ABRIGO COM REGOLITO!",
-			"detalhe": "ONDA DE CHOQUE DE PLASMA EM TRANSITO PARA A LUA."
-		},
-		{
-			"dia": 4,
-			"fase": "SOL 4: IMPACTO CME",
-			"risco": "CRITICO",
-			"barra": 10,
-			"cor": VERMELHO,
-			"obs": "IMPACTO ABRIGO!",
-			"titulo": "SOL 4: TEMPESTADE PROTONS",
-			"vento": "1.280 KM/S",
-			"diretriz": "ABRIGO OBRIGATORIO! TRANCAR EQUIPE NO MODULO.",
-			"detalhe": "PARTICULAS ENERGETICAS ATINGEM A SUPERFICIE."
-		},
-		{
-			"dia": 5,
-			"fase": "SOL 5: RECUPERACAO",
-			"risco": "MODERADO",
-			"barra": 5,
-			"cor": AMARELO,
-			"obs": "LIMPAR PAINEIS",
-			"titulo": "SOL 5: RESCALDO // POEIRA",
-			"vento": "560 KM/S",
-			"diretriz": "LIMPAR PAINEIS SOLARES E RECALIBRAR BATERIAS.",
-			"detalhe": "PICO PASSOU. POEIRA IONIZADA AFETA GERACAO."
-		},
-		{
-			"dia": 6,
-			"fase": "SOL 6: ESTABILIZADO",
-			"risco": "BAIXO",
-			"barra": 2,
-			"cor": VERDE,
-			"obs": "SISTEMAS OK",
-			"titulo": "SOL 6: SISTEMAS NOMINAIS",
-			"vento": "370 KM/S",
-			"diretriz": "NORMALIZAR ROTINAS E SUPORTE DE VIDA 100%.",
-			"detalhe": "NIVEL DE RADIACAO NORMAL. CULTIVO NA ESTUFA OK."
-		},
-		{
-			"dia": 7,
-			"fase": "SOL 7: CONCLUIDO",
-			"risco": "MINIMO",
-			"barra": 1,
-			"cor": AZUL,
-			"obs": "MISSAO SALVA",
-			"titulo": "SOL 7: CONCLUSAO MISSAO",
-			"vento": "350 KM/S",
-			"diretriz": "TRANSMITIR DADOS CIENTIFICOS AO GODDARD / NASA.",
-			"detalhe": "BASE ARTEMIS HOMOLOGADA PARA PROXIMA ROTACAO."
-		}
-	]
-
-	dia_previsao_selecionado = clampi(dia_previsao_selecionado, 1, 7)
-
-	# Tabela dos 7 Dias (linhas compactas y=47 a y=109)
-	y = 47.0
-	for item in cronograma:
-		var d: int = int(item["dia"])
-		var eh_sel: bool = (d == dia_previsao_selecionado)
-		var eh_hoje: bool = (d == dia_atual)
-
-		var bg_col: Color = Color("#182937") if eh_sel else (Color("#101822") if eh_hoje else Color("#080e15"))
-		textos.draw_rect(Rect2(20, y, 280, 8), bg_col)
-
-		if eh_sel:
-			textos.draw_rect(Rect2(20, y, 2, 8), AMARELO)
-			Fonte.desenhar(textos, ">", Vector2(23, y + 2), AMARELO)
-		elif eh_hoje:
-			textos.draw_rect(Rect2(20, y, 2, 8), AZUL)
-			Fonte.desenhar(textos, "*", Vector2(23, y + 2), AZUL)
-
-		# Coluna 1: Dia e Fase (x=28 a x=110)
-		var cor_col1: Color = AMARELO if eh_sel else (AZUL if eh_hoje else BRANCO)
-		Fonte.desenhar(textos, str(item["fase"]), Vector2(28, y + 2), cor_col1)
-
-		# Coluna 2: Barra visual de risco (x=115 a x=155)
-		var bx: float = 115.0
-		var num_barras: int = int(item["barra"])
-		var cor_b: Color = item["cor"]
-		for b in range(10):
-			var b_cor: Color = cor_b if b < num_barras else Color("#141d24")
-			textos.draw_rect(Rect2(bx + b * 4, y + 2, 3, 5), b_cor)
-
-		# Coluna 3: Grau de Risco (x=160 a x=200)
-		Fonte.desenhar(textos, str(item["risco"]), Vector2(160, y + 2), cor_b)
-
-		# Coluna 4: Observação Curta (x=205 a x=295)
-		Fonte.desenhar(textos, str(item["obs"]), Vector2(205, y + 2), BRANCO if eh_sel else CINZA)
-
-		y += 9.0
-
-	# Painel de Detalhe Expandido do Dia Selecionado (y=112 a y=146)
-	var sel_item: Dictionary = cronograma[dia_previsao_selecionado - 1]
-	var cor_sel: Color = sel_item["cor"]
-	textos.draw_rect(Rect2(20, 112, 280, 34), Color("#091119"))
-	textos.draw_rect(Rect2(20, 112, 280, 1), Color("#1b2f42"))
-	textos.draw_rect(Rect2(20, 112, 2, 34), cor_sel)
-
-	# Linha 1 de detalhe (y=115)
-	Fonte.desenhar(textos, str(sel_item["titulo"]), Vector2(25, 115), AMARELO)
-	if dia_previsao_selecionado == dia_atual:
-		Fonte.desenhar(textos, "[HOJE]", Vector2(150, 115), AZUL)
-	Fonte.desenhar(textos, "VENTO: " + str(sel_item["vento"]), Vector2(184, 115), BRANCO)
-
-	# Linha 2 de detalhe (y=124)
-	Fonte.desenhar(textos, "DIRETRIZ: " + str(sel_item["diretriz"]), Vector2(25, 124), cor_sel)
-
-	# Linha 3 de detalhe (y=134)
-	Fonte.desenhar(textos, "STATUS: " + str(sel_item["detalhe"]), Vector2(25, 134), CINZA)
-
-	# Rodapé de navegação da janela (y=148)
-	Fonte.desenhar(textos, "[W/S ou CIMA/BAIXO] SELECIONAR SOL  |  HOJE: SOL %d" % dia_atual, Vector2(22, 148), CINZA)
-
-
-# ------------------------------------------------------------- JANELA 4: SETORES BASE
-func _obter_tarefas_feitas() -> Dictionary:
-	if mapa and "feitas" in mapa and mapa.feitas is Dictionary:
-		return mapa.feitas
-	var p: Node = get_parent()
-	while p:
-		if "feitas" in p and p.feitas is Dictionary:
-			return p.feitas
-		p = p.get_parent()
-	if is_inside_tree() and get_tree().current_scene:
-		var cena: Node = get_tree().current_scene
-		if "feitas" in cena and cena.feitas is Dictionary:
-			return cena.feitas
-	return {}
-
-
-func _desenhar_janela_setores(m: Node) -> void:
-	var y: float = 37.0
-	Fonte.desenhar(textos, "DIAGNOSTICO DOS MODULOS DA BASE ARTEMIS", Vector2(22, y), AZUL)
-
-	var feitas: Dictionary = _obter_tarefas_feitas()
-
-	# 1. ABRIGO BLINDADO
-	var abrigo_reforcado: bool = (m != null and m.blindagem_reforcada) or feitas.has("abrigo/blindagem")
-	var status_abrigo: String = "REFORCADO (100% BLINDAGEM - SEGURO)" if abrigo_reforcado else "VULNERAVEL (0% - ALTO RISCO DE RADIACAO)"
-	var cor_abrigo: Color = VERDE if abrigo_reforcado else VERMELHO
-
-	# 2. REDE DE ENERGIA (calculado com base nas tarefas de energia: paineis, baterias, distribuicao)
-	var tarefas_energia := ["energia/paineis", "energia/baterias", "energia/distribuicao"]
-	var energia_feitas: int = 0
-	for t in tarefas_energia:
-		if feitas.has(t):
-			energia_feitas += 1
-	var pct_energia: int = mini(100, 60 + energia_feitas * 15) if energia_feitas > 0 else 60
-	var status_energia: String
-	var cor_energia: Color
-	if energia_feitas == 0:
-		status_energia = "REQUER MANUTENCAO (60%)"
-		cor_energia = AMARELO
-	elif pct_energia >= 90:
-		status_energia = "OPERACIONAL (%d%%)" % pct_energia
-		cor_energia = VERDE
-	else:
-		status_energia = "OPERACIONAL (%d%%)" % pct_energia
-		cor_energia = AMARELO
-
-	# 3. SUPORTE DE VIDA
-	var suporte_ok: bool = feitas.has("suporte/oxigenio") or feitas.has("suporte/gas")
-	var status_suporte: String = "NOMINAL (O2: 21.2% | CO2: 0.04%)" if suporte_ok else "ATENCAO (O2: 19.8% | REQUER PURIFICACAO)"
-	var cor_suporte: Color = VERDE if suporte_ok else AMARELO
-
-	# 4. ESTUFA HIDROPONICA
-	var estufa_ok: bool = feitas.has("estufa/regar")
-	var status_estufa: String = "IRRIGADA (BIOMASSA 100%)" if estufa_ok else "SOLO SECO (REQUER IRRIGACAO)"
-	var cor_estufa: Color = VERDE if estufa_ok else AMARELO
-
-	# 5. MODULO HABITAT
-	var habitat_ok: bool = feitas.has("habitat/agua") or feitas.has("habitat/refeicao")
-	var status_habitat: String = "ABASTECIDO (TRIPULACAO NUTRIDA)" if habitat_ok else "SUPRIMENTOS PENDENTES (AGUA BAIXA)"
-	var cor_habitat: Color = VERDE if habitat_ok else AMARELO
-
-	var modulos := [
-		{
-			"nome": "ABRIGO BLINDADO",
-			"status": status_abrigo,
-			"cor": cor_abrigo,
-			"desc": "PROTECAO DE REGOLITO CONTRA RADIACAO DA CME."
-		},
-		{
-			"nome": "REDE DE ENERGIA",
-			"status": status_energia,
-			"cor": cor_energia,
-			"desc": "BANCO DE BATERIAS E MATRIZ DE PAINEIS SOLARES."
-		},
-		{
-			"nome": "SUPORTE DE VIDA",
-			"status": status_suporte,
-			"cor": cor_suporte,
-			"desc": "PURIFICACAO DE AR, PRESSURIZACAO E FILTROS DE CO2."
-		},
-		{
-			"nome": "ESTUFA HIDROPONICA",
-			"status": status_estufa,
-			"cor": cor_estufa,
-			"desc": "CULTIVO DE BIOMASSA E HORTA LUNAR PARA ALIMENTO."
-		},
-		{
-			"nome": "MODULO HABITAT",
-			"status": status_habitat,
-			"cor": cor_habitat,
-			"desc": "ACOMODACOES, PREPARO DE REFEICOES E LEITOS."
-		}
-	]
-
-	# Distribuição vertical com espaçamento de 18 px (5 módulos terminam em y=134)
-	y = 46.0
-	for mod in modulos:
-		textos.draw_rect(Rect2(20, y, 280, 16), Color("#0a111a"))
-		Fonte.desenhar(textos, str(mod["nome"]), Vector2(24, y + 2), AMARELO)
-		Fonte.desenhar(textos, str(mod["status"]), Vector2(110, y + 2), mod["cor"])
-		Fonte.desenhar(textos, str(mod["desc"]), Vector2(24, y + 9), CINZA)
-		y += 18.0
-
-	# Linha de status/dica em y=143 (com margem limpa antes do rodapé em y=155)
-	if abrigo_reforcado:
-		Fonte.desenhar(textos, "STATUS: ABRIGO REFORCADO // BASE PROTEGIDA CONTRA A CME", Vector2(22, 143), VERDE)
-	else:
-		Fonte.desenhar(textos, "DICA: REFORCE A BLINDAGEM NO ABRIGO ANTES DO DIA 4!", Vector2(22, 143), AMARELO)
-
-
-# ------------------------------------------------------------- UTILITÁRIOS
-func _quebrar_texto(texto: String, max_colunas: int) -> Array[String]:
-	var palavras := texto.split(" ")
-	var linhas: Array[String] = []
-	var linha_atual := ""
-	for p in palavras:
-		if linha_atual == "":
-			linha_atual = p
-		elif linha_atual.length() + 1 + p.length() <= max_colunas:
-			linha_atual += " " + p
-		else:
-			linhas.append(linha_atual)
-			linha_atual = p
-	if linha_atual != "":
-		linhas.append(linha_atual)
-	return linhas
+func _passar(d: int) -> void:
+	match aba:
+		0:
+			if not eventos.is_empty():
+				evento = posmod(evento + d, eventos.size())
+		1:
+			dia_log = clampi(dia_log + d, 1, _total())
+		2:
+			dia_prev = clampi(dia_prev + d, 1, _total())
 
 
 func _fechar() -> void:
+	if is_queued_for_deletion():
+		return
+	set_process_input(false)
 	fechou.emit()
 	queue_free()
+
+
+func _process(delta: float) -> void:
+	t += delta
+	queue_redraw()
+
+
+# ---------------------------------------------------------------- o que a base sabe do Sol
+## O Sol num dia da missão, só com o que já se sabe hoje: a erupção aparece a partir do boletim da véspera.
+## {titulo, risco, cor, barra (0 a 10), vento, nota}
+func _sol(d: int) -> Dictionary:
+	var e := Missao.dia_erupcao
+	var hoje := Missao.dia
+	var passou := not Missao.tempestade.is_empty()
+	var calmo := {"titulo": "QUIET SUN", "risco": "LOW", "cor": VERDE, "barra": 2, "vento": "350 KM/S",
+		"nota": "NO ALERTS FROM NASA DONKI. ROUTINE WORK OUTSIDE IS SAFE."}
+	if e == 0:
+		return calmo
+	if d == e and (hoje > e or (hoje == e and passou)):
+		var tp: Dictionary = Missao.tempestade
+		var onde := "THE CREW REACHED THE SHELTER" if tp.get("abrigo", false) else "THE CREW WAS CAUGHT OUTSIDE"
+		var dano := " (-%d HEALTH)" % roundi(tp["dano"]) if tp.has("dano") else ""
+		return {"titulo": "PROTON STORM HIT THE BASE", "risco": "CRITICAL", "cor": VERMELHO, "barra": 10,
+			"vento": "1280 KM/S", "nota": onde + dano + "."}
+	if d == e and hoje == e:
+		return {"titulo": "PROTON STORM TODAY", "risco": "CRITICAL", "cor": VERMELHO, "barra": 10,
+			"vento": "1280 KM/S", "nota": "WHEN THE ALARM SOUNDS, RUN TO THE SHIELDED SHELTER."}
+	if d > hoje + 1:                     # o modelo só enxerga um dia à frente (nem "calmo" ele garante)
+		return {"titulo": "NO DATA YET", "risco": "UNKNOWN", "cor": CINZA, "barra": 0, "vento": "--",
+			"nota": "THE SOLAR MODEL ONLY SEES ABOUT ONE DAY AHEAD. CHECK AGAIN LATER."}
+	if d == e and hoje == e - 1:
+		return {"titulo": "CME IMPACT EXPECTED", "risco": "CRITICAL", "cor": VERMELHO, "barra": 9,
+			"vento": "1280 KM/S", "nota": "A PROTON STORM WILL HIT THE BASE THIS DAY. SHIELD THE SHELTER."}
+	if d == e - 1 and hoje >= e - 1:
+		return {"titulo": "CME DETECTED", "risco": "HIGH", "cor": LARANJA, "barra": 7, "vento": "1100 KM/S",
+			"nota": "A CORONAL MASS EJECTION IS ON ITS WAY. IMPACT IN ABOUT 24 HOURS."}
+	if d == e + 1 and hoje >= e:
+		return {"titulo": "STORM DECAYING", "risco": "MODERATE", "cor": AMARELO, "barra": 4, "vento": "560 KM/S",
+			"nota": "PARTICLE FLUX FALLING BACK TO NORMAL LEVELS."}
+	return calmo
+
+
+## Tarefas previstas num dia (as de dias.json; no dia da erupção, já conhecido, também a blindagem).
+func _tarefas_do_dia(d: int) -> Array:
+	var ids: Array = mapa.ciclo.hoje.duplicate() if d == Missao.dia else \
+		mapa.ciclo.regras["dias"][d - 1]["tarefas"].duplicate()
+	if d == Missao.dia_erupcao and Missao.dia >= d - 1 and not BLINDAGEM in ids:
+		ids.append(BLINDAGEM)
+	var nomes := []
+	for id in ids:
+		var tf: Dictionary = mapa._tarefa(id)
+		if not tf.is_empty():
+			nomes.append(str(tf["texto"]))
+	return nomes
+
+
+func _noite(d: int) -> bool:
+	return mapa.ciclo.eh_noite(d)
+
+
+func _geracao_solar() -> int:
+	return roundi(float(Recursos.regras["geracao_solar_por_dia"]) * float(Missao.condicoes.get("geracao_solar", 1.0)))
+
+
+func _site() -> String:
+	return str(Missao.dados_local.get("titulo", "LUNAR")).to_upper()
+
+
+# ---------------------------------------------------------------- desenho
+func _draw() -> void:
+	draw_rect(Rect2(0, 0, 320, 180), Color(PRETO, 0.75))
+	draw_rect(Rect2(11, 7, 298, 166), PRETO)                     # monitor
+	draw_rect(Rect2(12, 8, 296, 164), Color("#2e383f"))
+	draw_rect(Rect2(12, 8, 296, 1), Color("#4d5b62"))
+	draw_rect(Rect2(16, 12, 288, 156), TELA)
+	_barra_titulo()
+	for i in ABAS.size():
+		_aba(i)
+	draw_rect(Rect2(16, 35, 288, 1), Color("#285264"))
+	match aba:
+		0: _janela_clima()
+		1: _janela_diario()
+		2: _janela_previsao()
+		3: _janela_base()
+	for y in range(36, 155, 3):                                   # efeito CRT
+		draw_rect(Rect2(16, y, 288, 1), Color(0, 0, 0, 0.12))
+	draw_rect(Rect2(16, 155, 288, 13), Color("#0a0f16"))
+	draw_rect(Rect2(16, 155, 288, 1), Color("#1b2b38"))
+	Fonte.desenhar(self, RODAPES[aba], Vector2(22, 159), CINZA)
+
+
+func _barra_titulo() -> void:
+	draw_rect(Rect2(16, 12, 288, 12), Color("#0e151f"))
+	Fonte.desenhar(self, "ARTEMIS-OS V2.4", Vector2(20, 15), AMARELO)
+	Fonte.desenhar(self, "%s BASE // DAY %d OF %d" % [_site(), Missao.dia, _total()], Vector2(88, 15), BRANCO)
+	var s := _sol(Missao.dia)                                     # LED: a cor do Sol hoje; pisca no alerta
+	var cor: Color = s["cor"]
+	if s["barra"] >= 7 and fmod(t, 0.8) < 0.4:
+		cor = Color(cor, 0.25)
+	draw_rect(Rect2(281, 16, 4, 4), cor)
+	draw_rect(BOTAO_X.grow(1), PRETO)
+	draw_rect(BOTAO_X.grow_individual(-1, -1, -1, -1), Color("#a53030"))
+	for k in 4:
+		draw_rect(Rect2(BOTAO_X.position + Vector2(2 + k, 2 + k), Vector2.ONE), BRANCO)
+		draw_rect(Rect2(BOTAO_X.position + Vector2(5 - k, 2 + k), Vector2.ONE), BRANCO)
+
+
+func _ret_aba(i: int) -> Rect2:
+	return Rect2(18 + i * 71, 24, 69, 10)
+
+
+func _aba(i: int) -> void:
+	var r := _ret_aba(i)
+	if i == aba:
+		draw_rect(r, Color("#1f3342"))
+		draw_rect(Rect2(r.position.x, r.end.y - 1, r.size.x, 1), AMARELO)
+		Fonte.desenhar(self, ABAS[i], r.position + Vector2(3, 2), AMARELO)
+	else:
+		draw_rect(r, Color("#0d141d"))
+		Fonte.desenhar(self, ABAS[i], r.position + Vector2(3, 2), CINZA)
+
+
+## Caixa com a faixa colorida à esquerda (o estilo das janelas do PR #24).
+func _caixa(r: Rect2, cor: Color) -> void:
+	draw_rect(r, CAIXA)
+	draw_rect(Rect2(r.position, Vector2(3, r.size.y)), cor)
+	draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), LINHA)
+	draw_rect(Rect2(r.position.x, r.end.y - 1, r.size.x, 1), LINHA)
+
+
+func _direita(txt: String, x_fim: float, y: float, cor: Color) -> void:
+	Fonte.desenhar(self, txt, Vector2(x_fim - Fonte.largura(txt), y), cor)
+
+
+func _barras(x: float, y: float, n: int, cor: Color) -> void:
+	for b in 10:
+		draw_rect(Rect2(x + b * 4, y, 3, 5), cor if b < n else Color("#141d24"))
+
+
+# ---------------------------------------------------------------- janela 1: clima espacial
+func _janela_clima() -> void:
+	var s := _sol(Missao.dia)
+	var cor: Color = s["cor"]
+	_caixa(Rect2(20, 38, 280, 28), cor)
+	Fonte.desenhar(self, "STATUS: " + str(s["titulo"]), Vector2(26, 41), cor)
+	_direita("SOLAR WIND: " + str(s["vento"]), 296, 41, BRANCO)
+	Fonte.desenhar(self, "RISK: " + str(s["risco"]), Vector2(26, 49), cor)
+	_barras(110, 49, int(s["barra"]), cor)
+	_direita("NASA DONKI / SDO", 296, 49, CINZA)
+	Fonte.desenhar(self, str(s["nota"]), Vector2(26, 57), BRANCO)
+
+	# a blindagem de agora e quanto a erupção tiraria da saúde
+	var n := Missao.blindagem
+	_caixa(Rect2(20, 69, 280, 20), VERDE if n > 0 else LARANJA)
+	Fonte.desenhar(self, "SHELTER SHIELDING: %d %s" % [n, "REINFORCEMENT" if n == 1 else "REINFORCEMENTS"],
+		Vector2(26, 72), VERDE if n > 0 else LARANJA)
+	Fonte.desenhar(self, "STORM DOSE: IN THE SHELTER -%d HEALTH / OUTSIDE -%d HEALTH" % [
+		roundi(Recursos.dano_tempestade(true)), roundi(Recursos.dano_tempestade(false))], Vector2(26, 80), BRANCO)
+
+	# arquivo de eventos reais do DONKI
+	_caixa(Rect2(20, 92, 280, 60), AMARELO)
+	if eventos.is_empty():
+		return
+	var ev: Dictionary = eventos[evento]
+	Fonte.desenhar(self, "NASA DONKI ARCHIVE - REAL EVENT %d/%d" % [evento + 1, eventos.size()], Vector2(26, 95),
+		AMARELO)
+	_direita("< A   D >", 296, 95, CINZA)
+	Fonte.desenhar(self, str(ev["data"]), Vector2(26, 104), AZUL)
+	Fonte.desenhar(self, str(ev["titulo"]), Vector2(26 + Fonte.largura(str(ev["data"])) + 8, 104), BRANCO)
+	var y := 113
+	for l in Ciclo.quebrar(str(ev["detalhe"]), 266):
+		Fonte.desenhar(self, l, Vector2(26, y), CINZA)
+		y += 8
+	if not Missao.tempestade.is_empty() and str(ev["data"]) == str(Missao.evento_solar.get("data", "")):
+		Fonte.desenhar(self, "THIS MISSION'S STORM WAS MODELED ON THIS EVENT.", Vector2(26, 142), VERDE)
+
+
+# ---------------------------------------------------------------- janela 2: diário de bordo
+func _janela_diario() -> void:
+	draw_rect(Rect2(20, 38, 280, 12), CAIXA)
+	Fonte.desenhar(self, "< A", Vector2(24, 41), AMARELO if dia_log > 1 else CINZA_ESC)
+	Fonte.centralizado(self, "DAY %d OF %d" % [dia_log, _total()], 160, 41, BRANCO)
+	_direita("D >", 296, 41, AMARELO if dia_log < _total() else CINZA_ESC)
+	if dia_log > Missao.dia or dia_log > Missao.historico.size():
+		_caixa(Rect2(20, 54, 280, 24), CINZA)
+		Fonte.desenhar(self, "DAY %d: LOCKED" % dia_log, Vector2(26, 58), LARANJA)
+		Fonte.desenhar(self, "THIS DAY HAS NOT STARTED YET. THE LOG IS WRITTEN AS IT HAPPENS.", Vector2(26, 67),
+			CINZA)
+		return
+	var h: Dictionary = Missao.historico[dia_log - 1]
+	var fechado := not (h.get("valores", {}) as Dictionary).is_empty()
+	var noite: bool = h.get("noite", false)
+	var cor := VERDE if fechado else AMARELO
+	_caixa(Rect2(20, 54, 280, 98), cor)
+	Fonte.desenhar(self, "DAY %d - %s" % [dia_log, "LUNAR NIGHT" if noite else "DAYLIGHT"], Vector2(26, 58),
+		AZUL if noite else AMARELO)
+	_direita("[LOG CLOSED]" if fechado else "[SHIFT IN PROGRESS]", 296, 58, cor)
+	var y := 70
+	Fonte.desenhar(self, "TASKS:", Vector2(26, y), CINZA)
+	y += 9
+	var acoes: Array = h.get("acoes", [])
+	if acoes.is_empty():
+		Fonte.desenhar(self, "- NONE" if fechado else "- NONE YET", Vector2(30, y), CINZA)
+		y += 9
+	for a in acoes:
+		var falhou := str(a).ends_with("(FAILED)")
+		Fonte.desenhar(self, "- " + str(a), Vector2(30, y), VERMELHO if falhou else BRANCO)
+		y += 9
+	var tp: Dictionary = Missao.tempestade
+	if int(tp.get("dia", 0)) == dia_log:
+		y += 3
+		var onde := "REACHED THE SHELTER" if tp.get("abrigo", false) else (
+			"CAUGHT IN BED, OUTSIDE THE SHELTER" if tp.get("dormindo", false) else "CAUGHT OUTSIDE THE SHELTER")
+		var dano := " -%d HEALTH" % roundi(tp["dano"]) if tp.has("dano") else ""
+		Fonte.desenhar(self, "SOLAR STORM: " + onde + dano, Vector2(26, y), VERMELHO)
+	if fechado:
+		var v: Dictionary = h["valores"]
+		var limite := float(Recursos.regras["limite_baixo"])
+		Fonte.desenhar(self, "END OF DAY:", Vector2(26, 134), CINZA)
+		var x := 26.0
+		for nome in Recursos.NOMES:
+			var valor: float = v.get(nome, 0.0)
+			var txt := "%s %d" % [Recursos.ROTULOS[nome], roundi(valor)]
+			Fonte.desenhar(self, txt, Vector2(x, 143), VERMELHO if valor < limite else BRANCO)
+			x += Fonte.largura(txt) + 12
+
+
+# ---------------------------------------------------------------- janela 3: previsão
+func _janela_previsao() -> void:
+	Fonte.desenhar(self, "%d-DAY FORECAST // WSA-ENLIL MODEL + NASA DONKI" % _total(), Vector2(22, 38), AZUL)
+	Fonte.desenhar(self, "DAY", Vector2(30, 47), CINZA)
+	Fonte.desenhar(self, "LIGHT", Vector2(62, 47), CINZA)
+	Fonte.desenhar(self, "SOLAR RISK", Vector2(104, 47), CINZA)
+	Fonte.desenhar(self, "TASKS", Vector2(250, 47), CINZA)
+	var y := 55.0
+	for d in range(1, _total() + 1):
+		var sel := d == dia_prev
+		var hoje := d == Missao.dia
+		draw_rect(Rect2(20, y, 280, 9), Color("#182937") if sel else (Color("#101822") if hoje else Color("#080e15")))
+		if sel:
+			draw_rect(Rect2(20, y, 2, 9), AMARELO)
+		elif hoje:
+			draw_rect(Rect2(20, y, 2, 9), AZUL)
+		var s := _sol(d)
+		var cor: Color = s["cor"]
+		Fonte.desenhar(self, "DAY %d" % d, Vector2(30, y + 2), AMARELO if sel else (AZUL if hoje else BRANCO))
+		var noite := _noite(d)
+		Fonte.desenhar(self, "NIGHT" if noite else "SUN", Vector2(62, y + 2), AZUL if noite else AMARELO)
+		_barras(104, y + 2, int(s["barra"]), cor)
+		Fonte.desenhar(self, str(s["risco"]), Vector2(148, y + 2), cor)
+		if hoje:
+			Fonte.desenhar(self, "TODAY", Vector2(206, y + 2), AZUL)
+		Fonte.desenhar(self, str(_tarefas_do_dia(d).size()), Vector2(250, y + 2), BRANCO if sel else CINZA)
+		y += 10.0
+	# detalhe do dia selecionado
+	var s := _sol(dia_prev)
+	var cor: Color = s["cor"]
+	_caixa(Rect2(20, 107, 280, 45), cor)
+	Fonte.desenhar(self, "DAY %d: %s" % [dia_prev, s["titulo"]], Vector2(26, 110), AMARELO)
+	if _noite(dia_prev):
+		_direita("LUNAR NIGHT: NO SOLAR POWER", 296, 110, AZUL)
+	else:
+		_direita("DAYLIGHT: PANELS +%d POWER" % _geracao_solar(), 296, 110, AMARELO)
+	Fonte.desenhar(self, str(s["nota"]), Vector2(26, 119), cor)
+	var y2 := 128
+	for l in Ciclo.quebrar("TASKS: " + ", ".join(PackedStringArray(_tarefas_do_dia(dia_prev))), 266).slice(0, 3):
+		Fonte.desenhar(self, l, Vector2(26, y2), CINZA)
+		y2 += 8
+
+
+# ---------------------------------------------------------------- janela 4: setores da base
+func _janela_base() -> void:
+	Fonte.desenhar(self, "BASE STATUS // WHAT TONIGHT WILL TAKE", Vector2(22, 38), AZUL)
+	var consumo: Dictionary = Recursos.regras["consumo_por_dia"]
+	var limite := float(Recursos.regras["limite_baixo"])
+	var queda := roundi(float(Recursos.regras["queda_condicao_por_recurso_baixo"]))
+	var noite_hoje := _noite(Missao.dia)
+	var solar := 0 if noite_hoje else _geracao_solar()
+	var baixos := 0
+	for nome in ["energia", "oxigenio", "comida"]:
+		if Recursos.baixo(nome):
+			baixos += 1
+	var muda := {
+		"energia": solar - roundi(float(consumo["energia"])),
+		"oxigenio": -roundi(float(consumo["oxigenio"])),
+		"comida": -roundi(float(consumo["comida"])),
+		"condicao": -baixos * queda,
+	}
+	var notas := {
+		"energia": "BASE USE -%d, SOLAR PANELS +%d%s" % [roundi(float(consumo["energia"])), solar,
+			" (LUNAR NIGHT)" if noite_hoje else ""],
+		"oxigenio": "THE CREW BREATHES -%d EVERY NIGHT" % roundi(float(consumo["oxigenio"])),
+		"comida": "THE CREW EATS -%d EVERY NIGHT" % roundi(float(consumo["comida"])),
+		"condicao": "-%d FOR EACH RESOURCE BELOW %d AT NIGHT" % [queda, roundi(limite)],
+	}
+	var y := 47.0
+	for nome in Recursos.NOMES:
+		var v: float = Recursos.valores[nome]
+		var cor := VERMELHO if v < limite else (AMARELO if v < 50.0 else VERDE)
+		_caixa(Rect2(20, y, 280, 19), cor)
+		Fonte.desenhar(self, str(Recursos.ROTULOS[nome]), Vector2(26, y + 3), AMARELO)
+		draw_rect(Rect2(66, y + 3, 100, 5), Color("#141d24"))
+		draw_rect(Rect2(66, y + 3, roundi(clampf(v, 0.0, 100.0)), 5), cor)
+		draw_rect(Rect2(66 + roundi(limite), y + 2, 1, 7), Color(VERMELHO, 0.8))   # marca do "baixo"
+		Fonte.desenhar(self, "%d" % roundi(v), Vector2(172, y + 3), BRANCO)
+		var dn: int = muda[nome]
+		_direita("TONIGHT %+d" % dn if dn != 0 else "TONIGHT 0", 296, y + 3,
+			VERMELHO if dn < 0 and v + dn < limite else (VERDE if dn > 0 else BRANCO))
+		Fonte.desenhar(self, str(notas[nome]), Vector2(26, y + 11), CINZA)
+		y += 21.0
+	Fonte.desenhar(self, "SHELTER SHIELDING: %d   ACTIONS LEFT TODAY: %d OF %d" % [Missao.blindagem,
+		mapa.ciclo.acoes_restantes(), mapa.ciclo.acoes_por_dia()], Vector2(22, 134), BRANCO)
+	Fonte.desenhar(self, "ANY RESOURCE AT 0 ABORTS THE MISSION.", Vector2(22, 143), CINZA)

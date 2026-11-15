@@ -450,6 +450,19 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 		)
 
 
+## Computador de navegação (mesa do Suporte): clima espacial, diário, previsão e situação da base. Consultar não
+## gasta ação; abre por cima do jogo como um minigame (o jogador fica parado e o HUD some).
+func abrir_computador() -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var pc: Control = load("res://cenas/computador_navegacao.tscn").instantiate()
+	pc.mapa = self
+	pc.fechou.connect(func(): _fechar_minigame(pc))
+	camada_ui.add_child(pc)
+
+
 func _fechar_minigame(mg: Control) -> void:
 	mg.queue_free()
 	em_minigame = false
@@ -494,6 +507,8 @@ func _interagir(it: Dictionary) -> void:
 			return
 		usadas[it["id"]] = true
 		encerrar_dia(it["id"])
+	elif it["acao"] == "computador":
+		abrir_computador()
 	else:
 		usadas[it["id"]] = true
 		Recursos.aplicar(it["id"])
