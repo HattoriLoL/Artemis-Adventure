@@ -53,12 +53,14 @@ var t_proximo_bip: float = 0.0
 var status_resolucao: String = ""
 var texto_resolucao: String = ""
 var t_banner_resolucao: float = 0.0
+var alavanca_puxada: bool = false
 
 var player_alarme: AudioStreamPlayer = null
 var player_sfx: AudioStreamPlayer = null
 var som_sirene: AudioStreamWAV = null
 var som_sucesso: AudioStreamWAV = null
 var som_impacto: AudioStreamWAV = null
+var som_clank: AudioStreamWAV = null
 
 
 func _ready() -> void:
@@ -70,6 +72,7 @@ func _criar_audio() -> void:
 	som_sirene = _sintetizar_sirene()
 	som_sucesso = _sintetizar_sucesso()
 	som_impacto = _sintetizar_impacto()
+	som_clank = _sintetizar_clank()
 
 	player_alarme = AudioStreamPlayer.new()
 	player_alarme.stream = som_sirene
@@ -167,6 +170,7 @@ func disparar(setor_forcado: String = "") -> void:
 	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(243, 153))
 	tempo_restante = DURACAO_JANELA
 	ativa = true
+	alavanca_puxada = false
 	status_resolucao = ""
 	texto_resolucao = ""
 	t_banner_resolucao = 0.0
@@ -197,12 +201,13 @@ func ativar_escudos() -> void:
 		return
 
 	ativa = false
+	alavanca_puxada = true
 	status_resolucao = "sucesso"
-	texto_resolucao = "[!] SHIELDS HELD // BASE PROTECTED!"
+	texto_resolucao = "SHIELDS HELD // BASE SECURED"
 	t_banner_resolucao = 3.5
 
 	_parar_alarme()
-	_tocar_sucesso()
+	_tocar_clank_e_sucesso()
 
 	var nome_sala: String = NOMES_SETORES.get(setor_atual, setor_atual.to_upper())
 	if not Missao.historico.is_empty():
@@ -263,79 +268,143 @@ func _aplicar_dano_recursos() -> void:
 
 
 func _draw() -> void:
-	if not ativa:
-		return
+	# Desenha as Alavancas de Emergência nas 3 salas da base
+	for s: String in SETORES:
+		var pos: Vector2 = POSICOES_SETORES[s]
+		var eh_alvo_ativo: bool = ativa and s == setor_atual
+		var eh_alvo_resolvido: bool = (t_banner_resolucao > 0.0) and (s == setor_atual)
+		_desenhar_estacao_alavanca(pos, eh_alvo_ativo, eh_alvo_resolvido)
 
-	var p := posicao_estacao
+
+func _desenhar_estacao_alavanca(p: Vector2, alvo_ativo: bool, alvo_resolvido: bool) -> void:
 	var pulso: float = (sin(t_animacao * 8.0) + 1.0) * 0.5
 	var cor_pulso: Color = VERMELHO.lerp(AMARELO, pulso)
 
-	# Contorno pulsante da estacao de emergencia
-	draw_rect(Rect2(p.x - 12, p.y - 26, 24, 28), cor_pulso, false, 1.0)
-	draw_rect(Rect2(p.x - 13, p.y - 27, 26, 30), Color(cor_pulso, 0.4), false, 1.0)
+	# 1. Retículo / Perímetro Tático quando a emergência está ativa nesta sala
+	if alvo_ativo:
+		var r_tatico := Rect2(p.x - 13, p.y - 25, 26, 30)
+		draw_rect(r_tatico, Color(cor_pulso, 0.25), false, 1.0)
+		var d: float = 13.0
+		var tam_c: float = 4.0
+		# Cantoneiras táticas pulsantes
+		draw_line(p + Vector2(-d, -25), p + Vector2(-d + tam_c, -25), cor_pulso, 1.2)
+		draw_line(p + Vector2(-d, -25), p + Vector2(-d, -25 + tam_c), cor_pulso, 1.2)
+		draw_line(p + Vector2(d, -25), p + Vector2(d - tam_c, -25), cor_pulso, 1.2)
+		draw_line(p + Vector2(d, -25), p + Vector2(d, -25 + tam_c), cor_pulso, 1.2)
+		draw_line(p + Vector2(-d, 5), p + Vector2(-d + tam_c, 5), cor_pulso, 1.2)
+		draw_line(p + Vector2(-d, 5), p + Vector2(-d, 5 - tam_c), cor_pulso, 1.2)
+		draw_line(p + Vector2(d, 5), p + Vector2(d - tam_c, 5), cor_pulso, 1.2)
+		draw_line(p + Vector2(d, 5), p + Vector2(d, 5 - tam_c), cor_pulso, 1.2)
 
-	# Corpo do console de controle
-	draw_rect(Rect2(p.x - 10, p.y - 24, 20, 24), CINZA_ESC)
-	draw_rect(Rect2(p.x - 9, p.y - 23, 18, 22), FUNDO)
+	# 2. Pedestal Metálico e Caixa da Alavanca
+	draw_rect(Rect2(p.x - 8, p.y - 15, 16, 20), PRETO)
+	draw_rect(Rect2(p.x - 7, p.y - 14, 14, 18), CINZA_ESC)
+	draw_rect(Rect2(p.x - 6, p.y - 13, 12, 16), FUNDO)
 
-	# Tela do console com simbolo de escudo
-	draw_rect(Rect2(p.x - 7, p.y - 20, 14, 12), Color("#0a121d"))
-	var cor_escudo := AZUL.lerp(BRANCO, pulso * 0.6)
-	draw_rect(Rect2(p.x - 4, p.y - 18, 8, 4), cor_escudo)
-	draw_rect(Rect2(p.x - 3, p.y - 14, 6, 3), cor_escudo)
-	draw_rect(Rect2(p.x - 1, p.y - 11, 2, 2), cor_escudo)
+	# Faixas Zebradas de Perigo (Hazard Stripes) na base do console
+	for stripe: int in 4:
+		var xs: float = p.x - 6.0 + float(stripe) * 3.0
+		draw_rect(Rect2(xs, p.y + 1, 2.0, 3.0), AMARELO if stripe % 2 == 0 else PRETO)
 
-	# LEDs indicadores no topo do console
-	var led1 := VERMELHO if fmod(t_animacao, 0.4) < 0.2 else Color("#577277")
-	var led2 := AMARELO if fmod(t_animacao, 0.4) >= 0.2 else Color("#577277")
-	draw_rect(Rect2(p.x - 8, p.y - 23, 3, 2), led1)
-	draw_rect(Rect2(p.x + 5, p.y - 23, 3, 2), led2)
+	# Canaleta / Fenda vertical de acionamento da alavanca
+	draw_rect(Rect2(p.x - 2, p.y - 11, 4, 10), Color("#0a1017"))
+	draw_rect(Rect2(p.x - 1, p.y - 10, 2, 8), PRETO)
 
-	# Teclado / Comutador da estacao
-	draw_rect(Rect2(p.x - 8, p.y - 6, 16, 4), CINZA)
-	draw_rect(Rect2(p.x - 3, p.y - 5, 6, 2), AMARELO)
+	# Pivô da alavanca (eixo circular metálico)
+	var pivo := Vector2(p.x, p.y - 3)
+	draw_circle(pivo, 2.2, CINZA)
+	draw_circle(pivo, 1.2, BRANCO)
 
-	# Indicador flutuante acima da estacao (seta piscante)
-	var y_marcador: float = p.y - 33.0 + round(sin(t_animacao * 6.0) * 2.0)
-	var pts := PackedVector2Array([
-		Vector2(p.x - 4, y_marcador),
-		Vector2(p.x + 4, y_marcador),
-		Vector2(p.x, y_marcador + 4)
-	])
-	draw_polygon(pts, [cor_pulso])
+	# 3. Braço e Manopla da Alavanca Mecânica
+	var p_fim_braco: Vector2
+	var cor_manopla: Color
+
+	if alvo_resolvido and alavanca_puxada:
+		# Posição PUXADA PARA BAIXO (ativada / escudos travados)
+		p_fim_braco = pivo + Vector2(5.0, 3.0)
+		draw_line(pivo, p_fim_braco, Color("#a8b5b2"), 1.8)
+		cor_manopla = VERDE_LIMA
+		draw_circle(p_fim_braco, 2.6, cor_manopla)
+		draw_rect(Rect2(p_fim_braco.x - 0.5, p_fim_braco.y - 0.5, 1.0, 1.0), BRANCO)
+	elif alvo_ativo:
+		# Posição ARMADA PARA CIMA (aguardando puxar)
+		p_fim_braco = pivo + Vector2(-5.0, -7.0)
+		draw_line(pivo, p_fim_braco, BRANCO, 1.8)
+		cor_manopla = VERMELHO_CLARO if fmod(t_animacao, 0.2) < 0.1 else AMARELO
+		draw_circle(p_fim_braco, 2.8, cor_manopla)
+		draw_circle(p_fim_braco, 1.4, BRANCO)
+	else:
+		# Posição NEUTRA / REPOUSO em salas sem alarme
+		p_fim_braco = pivo + Vector2(0.0, -6.5)
+		draw_line(pivo, p_fim_braco, Color("#819796"), 1.6)
+		cor_manopla = Color("#852828")
+		draw_circle(p_fim_braco, 2.2, cor_manopla)
+
+	# 4. Giroflex / Alerta no Topo da Caixa da Alavanca
+	var p_strobe := Vector2(p.x, p.y - 16)
+	draw_rect(Rect2(p.x - 3, p.y - 16, 6, 2), CINZA)
+	if alvo_ativo:
+		var aceso: bool = fmod(t_animacao, 0.24) < 0.12
+		var c_luz: Color = BRANCO if aceso else VERMELHO_CLARO
+		draw_circle(p_strobe, 6.0, Color(VERMELHO.r, VERMELHO.g, VERMELHO.b, 0.35))
+		draw_rect(Rect2(p.x - 2, p.y - 19, 4, 3), c_luz)
+	elif alvo_resolvido and alavanca_puxada:
+		draw_circle(p_strobe, 4.0, Color(VERDE.r, VERDE.g, VERDE.b, 0.3))
+		draw_rect(Rect2(p.x - 2, p.y - 19, 4, 3), VERDE_LIMA)
+	else:
+		draw_rect(Rect2(p.x - 2, p.y - 19, 4, 3), Color("#394a50"))
+
+	# 5. Indicador Flutuante com Seta e Texto "LEVER" quando ativa
+	if alvo_ativo:
+		var y_flutuante: float = p.y - 25.0 + round(sin(t_animacao * 6.0) * 2.0)
+		var pts := PackedVector2Array([
+			Vector2(p.x - 4, y_flutuante - 2),
+			Vector2(p.x + 4, y_flutuante - 2),
+			Vector2(p.x, y_flutuante + 3)
+		])
+		draw_polygon(pts, [cor_pulso])
+		Fonte.centralizado(self, "LEVER", p.x, y_flutuante - 9.0, AMARELO)
 
 
 func desenhar_hud(hud: Control, t: float) -> void:
+	# Alerta compacto posicionado no canto inferior direito, logo ACIMA do minimapa!
+	# Não interfere com Lista de Tarefas (canto sup. esq), Túnel, Jogador ou Minimapa.
+	var bx: float = 236.0
+	var by: float = 68.0
+	var bw: float = 79.0
+	var bh: float = 24.0
+
 	if ativa:
 		var segs: int = ceili(tempo_restante)
 		var sala_nome: String = NOMES_SETORES.get(setor_atual, setor_atual.to_upper())
-		var banner: String = "[!] METEOR IMPACT INCOMING: %s [%ds]" % [sala_nome, segs]
-
-		var w: float = float(Fonte.largura(banner) + 12)
-		var bx: float = 160.0 - w / 2.0
-		var by: float = 38.0
-
 		var pulso_hud: float = (sin(t * 10.0) + 1.0) * 0.5
 		var cor_borda: Color = VERMELHO.lerp(AMARELO, pulso_hud)
-		var cor_txt: Color = AMARELO if fmod(t, 0.5) < 0.25 else BRANCO
+		var cor_header: Color = AMARELO if fmod(t, 0.4) < 0.2 else BRANCO
 
-		hud.draw_rect(Rect2(bx, by, w, 13), Color(0.04, 0.02, 0.02, 0.92))
-		hud.draw_rect(Rect2(bx, by, w, 13), cor_borda, false, 1.0)
-		Fonte.centralizado(hud, banner, 160.0, by + 4.0, cor_txt)
+		# Caixa de alerta tática compacta
+		hud.draw_rect(Rect2(bx, by, bw, bh), Color(0.04, 0.02, 0.02, 0.90))
+		hud.draw_rect(Rect2(bx, by, bw, bh), cor_borda, false, 1.0)
+		hud.draw_rect(Rect2(bx + 1, by + 1, 3, bh - 2), cor_borda)
+
+		# Linha 1: Contagem de impacto
+		Fonte.centralizado(hud, "[!] METEOR %dS" % segs, bx + bw / 2.0 + 1.0, by + 4.0, cor_header)
+		# Linha 2: Sala alvo
+		Fonte.centralizado(hud, "> " + sala_nome, bx + bw / 2.0 + 1.0, by + 13.0, cor_borda)
 
 	elif t_banner_resolucao > 0.0:
-		var w: float = float(Fonte.largura(texto_resolucao) + 12)
-		var bx: float = 160.0 - w / 2.0
-		var by: float = 38.0
-
+		var sala_nome: String = NOMES_SETORES.get(setor_atual, setor_atual.to_upper())
 		if status_resolucao == "sucesso":
-			hud.draw_rect(Rect2(bx, by, w, 13), Color(0.02, 0.05, 0.03, 0.92))
-			hud.draw_rect(Rect2(bx, by, w, 13), VERDE, false, 1.0)
-			Fonte.centralizado(hud, texto_resolucao, 160.0, by + 4.0, VERDE)
+			hud.draw_rect(Rect2(bx, by, bw, bh), Color(0.02, 0.05, 0.03, 0.92))
+			hud.draw_rect(Rect2(bx, by, bw, bh), VERDE, false, 1.0)
+			hud.draw_rect(Rect2(bx + 1, by + 1, 3, bh - 2), VERDE_LIMA)
+			Fonte.centralizado(hud, "[!] SHIELDS UP", bx + bw / 2.0 + 1.0, by + 4.0, VERDE_LIMA)
+			Fonte.centralizado(hud, "BASE SECURED", bx + bw / 2.0 + 1.0, by + 13.0, BRANCO)
 		else:
-			hud.draw_rect(Rect2(bx, by, w, 13), Color(0.06, 0.02, 0.02, 0.92))
-			hud.draw_rect(Rect2(bx, by, w, 13), VERMELHO, false, 1.0)
-			Fonte.centralizado(hud, texto_resolucao, 160.0, by + 4.0, VERMELHO)
+			hud.draw_rect(Rect2(bx, by, bw, bh), Color(0.06, 0.02, 0.02, 0.92))
+			hud.draw_rect(Rect2(bx, by, bw, bh), VERMELHO, false, 1.0)
+			hud.draw_rect(Rect2(bx + 1, by + 1, 3, bh - 2), VERMELHO)
+			Fonte.centralizado(hud, "[!] IMPACT!", bx + bw / 2.0 + 1.0, by + 4.0, VERMELHO_CLARO)
+			Fonte.centralizado(hud, "%s HIT" % sala_nome, bx + bw / 2.0 + 1.0, by + 13.0, AMARELO)
 
 
 func _tocar_sirene() -> void:
@@ -349,10 +418,39 @@ func _parar_alarme() -> void:
 		player_alarme.stop()
 
 
-func _tocar_sucesso() -> void:
+func _tocar_clank_e_sucesso() -> void:
 	if player_sfx != null:
-		player_sfx.stream = som_sucesso
+		player_sfx.stream = som_clank if som_clank != null else som_sucesso
 		player_sfx.play()
+		# Toca o chime de sucesso logo em seguida
+		get_tree().create_timer(0.18).timeout.connect(func():
+			if player_sfx != null:
+				player_sfx.stream = som_sucesso
+				player_sfx.play()
+		)
+
+
+static func _sintetizar_clank() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var duracao: float = 0.22
+	var sample_count: int = int(duracao * 22050.0)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+
+	for i in range(sample_count):
+		var t: float = float(i) / 22050.0
+		var r: float = randf_range(-1.0, 1.0) * exp(-t * 22.0)
+		var thud: float = sin(t * 120.0 * TAU) * exp(-t * 18.0)
+		var click: float = sin(t * 880.0 * TAU) * exp(-t * 40.0)
+		var sample: float = (r * 0.4 + thud * 0.45 + click * 0.35) * 0.95
+		var val: int = int(clampf(sample, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, val)
+
+	stream.data = data
+	return stream
 
 
 func _tocar_impacto() -> void:

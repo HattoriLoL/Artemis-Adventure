@@ -559,7 +559,7 @@ func _proximo_alvo() -> Dictionary:
 			"id": "emergencia/escudos",
 			"pos": emergencia.posicao_estacao,
 			"sala": emergencia.setor_atual,
-			"texto": "ACTIVATE EMERGENCY SHIELDS"
+			"texto": "PULL EMERGENCY LEVER"
 		}
 	var melhor := {}
 	var nota := -INF
@@ -671,7 +671,7 @@ func _desenha_hud() -> void:
 		tf = _perto(interacoes, usadas)
 	var perto_em: bool = emergencia != null and emergencia.perto_estacao(jogador.global_position)
 	if perto_em and not dormindo:
-		Fonte.centralizado(hud, "E: ACTIVATE EMERGENCY SHIELDS", 160, 154, AMARELO)
+		Fonte.centralizado(hud, "E: PULL EMERGENCY LEVER", 160, 154, AMARELO)
 	elif not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
 		var n := ciclo.acoes_restantes()
 		Fonte.centralizado(hud, "E AGAIN: END THE DAY NOW", 160, 154, AMARELO)
