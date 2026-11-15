@@ -125,7 +125,8 @@
    "id": "terminal",
    "x": 62,
    "y": 106,
-   "texto": "RESTART THE TERMINAL"
+   "texto": "AIM THE SOLAR PANELS",
+   "minigame": "res://cenas/minigame_align_panels.tscn"
   },
   {
    "id": "distribuicao",
