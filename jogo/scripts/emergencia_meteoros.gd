@@ -23,7 +23,7 @@ const CINZA_ESC := Color("#394a50")
 const AZUL := Color("#73bed3")
 
 const DURACAO_JANELA: float = 25.0
-const DISTANCIA_USO: float = 30.0
+const DISTANCIA_USO: float = 34.0
 
 const SETORES: Array[String] = ["energia", "habitat", "suporte", "abrigo", "estufa"]
 
@@ -35,13 +35,13 @@ const NOMES_SETORES: Dictionary = {
 	"estufa": "GREENHOUSE"
 }
 
-# Coordenadas fixadas nas PAREDES de cada sala (acessíveis e nunca no meio do corredor)
+# Coordenadas fixadas diretamente NAS PAREDES de cada sala (meio escondidas, discretas e embutidas)
 const POSICOES_SETORES: Dictionary = {
-	"energia": Vector2(270, 110),
-	"habitat": Vector2(240, 516),
-	"suporte": Vector2(208, 914),
-	"abrigo": Vector2(686, 516),
-	"estufa": Vector2(744, 900)
+	"energia": Vector2(270, 88),
+	"habitat": Vector2(240, 492),
+	"suporte": Vector2(208, 890),
+	"abrigo": Vector2(686, 492),
+	"estufa": Vector2(760, 884)
 }
 
 var mapa: Node2D = null
@@ -89,9 +89,9 @@ func _criar_colisoes_alavancas() -> void:
 		corpo.position = p
 		var col := CollisionShape2D.new()
 		var shape := RectangleShape2D.new()
-		shape.size = Vector2(16.0, 10.0)
+		shape.size = Vector2(10.0, 8.0)
 		col.shape = shape
-		col.position = Vector2(0.0, -2.0)
+		col.position = Vector2(0.0, 0.0)
 		corpo.add_child(col)
 		add_child(corpo)
 		corpos_colisao.append(corpo)
@@ -198,7 +198,7 @@ func disparar(setor_forcado: String = "") -> void:
 	else:
 		setor_atual = SETORES.pick_random()
 
-	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(270, 110))
+	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(270, 88))
 	tempo_restante = DURACAO_JANELA
 	ativa = true
 	alavanca_puxada = false
@@ -316,84 +316,49 @@ func _desenhar_estacao_alavanca(p: Vector2, alvo_ativo: bool, alvo_resolvido: bo
 	var pulso: float = (sin(t_animacao * 8.0) + 1.0) * 0.5
 	var cor_pulso: Color = VERMELHO.lerp(AMARELO, pulso)
 
-	# 1. Demarcação tática no chão em frente à parede
-	var r_piso := Rect2(p.x - 12, p.y + 4, 24, 12)
-	draw_rect(r_piso, Color(cor_pulso, 0.15))
-	draw_rect(r_piso, Color(cor_pulso, 0.4), false, 1.0)
+	# Painel discreto embutido na parede (apenas 6x8 pixels - elegante e sutil)
+	# Moldura de fixação metálica na chapa da parede
+	draw_rect(Rect2(p.x - 3, p.y - 4, 6, 8), PRETO)
+	draw_rect(Rect2(p.x - 2, p.y - 3, 4, 6), CINZA_ESC)
 
-	# 2. Painel Embutido na Parede (Wall-mounted)
-	# Placa traseira de aço
-	draw_rect(Rect2(p.x - 8, p.y - 14, 16, 17), PRETO)
-	draw_rect(Rect2(p.x - 7, p.y - 13, 14, 15), CINZA_ESC)
-	draw_rect(Rect2(p.x - 6, p.y - 12, 12, 13), FUNDO)
+	# Fenda vertical do disjuntor / switch
+	draw_rect(Rect2(p.x - 1, p.y - 2, 2, 4), Color("#0a1017"))
 
-	# 4 Parafusos metálicos de fixação na parede
-	draw_rect(Rect2(p.x - 6, p.y - 12, 1, 1), BRANCO)
-	draw_rect(Rect2(p.x + 5, p.y - 12, 1, 1), BRANCO)
-	draw_rect(Rect2(p.x - 6, p.y - 1, 1, 1), CINZA)
-	draw_rect(Rect2(p.x + 5, p.y - 1, 1, 1), CINZA)
-
-	# Faixas zebradas de perigo na parte inferior da placa de parede
-	for stripe: int in 4:
-		var xs: float = p.x - 5.0 + float(stripe) * 2.5
-		draw_rect(Rect2(xs, p.y - 4, 2.0, 3.0), AMARELO if stripe % 2 == 0 else PRETO)
-
-	# Canaleta / ranhura vertical da alavanca
-	draw_rect(Rect2(p.x - 2, p.y - 11, 4, 8), PRETO)
-
-	# Pivô central da alavanca na parede
-	var pivo := Vector2(p.x, p.y - 4)
-	draw_circle(pivo, 2.0, CINZA)
-	draw_circle(pivo, 1.0, BRANCO)
-
-	# 3. Braço e Manopla da Alavanca
-	var p_fim_braco: Vector2
-	var cor_manopla: Color
-
+	# Manopla / Chave mecânica embutida
 	if alvo_resolvido and alavanca_puxada:
-		# Posição PUXADA PARA BAIXO (escudos acionados)
-		p_fim_braco = pivo + Vector2(4.0, 4.0)
-		draw_line(pivo, p_fim_braco, Color("#a8b5b2"), 1.8)
-		cor_manopla = VERDE_LIMA
-		draw_circle(p_fim_braco, 2.4, cor_manopla)
-		draw_rect(Rect2(p_fim_braco.x - 0.5, p_fim_braco.y - 0.5, 1.0, 1.0), BRANCO)
+		# Chave acionada para baixo (verde)
+		draw_rect(Rect2(p.x - 1, p.y + 1, 2, 2), VERDE_LIMA)
 	elif alvo_ativo:
-		# Posição ARMADA PARA CIMA (aguardando acionamento)
-		p_fim_braco = pivo + Vector2(-4.0, -7.0)
-		draw_line(pivo, p_fim_braco, BRANCO, 1.8)
-		cor_manopla = VERMELHO_CLARO if fmod(t_animacao, 0.2) < 0.1 else AMARELO
-		draw_circle(p_fim_braco, 2.6, cor_manopla)
-		draw_circle(p_fim_braco, 1.2, BRANCO)
+		# Chave armada para cima (pisca vermelho/amarelo em emergência)
+		var cor_chave := VERMELHO_CLARO if fmod(t_animacao, 0.2) < 0.1 else AMARELO
+		draw_rect(Rect2(p.x - 1, p.y - 3, 2, 2), cor_chave)
 	else:
-		p_fim_braco = pivo + Vector2(0.0, -6.0)
-		draw_line(pivo, p_fim_braco, Color("#819796"), 1.5)
-		cor_manopla = Color("#852828")
-		draw_circle(p_fim_braco, 2.0, cor_manopla)
+		# Modo repouso / standby discreto (pequeno botão na cor do metal com detalhe bordô)
+		draw_rect(Rect2(p.x - 1, p.y - 1, 2, 2), Color("#752438"))
 
-	# 4. Giroflex / Alerta no topo da placa de parede
-	var p_strobe := Vector2(p.x, p.y - 15)
-	draw_rect(Rect2(p.x - 3, p.y - 15, 6, 2), CINZA)
+	# LED indicador de emergência no topo da caixinha (2x2 px)
 	if alvo_ativo:
 		var aceso: bool = fmod(t_animacao, 0.24) < 0.12
 		var c_luz: Color = BRANCO if aceso else VERMELHO_CLARO
-		draw_circle(p_strobe, 7.0, Color(VERMELHO.r, VERMELHO.g, VERMELHO.b, 0.35))
-		draw_rect(Rect2(p.x - 2, p.y - 18, 4, 3), c_luz)
-	elif alvo_resolvido and alavanca_puxada:
-		draw_circle(p_strobe, 5.0, Color(VERDE.r, VERDE.g, VERDE.b, 0.35))
-		draw_rect(Rect2(p.x - 2, p.y - 18, 4, 3), VERDE_LIMA)
-	else:
-		draw_rect(Rect2(p.x - 2, p.y - 18, 4, 3), Color("#394a50"))
+		draw_circle(Vector2(p.x, p.y - 6), 4.5, Color(VERMELHO.r, VERMELHO.g, VERMELHO.b, 0.35))
+		draw_rect(Rect2(p.x - 1, p.y - 7, 2, 2), c_luz)
 
-	# 5. Indicador Flutuante com Seta e Texto "LEVER" quando em emergência
-	if alvo_ativo:
-		var y_flutuante: float = p.y - 25.0 + round(sin(t_animacao * 6.0) * 2.0)
+		# Seta tática flutuante e texto "LEVER" APENAS na alavanca da sala ameaçada
+		var y_flutuante: float = p.y - 13.0 + round(sin(t_animacao * 6.0) * 1.5)
 		var pts := PackedVector2Array([
-			Vector2(p.x - 4, y_flutuante - 2),
-			Vector2(p.x + 4, y_flutuante - 2),
-			Vector2(p.x, y_flutuante + 3)
+			Vector2(p.x - 3, y_flutuante - 2),
+			Vector2(p.x + 3, y_flutuante - 2),
+			Vector2(p.x, y_flutuante + 2)
 		])
 		draw_polygon(pts, [cor_pulso])
-		Fonte.centralizado(self, "LEVER", p.x, y_flutuante - 9.0, AMARELO)
+		Fonte.centralizado(self, "LEVER", p.x, y_flutuante - 8.0, AMARELO)
+
+	elif alvo_resolvido and alavanca_puxada:
+		draw_circle(Vector2(p.x, p.y - 6), 3.0, Color(VERDE.r, VERDE.g, VERDE.b, 0.35))
+		draw_rect(Rect2(p.x - 1, p.y - 7, 2, 2), VERDE_LIMA)
+	else:
+		# Em repouso: minúsculo ponto escuro, 100% discreto
+		draw_rect(Rect2(p.x - 0.5, p.y - 6.5, 1, 1), CINZA_ESC)
 
 
 func desenhar_hud(hud: Control, t: float) -> void:
