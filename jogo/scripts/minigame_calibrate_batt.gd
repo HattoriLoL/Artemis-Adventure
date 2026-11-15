@@ -142,6 +142,12 @@ func taxa_erro() -> float:
 	return erros / maxf(1.0, float(erros + bateria))
 
 
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça.
+func comecou() -> bool:
+	return erros > 0 or bateria > 0
+
+
 func _ponteiro_na_faixa(margem: float) -> bool:
 	return ponteiro_x >= faixa_x + margem and ponteiro_x <= faixa_x + LARGURA_FAIXA - margem
 

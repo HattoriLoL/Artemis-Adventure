@@ -85,6 +85,7 @@ var t_impacto := 0.0                            # > 0 logo depois de o jato bate
 var forca_impacto := 0.0                        # 0 a 1: quão forte foi a batida (velocidade / VEL_MAX)
 var t_jogando := 0.0                            # tempo jogando, somando as rodadas
 var t_fora := 0.0                               # desse tempo, quanto a gota passou fora do jato
+var jogou := false                              # já subiu o jato alguma vez
 
 
 func _ready() -> void:
@@ -109,6 +110,7 @@ func _process(delta: float) -> void:
 	t_impacto = maxf(0.0, t_impacto - delta)
 	if estado == "jogando":
 		segurando = _quer_subir()
+		jogou = jogou or segurando
 		_mover_jato(delta)
 		_mover_gota(delta)
 		_crescer(delta)
@@ -174,6 +176,12 @@ func _gota_no_jato() -> bool:
 ## Fração do tempo de jogo com a gota longe do jato (mais que MARGEM_ERRO): passar raspando não conta.
 func taxa_erro() -> float:
 	return t_fora / maxf(0.001, t_jogando)
+
+
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça.
+func comecou() -> bool:
+	return jogou or tentativa > 1
 
 
 func _crescer(delta: float) -> void:

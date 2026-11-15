@@ -131,6 +131,12 @@ func taxa_erro() -> float:
 	return erros / float(erros + 1)
 
 
+## O jogador já começou a jogar: a partir daqui, fechar no X ou no Esc conta como desistir (o mapa trata como
+## falha, depois de confirmar). Antes disso, fechar é de graça.
+func comecou() -> bool:
+	return erros > 0 or nivel > 0.0
+
+
 ## Passou da faixa (transbordou ou soltou acima dela): conta um erro e o galão drena até a metade.
 func _errar(txt: String) -> void:
 	transbordou = true
