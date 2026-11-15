@@ -114,11 +114,11 @@ func _ready() -> void:
 	_interface()
 	emergencia = EmergenciaMeteorosScript.new()
 	add_child(emergencia)
-	emergencia.iniciar(self)
 	Recursos.iniciar()                             # começa com as condições do local de pouso
 	Recursos.mudou.connect(_recursos_mudaram)
 	ciclo.noite_fechou.connect(_amanhecer)
 	ciclo.iniciar()                                # dia 1: boletim da manhã
+	emergencia.iniciar(self)                       # depois do ciclo: o dia dos meteoros evita o da erupção já sorteado
 
 
 func _entradas() -> void:

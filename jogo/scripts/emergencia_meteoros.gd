@@ -97,38 +97,21 @@ func iniciar(p_mapa: Node2D) -> void:
 	_sortear_dia()
 
 
-func _sortear_dia() -> void:
-	if mapa == null or not mapa.has_node("CicloDias"):
-		dia_sorteado = 2
-		tempo_espera_dia = 18.0
+## O dia da chuva de meteoros: entre os dias que ainda vão acontecer (a partir de `desde`), fora das noites lunares
+## e nunca no dia da erupção solar (dois alarmes no mesmo dia). Sem dia válido, a emergência não acontece nesta missão.
+func _sortear_dia(desde := 2) -> void:
+	dia_sorteado = -1
+	if mapa == null or mapa.get("ciclo") == null:
 		return
-
 	var ciclo: Node = mapa.get("ciclo")
 	var dias_validos: Array[int] = []
-	var total: int = int(ciclo.call("total_dias")) if ciclo.has_method("total_dias") else 5
-	for d in range(2, total + 1):
-		var eh_noite: bool = bool(ciclo.call("eh_noite", d)) if ciclo.has_method("eh_noite") else false
-		if not eh_noite:
+	for d in range(maxi(2, desde), int(ciclo.call("total_dias")) + 1):
+		if not bool(ciclo.call("eh_noite", d)) and d != Missao.dia_erupcao:
 			dias_validos.append(d)
-
-	if dias_validos.is_empty():
-		dia_sorteado = 2
-	else:
+	if not dias_validos.is_empty():
 		dia_sorteado = dias_validos.pick_random()
-
 	tempo_espera_dia = randf_range(14.0, 26.0)
 	tempo_dia_decorrido = 0.0
-	print("EmergenciaMeteoros: Agendada para o Dia %d (apos %.1fs de atividade)" % [dia_sorteado, tempo_espera_dia])
-
-
-func _unhandled_input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and not ev.echo:
-		# Teclas de atalho para simulação/teste:
-		# 'M' (Meteoro), '8' ou F12 (evitando F8 que fecha o jogo no editor do Godot)
-		if ev.physical_keycode in [KEY_M, KEY_8, KEY_F12, KEY_F8]:
-			print("EmergenciaMeteoros: Disparo manual de teste ativado via tecla")
-			disparar()
-			get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
@@ -146,7 +129,10 @@ func _process(delta: float) -> void:
 			if c.has_method("ocupado"):
 				ciclo_ocupado = bool(c.call("ocupado"))
 
-		if dia_atual == dia_sorteado and not dormindo and not em_minigame and not ciclo_ocupado and not fim:
+		if dia_atual == dia_sorteado and dia_atual == Missao.dia_erupcao:
+			_sortear_dia(dia_atual + 1)          # a erupção foi sorteada depois: os meteoros vão para outro dia
+		var alarme_solar: bool = mapa.get("tempestade") != null and bool(mapa.get("tempestade").ativo)
+		if dia_atual == dia_sorteado and not dormindo and not em_minigame and not ciclo_ocupado and not fim and not alarme_solar:
 			tempo_dia_decorrido += delta
 			if tempo_dia_decorrido >= tempo_espera_dia:
 				disparar()
@@ -191,9 +177,6 @@ func disparar(setor_forcado: String = "") -> void:
 	var nome_sala: String = NOMES_SETORES.get(setor_atual, setor_atual.to_upper())
 	print("EmergenciaMeteoros: ALERTA DE METEOROS! Setor: %s, Janela: 25s" % nome_sala)
 
-	if not Missao.historico.is_empty():
-		Missao.historico[-1]["acoes"].append("[ALERT] METEOR SHOWER TARGETING " + nome_sala)
-
 	_tocar_sirene()
 	queue_redraw()
 
@@ -222,8 +205,8 @@ func ativar_escudos() -> void:
 	_tocar_clank_e_sucesso()
 
 	var nome_sala: String = NOMES_SETORES.get(setor_atual, setor_atual.to_upper())
-	if not Missao.historico.is_empty():
-		Missao.historico[-1]["acoes"].append("METEORS: SHIELDS HELD IN " + nome_sala + " (NO DAMAGE)")
+	Missao.registrar_evento(Missao.dia, "defesa", "METEORS DEFLECTED",
+		"Meteors hit near the %s. The crew sealed it in time." % nome_sala.to_lower(), "", 5)
 
 	if mapa != null and mapa.has_method("_avisar"):
 		mapa.call("_avisar", texto_resolucao)
@@ -249,11 +232,17 @@ func _falhar_impacto() -> void:
 	if mapa != null and mapa.has_method("tremer_tela"):
 		mapa.call("tremer_tela", 0.5, 3.5)
 
-	# Aplica dano direto aos recursos
-	_aplicar_dano_recursos()
-
-	if not Missao.historico.is_empty():
-		Missao.historico[-1]["acoes"].append("METEORS: IMPACT IN " + nome_sala + " (HULL DAMAGE)")
+	# Aplica o dano e registra no relatório final (página LOG), com o que caiu de fato
+	var mudou := _aplicar_dano_recursos()
+	var partes := PackedStringArray()
+	var pior := ""
+	for nome in Recursos.NOMES:
+		if mudou.has(nome) and roundi(mudou[nome]) != 0:
+			partes.append("%d %s" % [roundi(mudou[nome]), str(Recursos.ROTULOS[nome]).to_lower()])
+			if pior == "" or mudou[nome] < mudou[pior]:
+				pior = nome
+	Missao.registrar_evento(Missao.dia, "critico", "METEOR IMPACT",
+		"Meteors hit the %s: %s." % [nome_sala.to_lower(), ", ".join(partes)], pior, 8)
 
 	if mapa != null and mapa.has_method("_avisar"):
 		mapa.call("_avisar", texto_resolucao)
@@ -262,25 +251,9 @@ func _falhar_impacto() -> void:
 	print("EmergenciaMeteoros: Tempo esgotado! Impacto de meteoros no setor %s." % nome_sala)
 
 
-func _aplicar_dano_recursos() -> void:
-	var id_emergencia := "emergencia/" + setor_atual
-	# Garante que a regra de dano exista mesmo se o JSON for sobrescrito
-	if not Recursos.regras.get("efeitos", {}).has(id_emergencia):
-		if not Recursos.regras.has("efeitos"):
-			Recursos.regras["efeitos"] = {}
-		match setor_atual:
-			"energia":
-				Recursos.regras["efeitos"][id_emergencia] = {"energia": -20.0, "condicao": -10.0}
-			"abrigo":
-				Recursos.regras["efeitos"][id_emergencia] = {"condicao": -15.0, "oxigenio": -10.0}
-			"suporte":
-				Recursos.regras["efeitos"][id_emergencia] = {"oxigenio": -15.0, "condicao": -10.0}
-			"habitat":
-				Recursos.regras["efeitos"][id_emergencia] = {"comida": -10.0, "condicao": -15.0}
-			"estufa":
-				Recursos.regras["efeitos"][id_emergencia] = {"comida": -15.0, "oxigenio": -10.0}
-
-	Recursos.aplicar(id_emergencia)
+## O dano da sala atingida ("emergencia/<sala>" em recursos.json); devolve o que mudou de fato.
+func _aplicar_dano_recursos() -> Dictionary:
+	return Recursos.aplicar("emergencia/" + setor_atual)
 
 
 func _draw() -> void:
