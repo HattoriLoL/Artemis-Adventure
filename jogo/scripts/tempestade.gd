@@ -1,6 +1,7 @@
 extends CanvasLayer
 ## Erupção solar (tempestade de prótons): num dia sorteado da missão (Missao.dia_erupcao, avisado no boletim da
-## véspera), o alarme toca logo depois que o jogador conclui a 1ª ou a 2ª tarefa do dia (sorteado). Ele tem
+## véspera), o alarme toca logo depois que o jogador conclui a 1ª ou a 2ª tarefa do dia (sorteado), ou quando ele
+## tenta dormir antes disso. Ele tem
 ## radiacao.tempo_abrigo segundos para chegar ao Abrigo (a sala "abrigo"): a tela pulsa em vermelho, a sirene toca,
 ## o minimapa pisca o Abrigo e as tarefas ficam bloqueadas. Chegando ou não, o resto das ações do dia se perde e o
 ## dia termina ali; o dano na saúde (Recursos.dano_tempestade) entra no fechamento da noite (ciclo_dias.gd).

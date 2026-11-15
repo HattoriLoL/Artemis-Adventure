@@ -482,11 +482,24 @@ func _interagir(it: Dictionary) -> void:
 			confirmar_dormir = TEMPO_CONFIRMAR
 			return
 		confirmar_dormir = 0.0
+		if ciclo.erupcao_pendente():               # dia da erupção e o alarme ainda não tocou: toca agora, em vez de
+			tempestade.iniciar()                   # a tempestade passar escondida na noite (e dormir cedo não foge dela)
+			return
 		usadas[it["id"]] = true
 		encerrar_dia(it["id"])
 	else:
 		usadas[it["id"]] = true
 		Recursos.aplicar(it["id"])
+
+
+## Aba DEV: dispara o alarme da erupção agora (hoje vira o dia da erupção), para testar sem esperar o sorteio.
+func erupcao_agora_dev() -> bool:
+	if em_minigame or dormindo or fim or ciclo.ocupado() or tempestade.ativo:
+		return false
+	Missao.dia_erupcao = Missao.dia
+	Missao.tempestade = {}
+	tempestade.iniciar()
+	return true
 
 
 ## Dormir: a tela escurece e o ciclo fecha o dia (resumo da noite). Com `id_cama` vazio (aba DEV), sem o efeito

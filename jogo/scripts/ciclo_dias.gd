@@ -110,6 +110,12 @@ func _sortear_erupcao() -> void:
 	Missao.evento_solar = eventos.pick_random()
 
 
+## Hoje é o dia da erupção e o alarme ainda não tocou (ele toca depois da tarefa sorteada ou quando o jogador vai
+## dormir antes disso).
+func erupcao_pendente() -> bool:
+	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty()
+
+
 ## Hoje é o dia da erupção, ela ainda não aconteceu e o jogador já fez a tarefa sorteada (1ª ou 2ª): o alarme toca.
 func erupcao_agora() -> bool:
 	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty() and acoes >= Missao.alarme_apos

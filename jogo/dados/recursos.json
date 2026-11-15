@@ -23,7 +23,7 @@
   "abrigo/blindagem": 1
  },
  "radiacao": {
-  "_leia": "Erupção solar: um dia sorteado entre dia_min e dia_max (o boletim da véspera avisa). O alarme toca depois da tarefa número sorteada em alarme_apos (1ª ou 2ª, ninguém sabe qual) e o jogador tem tempo_abrigo segundos para chegar ao Abrigo; o resto das ações do dia se perde. Dano na saúde: dano_abrigo se chegou; senão dano_fora menos reducao_por_reforco por reforço da blindagem, sem passar de dano_fora_min. Dormir no dia da erupção sem fazer nenhuma tarefa conta como fora do Abrigo.",
+  "_leia": "Erupção solar: um dia sorteado entre dia_min e dia_max (o boletim da véspera avisa). O alarme toca depois da tarefa número sorteada em alarme_apos (1ª ou 2ª, ninguém sabe qual) e o jogador tem tempo_abrigo segundos para chegar ao Abrigo; o resto das ações do dia se perde. Dano na saúde: dano_abrigo se chegou; senão dano_fora menos reducao_por_reforco por reforço da blindagem, sem passar de dano_fora_min. Se o jogador for dormir antes de o alarme tocar, o alarme toca na hora (a corrida começa da cama). Pular o dia pela aba DEV conta como fora do Abrigo.",
   "dia_min": 2,
   "dia_max": 4,
   "alarme_apos": [1, 2],
