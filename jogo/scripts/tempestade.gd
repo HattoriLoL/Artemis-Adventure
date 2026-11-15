@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Erupção solar (tempestade de prótons): num dia sorteado da missão (Missao.dia_erupcao, avisado no boletim da
-## véspera), o alarme toca logo depois que o jogador conclui a primeira tarefa do dia. Ele tem
+## véspera), o alarme toca logo depois que o jogador conclui a 1ª ou a 2ª tarefa do dia (sorteado). Ele tem
 ## radiacao.tempo_abrigo segundos para chegar ao Abrigo (a sala "abrigo"): a tela pulsa em vermelho, a sirene toca,
 ## o minimapa pisca o Abrigo e as tarefas ficam bloqueadas. Chegando ou não, o resto das ações do dia se perde e o
 ## dia termina ali; o dano na saúde (Recursos.dano_tempestade) entra no fechamento da noite (ciclo_dias.gd).
@@ -21,6 +21,8 @@ var t_resta := 0.0
 var t := 0.0
 var tela: Control
 var sirene: AudioStreamPlayer
+var direcao := Vector2.ZERO        # para onde a seta aponta: o próximo trecho do caminho até o Abrigo
+var t_caminho := 0.0
 
 
 func _ready() -> void:
@@ -42,6 +44,7 @@ func iniciar() -> void:
 	ativo = true
 	t = 0.0
 	t_resta = float(Recursos.regras["radiacao"]["tempo_abrigo"])
+	t_caminho = 0.0
 	tela.visible = true
 	sirene.play()
 	mapa.jogador.bot_correr = true
@@ -72,7 +75,26 @@ func _process(delta: float) -> void:
 	if t_resta <= 0.0:
 		resolver(false)
 		return
+	t_caminho -= delta
+	if t_caminho <= 0.0:
+		t_caminho = 0.25
+		direcao = _direcao_abrigo()
 	tela.queue_redraw()
+
+
+## Direção do caminho de verdade (grade de navegação) até o Abrigo, a uns 40 px à frente: a linha reta
+## apontaria para uma parede (do Suporte, por exemplo, o caminho desce pelo túnel e sobe pela estufa).
+func _direcao_abrigo() -> Vector2:
+	var ab: Dictionary = mapa.salas[SALA_ABRIGO]
+	var tam: Array = ab["dados"]["tamanho"]
+	var alvo: Vector2 = ab["pos"] + Vector2(tam[0], tam[1]) / 2.0
+	var p: Vector2 = mapa.jogador.global_position
+	var cam: PackedVector2Array = mapa.astar.get_point_path(mapa._livre_perto(Vector2i(p / mapa.celula)),
+		mapa._livre_perto(Vector2i(alvo / mapa.celula)))
+	for ponto in cam:
+		if p.distance_to(ponto) >= 40.0:
+			return (ponto - p).normalized()
+	return (alvo - p).normalized()
 
 
 func _desenha() -> void:
@@ -89,6 +111,22 @@ func _desenha() -> void:
 	var ev: Dictionary = Missao.evento_solar
 	if not ev.is_empty():
 		Fonte.centralizado(tela, "REAL EVENT: %s (NASA DONKI)" % ev["data"], cx, r.end.y + 4, BRANCO)
+	_desenha_seta()
+
+
+## Seta amarela girando em volta do astronauta, apontando o caminho até o Abrigo.
+func _desenha_seta() -> void:
+	if direcao == Vector2.ZERO:
+		return
+	var no_tela: Vector2 = mapa.get_viewport().get_canvas_transform() * mapa.jogador.global_position
+	var c := (no_tela + Vector2(0, -20) + direcao * (24.0 + 2.0 * sin(t * 10.0))).round()
+	var lado := Vector2(-direcao.y, direcao.x)
+	var ponta := c + direcao * 6.0
+	var base1 := c - direcao * 4.0 + lado * 5.0
+	var base2 := c - direcao * 4.0 - lado * 5.0
+	tela.draw_colored_polygon(PackedVector2Array([ponta + direcao * 1.5, base1 + (base1 - c).normalized() * 1.5,
+		base2 + (base2 - c).normalized() * 1.5]), PRETO)
+	tela.draw_colored_polygon(PackedVector2Array([ponta, base1, base2]), AMARELO if fmod(t, 0.4) < 0.25 else BRANCO)
 
 
 ## Sirene de dois tons (onda quadrada suave, em loop), feita no código: o jogo não tem arquivo de som para isso.

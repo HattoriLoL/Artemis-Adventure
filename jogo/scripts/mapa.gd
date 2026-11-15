@@ -466,7 +466,7 @@ func _concluir_tarefa(tf: Dictionary, fator := 1.0, perdeu := false) -> void:
 	else:
 		Recursos.aplicar(tf["id"], fator)
 		_avisar(("DONE: " if fator >= 1.0 else "DONE WITH ERRORS: ") + texto)
-	if ciclo.erupcao_agora():                      # dia da erupção: o alarme toca depois da primeira tarefa
+	if ciclo.erupcao_agora():                      # dia da erupção: o alarme toca depois da 1ª ou 2ª tarefa (sorteado)
 		tempestade.iniciar()
 		return
 	if ciclo.acoes_restantes() == 0:

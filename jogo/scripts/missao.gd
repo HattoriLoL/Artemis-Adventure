@@ -18,6 +18,7 @@ var causa := ""                          # na missão abortada: o indicador que 
 
 # erupção solar (ver tempestade.gd e "radiacao" em recursos.json)
 var dia_erupcao := 0                     # o dia sorteado da erupção (0 = nenhuma)
+var alarme_apos := 1                     # o alarme toca depois desta tarefa do dia (1ª ou 2ª, sorteado)
 var evento_solar: Dictionary = {}        # o evento real do DONKI usado como referência (eventos_solares.json)
 var blindagem := 0                       # quantas vezes a blindagem foi reforçada
 var tempestade: Dictionary = {}          # o que aconteceu: {"dia": 3, "abrigo": true, "dano": 5}; vazio = ainda não
@@ -44,6 +45,7 @@ func reiniciar() -> void:
 	resultado = ""
 	causa = ""
 	dia_erupcao = 0
+	alarme_apos = 1
 	evento_solar = {}
 	blindagem = 0
 	tempestade = {}

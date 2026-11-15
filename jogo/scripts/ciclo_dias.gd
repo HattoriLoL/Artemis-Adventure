@@ -105,13 +105,14 @@ func _sortear_erupcao() -> void:
 		Missao.dia_erupcao = 0
 		return
 	Missao.dia_erupcao = randi_range(int(r["dia_min"]), mini(int(r["dia_max"]), total_dias()))
+	Missao.alarme_apos = int(r.get("alarme_apos", [1]).pick_random())
 	var eventos: Array = JSON.parse_string(FileAccess.get_file_as_string(EVENTOS_SOLARES))["eventos"]
 	Missao.evento_solar = eventos.pick_random()
 
 
-## Hoje é o dia da erupção e ela ainda não aconteceu: o alarme toca depois da primeira tarefa.
+## Hoje é o dia da erupção, ela ainda não aconteceu e o jogador já fez a tarefa sorteada (1ª ou 2ª): o alarme toca.
 func erupcao_agora() -> bool:
-	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty()
+	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty() and acoes >= Missao.alarme_apos
 
 
 ## Uma tarefa foi concluída: gasta uma ação e entra no diário do dia.

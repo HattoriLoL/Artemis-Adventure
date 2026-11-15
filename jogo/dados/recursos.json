@@ -1,6 +1,6 @@
 {
  "_leia": "Números provisórios para o balanceamento. Valores de 0 a 100. O consumo e a geração solar são cobrados no fechamento de cada dia (ao dormir). Os efeitos valem quando o jogador conclui a tarefa. A saúde da equipe (condicao) não tem consumo diário e dormir não mexe nela: só cai quando algo dá errado (queda_condicao_por_recurso_baixo, por recurso abaixo de limite_baixo na noite) e só sobe com cuidado (refeição, plantas).",
- "consumo_por_dia": {"energia": 16, "oxigenio": 15, "comida": 10},
+ "consumo_por_dia": {"energia": 16, "oxigenio": 16, "comida": 10},
  "geracao_solar_por_dia": 6,
  "limite_baixo": 25,
  "queda_condicao_por_recurso_baixo": 6,
@@ -23,12 +23,13 @@
   "abrigo/blindagem": 1
  },
  "radiacao": {
-  "_leia": "Erupção solar: um dia sorteado entre dia_min e dia_max (o boletim da véspera avisa). Depois da primeira tarefa desse dia toca o alarme e o jogador tem tempo_abrigo segundos para chegar ao Abrigo; o resto das ações do dia se perde. Dano na saúde: dano_abrigo se chegou; senão dano_fora menos reducao_por_reforco por reforço da blindagem, sem passar de dano_fora_min. Dormir no dia da erupção sem fazer nenhuma tarefa conta como fora do Abrigo.",
+  "_leia": "Erupção solar: um dia sorteado entre dia_min e dia_max (o boletim da véspera avisa). O alarme toca depois da tarefa número sorteada em alarme_apos (1ª ou 2ª, ninguém sabe qual) e o jogador tem tempo_abrigo segundos para chegar ao Abrigo; o resto das ações do dia se perde. Dano na saúde: dano_abrigo se chegou; senão dano_fora menos reducao_por_reforco por reforço da blindagem, sem passar de dano_fora_min. Dormir no dia da erupção sem fazer nenhuma tarefa conta como fora do Abrigo.",
   "dia_min": 2,
   "dia_max": 4,
+  "alarme_apos": [1, 2],
   "tempo_abrigo": 18,
   "dano_abrigo": 5,
-  "dano_fora": 40,
+  "dano_fora": 50,
   "reducao_por_reforco": 20,
   "dano_fora_min": 10
  },
