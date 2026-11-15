@@ -7,11 +7,11 @@
    "boletim": "Welcome to the base. Every task takes time: you can only do two a day. Sleep in the habitat to end the day."},
   {"tarefas": ["energia/baterias", "suporte/gas", "habitat/agua", "abrigo/blindagem"],
    "boletim": "Nights on the Moon are long and the panels go quiet. The batteries keep the base running in the dark."},
-  {"tarefas": ["energia/distribuicao", "suporte/algas", "habitat/refeicao", "energia/tanques"],
+  {"tarefas": ["energia/distribuicao", "suporte/algas", "habitat/refeicao", "energia/tanques", "habitat/chuveiro"],
    "boletim": "Darkness everywhere today. Keep an eye on the oxygen: the air system works harder every day."},
   {"tarefas": ["energia/baterias", "suporte/oxigenio", "estufa/regar", "abrigo/blindagem"],
    "boletim": "Low supplies hurt the crew. Meals and the greenhouse help them recover."},
-  {"tarefas": ["energia/terminal", "suporte/gas", "estufa/regar", "habitat/agua"],
+  {"tarefas": ["energia/terminal", "suporte/gas", "estufa/regar", "habitat/agua", "habitat/chuveiro"],
    "boletim": "Last day. The sun is back: leave the base ready for the next crew."}
  ]
 }
