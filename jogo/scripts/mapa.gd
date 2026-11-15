@@ -15,6 +15,13 @@ const VERMELHO := Color("#cf573c")
 const ESCURO := Color("#394a50")
 const AZUL := Color("#73bed3")
 const SEM_SOL := "NO SUN TODAY: NO EFFECT"
+# minimapa (canto de baixo à direita): a base inteira em 53x64 (arte do PixelAi, ver arte/minimapa.py); cada pixel
+# cobre MINI_ESCALA px do mapa a partir de MINI_ORIGEM
+const TEX_MINIMAPA := preload("res://assets/mapa/minimapa.png")
+const MINI_ORIGEM := Vector2(40, 40)
+const MINI_ESCALA := Vector2(944.0 / 53.0, 1146.0 / 64.0)
+const MINI_POS := Vector2(320 - 5 - 53, 180 - 5 - 64)
+const CONTORNO := Color("#090a14")
 const TEMPO_CONFIRMAR := 3.0       # quanto tempo o "E AGAIN: END THE DAY NOW" espera o segundo E
 
 var mapa: Dictionary
@@ -517,6 +524,7 @@ func _desenha_hud() -> void:
 	var cor_acoes := AMARELO if ciclo.acoes_restantes() == 0 and fmod(t, 1.0) < 0.6 else CINZA
 	Fonte.desenhar(hud, "- " + acoes, Vector2(8 + Fonte.largura(rodape) + 4, y), cor_acoes)
 	_desenha_recursos()
+	_desenha_minimapa()
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
@@ -539,6 +547,39 @@ func _desenha_hud() -> void:
 		var w := Fonte.largura(aviso) + 8
 		hud.draw_rect(Rect2(160 - w / 2.0, 54, w, 11), Color(0.035, 0.04, 0.08, 0.8))
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
+
+
+## Minimapa no canto de baixo à direita: a base inteira, um marcador amarelo piscando em cada tarefa que dá para
+## fazer agora (as mesmas da seta amarela: oferecidas hoje, não feitas, com ação sobrando) e o astronauta em branco.
+## Some com os minigames, os painéis do dia (boletim, noite, fim) e enquanto ele dorme.
+func _desenha_minimapa() -> void:
+	if em_minigame or fim or dormindo or escuro > 0.0 or ciclo.ocupado():
+		return
+	var tam := TEX_MINIMAPA.get_size()
+	hud.draw_rect(Rect2(MINI_POS - Vector2(2, 2), tam + Vector2(4, 4)), Color(0.035, 0.04, 0.08, 0.7))
+	hud.draw_texture(TEX_MINIMAPA, MINI_POS)
+	if fmod(t, 0.8) < 0.55:
+		for id in ciclo.hoje:
+			if feitas.has(id) or not ciclo.disponivel(id):
+				continue
+			var tf := _tarefa(id)
+			if tf.is_empty():
+				continue
+			var m := _no_minimapa(tf["pos"])
+			hud.draw_rect(Rect2(m + Vector2(-1, -2), Vector2(3, 5)), CONTORNO)    # cruz amarela com contorno
+			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
+			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
+			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
+	var j := _no_minimapa(jogador.global_position)
+	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
+	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
+
+
+## Posição no mapa -> pixel do minimapa na tela (preso dentro dele).
+func _no_minimapa(pos: Vector2) -> Vector2:
+	var p := ((pos - MINI_ORIGEM) / MINI_ESCALA).floor()
+	p = p.clamp(Vector2.ZERO, TEX_MINIMAPA.get_size() - Vector2.ONE)
+	return MINI_POS + p
 
 
 func _titulo_sala(sala: String) -> String:
