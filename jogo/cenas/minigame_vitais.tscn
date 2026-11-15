@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://de3qqqr46kn3h"]
+
+[ext_resource type="Script" uid="uid://761pimqk85tt" path="res://scripts/minigame_vitais.gd" id="1_456su"]
+
+[node name="MinigameVitais" type="Control" unique_id=1121374527]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_456su")
+
+[node name="Fundo" type="ColorRect" parent="." unique_id=1346489084]
+layout_mode = 0
+offset_right = 320.0
+offset_bottom = 180.0
+color = Color(0.03529412, 0.039215688, 0.078431375, 1)
+
+[node name="Area" type="ColorRect" parent="." unique_id=1700309593]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 24.0
+offset_right = 300.0
+offset_bottom = 120.0
+
+[node name="Grafico" type="Control" parent="." unique_id=1200557190]
+anchors_preset = 0
+offset_left = 20.0
+offset_top = 24.0
+offset_right = 300.0
+offset_bottom = 120.0
+
+[node name="Barra" type="ColorRect" parent="." unique_id=2936550]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 24.0
+offset_right = 220.0
+offset_bottom = 30.0
+color = Color(0.22352941, 0.2901961, 0.3137255, 1)
+
+[node name="Cheia" type="ColorRect" parent="." unique_id=1543947599]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 140.0
+offset_right = 60.0
+offset_bottom = 146.0
+color = Color(0.9098039, 0.75686276, 0.4392157, 1)
+
+[node name="Textos" type="Control" parent="." unique_id=1341940983]
+anchors_preset = 0
+offset_right = 320.0
+offset_bottom = 180.0
