@@ -6,9 +6,10 @@ extends Control
 ## (taxa_erro diminui o que a tarefa rende); MAX_ERROS erros perdem a tarefa (sinal falhou). Não tira radiação: só
 ## poeira.
 ## A ideia do minigame (jatos de ar pressurizado em várias direções) veio do PR #22 (chinesdecroks).
-## Arte (paleta Apollo, PixelAi) em res://assets/minigames/chuveiro/: cabine.png (192x121), astronauta_limpo.png e
-## astronauta_sujo.png (mesma pose e tamanho) e bico.png / bico_aceso.png. Enquanto um arquivo não existe, o
-## minigame desenha uma versão provisória no lugar dele. Jatos de ar, poeira voando, moldura e textos são animados aqui.
+## Arte (paleta Apollo, PixelAi; gerada por arte/minijogo_chuveiro.py) em res://assets/minigames/chuveiro/:
+## cabine.png (192x121, bicos com centro em BICOS), astronauta_limpo.png e astronauta_sujo.png (30x56, mesma pose; a
+## poeira são os pixels que diferem) e bico.png / bico_aceso.png (9x9). Se um arquivo faltar, o minigame desenha uma
+## versão provisória no lugar dele. Jatos de ar, poeira voando, moldura e textos são animados aqui.
 ## Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou` (X ou Esc), taxa_erro(), comecou() e `demo`.
 
 signal terminou
@@ -41,9 +42,9 @@ const JANELA := Vector2(64, 29)                  # canto da cabine (192x121) na 
 const TAM_JANELA := Vector2(192, 121)
 const BOTAO_X := Rect2(245, 17, 8, 8)
 # dentro da cabine: onde fica cada bico (centro) e o astronauta (centro dos pés)
-const BICOS := {"cima": Vector2(96, 9), "esquerda": Vector2(9, 60), "direita": Vector2(183, 60),
-	"baixo": Vector2(96, 113)}
-const PES := Vector2(96, 104)
+const BICOS := {"cima": Vector2(96, 19), "esquerda": Vector2(33, 57), "direita": Vector2(158, 57),
+	"baixo": Vector2(96, 105)}
+const PES := Vector2(96, 98)                     # o astronauta (30x56) fica com o canto em (81, 42)
 const TAM_PROVISORIO := Vector2(30, 52)          # astronauta desenhado enquanto não há arte
 const TECLAS := {"cima": "W", "esquerda": "A", "direita": "D", "baixo": "S"}
 
@@ -333,10 +334,13 @@ func _bico(lado: String) -> void:
 		draw_rect(Rect2(JANELA + c - Vector2(2, 2), Vector2(5, 5)), CIANO if (piscando or soprando) else CINZA_ESC)
 		if piscando or soprando:
 			draw_rect(Rect2(JANELA + c - Vector2(1, 1), Vector2(3, 3)), CIANO_BRILHO)
-	if aceso:                                     # a tecla do jato aceso, do lado de dentro da cabine
-		var dentro := (PES - Vector2(0, 26) - c).normalized() * 11.0
+	if aceso:                 # a tecla do jato aceso, do lado de dentro da cabine (a do chão, embaixo, longe das botas)
+		var dentro := Vector2(0, 9) if lado == "baixo" else (PES - Vector2(0, 26) - c).normalized() * 11.0
 		var cor := AMARELO if t_passo > 0.8 or fmod(t, 0.2) < 0.1 else VERMELHO_CLARO
-		Fonte.centralizado(self, TECLAS[lado], JANELA.x + c.x + dentro.x + 0.5, JANELA.y + c.y + dentro.y - 2, cor)
+		var cx := JANELA.x + c.x + dentro.x + 0.5
+		var y := JANELA.y + c.y + dentro.y - 2
+		draw_rect(Rect2(Vector2(round(cx - 1.5) - 2, y - 2), Vector2(8, 10)), Color(PRETO, 0.8))   # plaquinha: lê em fundo claro
+		Fonte.centralizado(self, TECLAS[lado], cx, y, cor)
 
 
 func _cabine_provisoria() -> void:
