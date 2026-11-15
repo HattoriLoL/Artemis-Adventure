@@ -45,12 +45,12 @@ const POSICOES_SETORES: Dictionary = {
 	"abrigo": Vector2(686, 490),
 	"estufa": Vector2(686, 894)
 }
-## Arte (paleta Apollo): a tira da alavanca (3 quadros de 12x16: espera, alarme, puxada; o encaixe é o meio da base,
-## (6, 16) no quadro) e o ícone de meteoro (9x9) do aviso e do minimapa. Sem os arquivos, desenha em código.
+## Arte (paleta Apollo): a tira da alavanca (3 quadros de 14x20: espera, alarme, puxada; o encaixe é o meio da base,
+## (7, 20) no quadro) e o ícone de meteoro (9x9) do aviso e do minimapa. Sem os arquivos, desenha em código.
 const ARTE_ALAVANCA := "res://assets/emergencia/alavanca.png"
 const ARTE_ICONE := "res://assets/emergencia/meteoro_icone.png"
-const QUADRO_ALAVANCA := Vector2(12, 16)
-const ENCAIXE_ALAVANCA := Vector2(6, 16)
+const QUADRO_ALAVANCA := Vector2(14, 20)
+const ENCAIXE_ALAVANCA := Vector2(7, 20)
 var tex_alavanca: Texture2D = null
 var tex_icone: Texture2D = null
 
