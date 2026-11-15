@@ -39,6 +39,7 @@ var interacoes := []               # {"sala", "id", "texto", "acao", "pos"}
 var feitas := {}
 var usadas := {}
 var portas := []
+var obstaculos: Array[Rect2] = []  # colisão dos objetos soltos das salas (o robô do demo desvia deles)
 var marcas := {}
 var jogador: CharacterBody2D
 var hud: Control
@@ -147,6 +148,8 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 	_na_frente(TEX_VERGA, pos + VERGA_POS, pos.y + VERGA_BASE)
 	for r in dados["solidos"]:
 		_ret(corpo, r, pos)
+	for ob in dados.get("objetos", []):
+		_objeto(ob, pos, corpo)
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
 			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", ""))}
@@ -174,6 +177,22 @@ func _na_frente(tex: Texture2D, canto: Vector2, base: float) -> void:
 	s.position = Vector2(canto.x, base)
 	s.offset = Vector2(0, canto.y - base)
 	add_child(s)
+
+
+## Objeto solto na sala (ex.: o chuveiro do Habitat), fora do desenho do fundo: entra no Y-sort pela linha em que
+## toca o chão, então o astronauta passa atrás e na frente dele. No JSON da sala, em "objetos":
+##   "png"     a imagem (fundo transparente, na escala do jogo)
+##   "x", "y"  canto de cima à esquerda da imagem na sala
+##   "base"    linha da imagem onde ele toca o chão (padrão: a última)
+##   "solido"  colisão [x, y, w, h] relativa ao canto (padrão: os 8 px de baixo da imagem)
+func _objeto(ob: Dictionary, pos: Vector2, corpo: StaticBody2D) -> void:
+	var tex: Texture2D = load(str(ob["png"]))
+	var canto := pos + Vector2(ob["x"], ob["y"])
+	var base := float(ob.get("base", tex.get_height()))
+	_na_frente(tex, canto, canto.y + base)
+	var r: Array = ob.get("solido", [0, base - 8, tex.get_width(), 8])
+	_ret(corpo, r, canto)
+	obstaculos.append(Rect2(canto.x + r[0], canto.y + r[1], r[2], r[3]))
 
 
 func _jogador() -> void:
@@ -210,6 +229,13 @@ func _navegacao() -> void:
 		for x in img.get_width():
 			if img.get_pixel(x, y).r < 0.5:
 				astar.set_point_solid(Vector2i(x, y))
+	# os objetos soltos não estão na imagem da grade: fecha as células em que os pés (12x6, com folga) bateriam neles
+	for r in obstaculos:
+		for cy in range(floori(r.position.y / celula) - 1, floori((r.end.y + 8) / celula) + 1):
+			for cx in range(floori((r.position.x - 8) / celula), floori((r.end.x + 8) / celula) + 1):
+				var pe := Vector2(cx * celula + celula / 2.0, cy * celula + celula / 2.0)
+				if astar.is_in_boundsv(Vector2i(cx, cy)) and Rect2(pe.x - 8, pe.y - 8, 16, 10).intersects(r):
+					astar.set_point_solid(Vector2i(cx, cy))
 
 
 func _interface() -> void:
