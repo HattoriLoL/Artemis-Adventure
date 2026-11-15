@@ -39,6 +39,11 @@ var feitas := {}
 var usadas := {}
 var portas := []
 var obstaculos: Array[Rect2] = []  # colisão dos objetos soltos das salas (o robô do demo desvia deles)
+const EmergenciaMeteorosScript = preload("res://scripts/emergencia_meteoros.gd")
+var emergencia: EmergenciaMeteoros = null
+var camera: Camera2D = null
+var t_shake: float = 0.0
+var forca_shake: float = 0.0
 var marcas := {}
 var jogador: CharacterBody2D
 var hud: Control
@@ -100,6 +105,9 @@ func _ready() -> void:
 		portas.append(porta)
 	_navegacao()
 	_interface()
+	emergencia = EmergenciaMeteorosScript.new()
+	add_child(emergencia)
+	emergencia.iniciar(self)
 	Recursos.iniciar()                             # começa com as condições do local de pouso
 	Recursos.mudou.connect(_recursos_mudaram)
 	ciclo.noite_fechou.connect(_amanhecer)
@@ -221,6 +229,7 @@ func _jogador() -> void:
 	cam.offset = Vector2(0, -14)
 	jogador.add_child(cam)
 	cam.make_current()
+	camera = cam
 
 
 func _navegacao() -> void:
@@ -343,8 +352,20 @@ func _perto(lista: Array, feito: Dictionary) -> Dictionary:
 	return melhor
 
 
+func tremer_tela(duracao: float = 0.5, forca: float = 3.5) -> void:
+	t_shake = duracao
+	forca_shake = forca
+
+
 func _process(delta: float) -> void:
 	t += delta
+	if t_shake > 0.0:
+		t_shake = maxf(0.0, t_shake - delta)
+		if camera != null:
+			if t_shake > 0.0:
+				camera.offset = Vector2(0, -14) + Vector2(randf_range(-forca_shake, forca_shake), randf_range(-forca_shake, forca_shake))
+			else:
+				camera.offset = Vector2(0, -14)
 	t_aviso = max(0.0, t_aviso - delta)
 	confirmar_dormir = max(0.0, confirmar_dormir - delta)
 	desistir = max(0.0, desistir - delta)
@@ -365,10 +386,13 @@ func _process(delta: float) -> void:
 			_avisar(str(salas[agora]["dados"].get("titulo", agora)))
 	var tf := _perto(tarefas, feitas)
 	var it := _perto(interacoes, usadas)
+	var perto_em: bool = emergencia != null and emergencia.perto_estacao(jogador.global_position)
 	if demo:
 		_demo(delta)
 	if dormindo or em_minigame or fim or ciclo.ocupado():
 		pass
+	elif perto_em and (Input.is_action_just_pressed("usar") or (demo and _bot_usa_emergencia())):
+		emergencia.ativar_escudos()
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
 	elif not it.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(it))):
@@ -523,9 +547,20 @@ func _bot_usa(item: Dictionary) -> bool:
 	return not alvo_demo.is_empty() and alvo_demo["id"] == item["id"] and jogador.bot_quer_usar(item)
 
 
+func _bot_usa_emergencia() -> bool:
+	return emergencia != null and emergencia.bot_quer_usar(jogador.global_position) and jogador.bot_espera > 0.2
+
+
 ## O robô escolhe, entre as tarefas do dia, a que deixa o indicador mais baixo o mais alto possível (empate: a
 ## ordem das salas em ordem_demo) e, sem ações, vai dormir.
 func _proximo_alvo() -> Dictionary:
+	if emergencia != null and emergencia.ativa:
+		return {
+			"id": "emergencia/escudos",
+			"pos": emergencia.posicao_estacao,
+			"sala": emergencia.setor_atual,
+			"texto": "ACTIVATE EMERGENCY SHIELDS"
+		}
 	var melhor := {}
 	var nota := -INF
 	for sala in mapa["ordem_demo"]:
@@ -629,10 +664,15 @@ func _desenha_hud() -> void:
 	Fonte.desenhar(hud, "- " + acoes, Vector2(8 + Fonte.largura(rodape) + 4, y), cor_acoes)
 	_desenha_recursos()
 	_desenha_minimapa()
+	if emergencia != null:
+		emergencia.desenhar_hud(hud, t)
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
-	if not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
+	var perto_em: bool = emergencia != null and emergencia.perto_estacao(jogador.global_position)
+	if perto_em and not dormindo:
+		Fonte.centralizado(hud, "E: ACTIVATE EMERGENCY SHIELDS", 160, 154, AMARELO)
+	elif not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
 		var n := ciclo.acoes_restantes()
 		Fonte.centralizado(hud, "E AGAIN: END THE DAY NOW", 160, 154, AMARELO)
 		Fonte.centralizado(hud, "%d %s LEFT WILL BE LOST" % [n, "ACTION" if n == 1 else "ACTIONS"], 160, 162,
@@ -686,6 +726,13 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
 			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
+	if emergencia != null and emergencia.ativa:
+		var m_em := _na_planta(emergencia.posicao_estacao, tex, canto)
+		var aceso_em := fmod(t, 0.4) < 0.25
+		if aceso_em:
+			hud.draw_rect(Rect2(m_em + Vector2(-2, -2), Vector2(5, 5)), CONTORNO)
+			hud.draw_rect(Rect2(m_em + Vector2(-1, -1), Vector2(3, 3)), VERMELHO)
+			hud.draw_rect(Rect2(m_em, Vector2(1, 1)), AMARELO)
 	var j := _na_planta(jogador.global_position, tex, canto)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)

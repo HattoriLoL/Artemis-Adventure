@@ -1,22 +1,66 @@
 {
  "_leia": "Números provisórios para o balanceamento. Valores de 0 a 100. O consumo e a geração solar são cobrados no fechamento de cada dia (ao dormir). Os efeitos valem quando o jogador conclui a tarefa. A saúde da equipe (condicao) não tem consumo diário e dormir não mexe nela: só cai quando algo dá errado (queda_condicao_por_recurso_baixo, por recurso abaixo de limite_baixo na noite) e só sobe com cuidado (refeição, plantas).",
- "consumo_por_dia": {"energia": 18, "oxigenio": 17, "comida": 10},
+ "consumo_por_dia": {
+  "energia": 18,
+  "oxigenio": 17,
+  "comida": 10
+ },
  "geracao_solar_por_dia": 6,
  "limite_baixo": 25,
  "queda_condicao_por_recurso_baixo": 6,
  "efeitos": {
-  "energia/paineis": {"energia": 12},
-  "energia/baterias": {"energia": 15},
-  "energia/terminal": {"energia": 10},
-  "energia/distribuicao": {"energia": 10},
-  "energia/tanques": {"oxigenio": 5},
-  "suporte/oxigenio": {"oxigenio": 15},
-  "suporte/gas": {"oxigenio": 10},
-  "suporte/algas": {"oxigenio": 5, "comida": 3},
-  "habitat/refeicao": {"comida": -5, "condicao": 10},
-  "habitat/agua": {"oxigenio": 8},
-  "estufa/regar": {"comida": 5, "condicao": 5, "oxigenio": 3},
-  "abrigo/blindagem": {"condicao": 5}
+  "energia/paineis": {
+   "energia": 12
+  },
+  "energia/baterias": {
+   "energia": 15
+  },
+  "energia/terminal": {
+   "energia": 10
+  },
+  "energia/distribuicao": {
+   "energia": 10
+  },
+  "energia/tanques": {
+   "oxigenio": 5
+  },
+  "suporte/oxigenio": {
+   "oxigenio": 15
+  },
+  "suporte/gas": {
+   "oxigenio": 10
+  },
+  "suporte/algas": {
+   "oxigenio": 5,
+   "comida": 3
+  },
+  "habitat/refeicao": {
+   "comida": -5,
+   "condicao": 10
+  },
+  "habitat/agua": {
+   "oxigenio": 8
+  },
+  "estufa/regar": {
+   "comida": 5,
+   "condicao": 5,
+   "oxigenio": 3
+  },
+  "abrigo/blindagem": {
+   "condicao": 5
+  },
+  "emergencia/energia": {
+   "energia": -20,
+   "condicao": -10
+  },
+  "emergencia/abrigo": {
+   "condicao": -15,
+   "oxigenio": -10
+  },
+  "emergencia/suporte": {
+   "oxigenio": -15,
+   "condicao": -10
+  }
  },
  "erros": {
   "_leia": "Erros nos minigames: até taxa_sem_perda (20 por cento dos lances errados) a tarefa rende tudo; acima disso o ganho cai em linha reta até zero em taxa_sem_ganho. Perder o minigame (sinal falhou) gasta a ação e não rende nada. Custos (valores negativos) são cobrados inteiros.",
@@ -28,4 +72,4 @@
   "energia/terminal": "geracao_solar",
   "habitat/agua": "gelo_por_coleta"
  }
-}
+}
