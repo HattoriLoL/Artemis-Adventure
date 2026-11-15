@@ -8,6 +8,9 @@ extends Control
 ##   E (ou Usar): Ativa purga criogênica de escape a qualquer momento
 ## Condição de vitória: Manter os 3 tanques na faixa verde [55 PSI, 72 PSI] por 2.0 segundos contínuos.
 ## Contrato com o mapa: sinais `terminou`, `falhou`, `cancelou`, taxa_erro(), comecou() e `demo`.
+## Arte (paleta Apollo) em res://assets/minigames/tanques/painel.png (228x86, com o canto em ORIGEM_PAINEL): a chapa,
+## os aros dos manômetros, os canos, as flanges das válvulas e o bocal da purga. Sem o arquivo, o minigame desenha
+## tudo isso em código. Ponteiros, faixas do mostrador, volantes, fluido, vapor e textos são sempre desenhados aqui.
 
 signal terminou
 signal falhou
@@ -43,6 +46,8 @@ const CIANO_CLARO := Color("#a4dddb")
 const PAINEL := Rect2(36, 8, 248, 164)
 const BOTAO_X := Rect2(268, 11, 8, 8)
 const BARRA_ESTAB := Rect2(60, 134, 200, 7)
+const ARTE_PAINEL := "res://assets/minigames/tanques/painel.png"
+const ORIGEM_PAINEL := Vector2(46, 34)
 
 # Geometria dos Manômetros Circulares
 const CENTROS_X: Array[float] = [84.0, 160.0, 236.0]
@@ -50,7 +55,7 @@ const DIAL_Y: float = 65.0
 const RAIO_DIAL: float = 19.0
 const RAIO_INTERNO: float = 16.0
 
-const ROTULOS_CABECALHO: Array[String] = ["TANQUE A (H2)", "TANQUE B (O2)", "CELULA (PWR)"]
+const ROTULOS_CABECALHO: Array[String] = ["TANK A (H2)", "TANK B (O2)", "FUEL CELL"]
 const CORES_GAS: Array[Color] = [CIANO_CLARO, CIANO, LARANJA]
 
 # Parâmetros de Pressão e Física
@@ -70,7 +75,7 @@ const TEMPO_ERRO: float = 0.6
 
 # Posições das Válvulas no Cockpit
 const POS_VALVULAS: Array[Vector2] = [Vector2(122.0, 65.0), Vector2(198.0, 65.0), Vector2(160.0, 107.0)]
-const NOMES_VALVULAS: Array[String] = ["VALVULA A-B (CROSSFEED)", "VALVULA B-C (CROSSFEED)", "VALVULA DE PURGA (VENT)"]
+const NOMES_VALVULAS: Array[String] = ["VALVE A-B (CROSSFEED)", "VALVE B-C (CROSSFEED)", "PURGE VALVE (VENT)"]
 
 # Estado Público
 var demo: bool = false
@@ -109,11 +114,14 @@ var sfx_sucesso: AudioStreamPlayer = null
 var sfx_troca: AudioStreamPlayer = null
 var sfx_alerta: AudioStreamPlayer = null
 var sucesso_tocado: bool = false
+var tex_painel: Texture2D = null
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_criar_teclas()
+	if ResourceLoader.exists(ARTE_PAINEL):
+		tex_painel = load(ARTE_PAINEL)
 	pressoes = PRESSAO_INICIAL.duplicate()
 	for i: int in 3:
 		var rad_ini: float = deg_to_rad(-135.0 + (clampf(pressoes[i], 0.0, 100.0) / 100.0) * 270.0)
@@ -481,14 +489,14 @@ func _draw() -> void:
 	_moldura()
 
 	# Cabeçalho Principal (y = 12)
-	Fonte.centralizado(self, "APOLLO 13 // PAINEL DE TANQUES CRIOGENICOS", 160.0, 12.0, AMARELO)
+	Fonte.centralizado(self, "CHECK THE TANKS // CRYOGENIC FUEL CELLS", 160.0, 12.0, AMARELO)
 
 	# Status Superior (y = 26)
 	var seguros: int = 0
 	for i: int in 3:
 		seguros += 1 if _na_faixa(i) else 0
-	Fonte.desenhar(self, "ESTAVEIS: %d/3" % seguros, Vector2(50.0, 26.0), VERDE_LIMA if seguros == 3 else BRANCO_SUJO)
-	Fonte.desenhar(self, "ERROS: %d/%d" % [erros, MAX_ERROS], Vector2(220.0, 26.0), VERMELHO_CLARO if erros >= 3 else CINZA)
+	Fonte.desenhar(self, "STABLE: %d/3" % seguros, Vector2(50.0, 26.0), VERDE_LIMA if seguros == 3 else BRANCO_SUJO)
+	Fonte.desenhar(self, "ERRORS: %d/%d" % [erros, MAX_ERROS], Vector2(220.0, 26.0), VERMELHO_CLARO if erros >= 3 else CINZA)
 
 	# Linha divisória suave abaixo do status (y = 33)
 	draw_line(Vector2(46.0, 33.0), Vector2(274.0, 33.0), CINZA_ESC, 1.0)
@@ -500,8 +508,11 @@ func _draw() -> void:
 		draw_rect(Rect2(BOTAO_X.position + Vector2(2 + k, 2 + k), Vector2.ONE), BRANCO)
 		draw_rect(Rect2(BOTAO_X.position + Vector2(5 - k, 2 + k), Vector2.ONE), BRANCO)
 
-	# Tubulações de Vasos Comunicantes e Escape
-	_desenhar_tubulacoes()
+	# Tubulações de Vasos Comunicantes e Escape (na arte, o painel já traz canos, aros, flanges e bocal)
+	if tex_painel:
+		draw_texture(tex_painel, ORIGEM_PAINEL)
+	else:
+		_desenhar_tubulacoes()
 
 	# Partículas de Fluido e Pluma de Vapor
 	_desenhar_particulas()
@@ -586,20 +597,21 @@ func _desenhar_manometro(i: int) -> void:
 	# Rótulo Único e Nítido do Tanque (y = 36.0, bem acima do aro y=46)
 	Fonte.centralizado(self, ROTULOS_CABECALHO[i], centro.x, 36.0, CORES_GAS[i])
 
-	# Moldura metálica circular externa (raio 19.0)
-	draw_circle(centro, RAIO_DIAL + 1.5, CINZA_ESC)
-	draw_circle(centro, RAIO_DIAL, METAL)
-	draw_circle(centro, RAIO_DIAL - 1.2, METAL_CLARO)
-	draw_circle(centro, RAIO_DIAL - 2.2, NOITE)
+	if not tex_painel:                         # na arte, o painel já traz o aro e o mostrador escuro
+		# Moldura metálica circular externa (raio 19.0)
+		draw_circle(centro, RAIO_DIAL + 1.5, CINZA_ESC)
+		draw_circle(centro, RAIO_DIAL, METAL)
+		draw_circle(centro, RAIO_DIAL - 1.2, METAL_CLARO)
+		draw_circle(centro, RAIO_DIAL - 2.2, NOITE)
 
-	# Rebites metálicos na moldura (8 pontos)
-	for k: int in 8:
-		var a_rebite: float = k * (TAU / 8.0)
-		var pos_r: Vector2 = centro + Vector2(cos(a_rebite), sin(a_rebite)) * (RAIO_DIAL - 0.8)
-		draw_rect(Rect2(pos_r.x - 0.5, pos_r.y - 0.5, 1.0, 1.0), METAL_CLARO)
+		# Rebites metálicos na moldura (8 pontos)
+		for k: int in 8:
+			var a_rebite: float = k * (TAU / 8.0)
+			var pos_r: Vector2 = centro + Vector2(cos(a_rebite), sin(a_rebite)) * (RAIO_DIAL - 0.8)
+			draw_rect(Rect2(pos_r.x - 0.5, pos_r.y - 0.5, 1.0, 1.0), METAL_CLARO)
 
-	# Mostrador interno escuro
-	draw_circle(centro, RAIO_INTERNO, NOITE)
+		# Mostrador interno escuro
+		draw_circle(centro, RAIO_INTERNO, NOITE)
 
 	# Faixas Coloridas do Mostrador:
 	# 1. Subpressão (< 30 PSI): Vermelho escuro
@@ -694,7 +706,7 @@ func _desenhar_valvulas() -> void:
 
 	# Rótulos laterais da purga: "PURGA" à esquerda e "VENT" à direita (sem sobreposição!)
 	var cor_purga_lbl: Color = LARANJA if purga_ativa else (AMARELO if selecionado == 2 else CINZA)
-	Fonte.desenhar(self, "PURGA", Vector2(126.0, 105.0), cor_purga_lbl)
+	Fonte.desenhar(self, "PURGE", Vector2(126.0, 105.0), cor_purga_lbl)
 	Fonte.desenhar(self, "VENT", Vector2(174.0, 105.0), cor_purga_lbl)
 
 	# Retículo HUD de Seleção da Válvula Ativa
@@ -725,19 +737,19 @@ func _desenhar_painel_inferior() -> void:
 		var cor_sucesso: Color = BRANCO if pisca_ok else VERDE_LIMA
 		Fonte.centralizado(self, "PRESSURE BALANCED // FUEL CELL ONLINE", 160.0, y_txt, cor_sucesso)
 	elif perdeu:
-		Fonte.centralizado(self, "SOBREPRESSAO CRITICA // SISTEMA FALHOU", 160.0, y_txt, VERMELHO_CLARO)
+		Fonte.centralizado(self, "CRITICAL OVERPRESSURE // SYSTEM FAILED", 160.0, y_txt, VERMELHO_CLARO)
 	elif tempo_estavel > 0.0:
 		var rest: float = maxf(0.0, TEMPO_ESTABILIDADE - tempo_estavel)
-		Fonte.centralizado(self, "PRESSAO EQUALIZADA... ESTABILIZANDO: %1.1F S" % rest, 160.0, y_txt, VERDE_CLARO)
+		Fonte.centralizado(self, "PRESSURE EQUALIZED - STABILIZING: %.1f S" % rest, 160.0, y_txt, VERDE_CLARO)
 	elif t_erro > 0.0:
-		Fonte.centralizado(self, "ALERTA: PRESSAO FORA DA FAIXA SEGURA [55-72]", 160.0, y_txt, VERMELHO_CLARO)
+		Fonte.centralizado(self, "ALERT: PRESSURE OUT OF THE SAFE RANGE [55-72]", 160.0, y_txt, VERMELHO_CLARO)
 	else:
 		if selecionado == 0:
 			Fonte.centralizado(self, "CROSSFEED A-B // [W] A->B   [S] B->A", 160.0, y_txt, BRANCO)
 		elif selecionado == 1:
 			Fonte.centralizado(self, "CROSSFEED B-C // [W] B->C   [S] C->B", 160.0, y_txt, BRANCO)
 		else:
-			Fonte.centralizado(self, "PURGA CRIOGENICA // [W / E] ESCAPAR GAS", 160.0, y_txt, AMARELO)
+			Fonte.centralizado(self, "CRYO PURGE // [W / E] VENT THE GAS", 160.0, y_txt, AMARELO)
 
 	# Barra de Estabilidade (y = 134.0 a 141.0)
 	draw_rect(BARRA_ESTAB.grow(1), PRETO)
@@ -752,7 +764,7 @@ func _desenhar_painel_inferior() -> void:
 		draw_rect(Rect2(BARRA_ESTAB.position + Vector2(2, 2), Vector2(w_prog, 1.0)), BRANCO if progresso >= 1.0 else VERDE_LIMA)
 
 	# Guia de Atalhos no Rodapé (y = 147.0) com cor BRANCO_SUJO de alto contraste sobre FUNDO escuro
-	Fonte.centralizado(self, "A/D: VALVULA   W/S: FLUXO   E: PURGA RAPIDA", 160.0, 147.0, BRANCO_SUJO)
+	Fonte.centralizado(self, "A/D: VALVE   W/S: FLOW   E: QUICK PURGE", 160.0, 147.0, BRANCO_SUJO)
 
 
 func _moldura() -> void:
