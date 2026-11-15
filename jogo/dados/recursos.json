@@ -17,7 +17,12 @@
   "habitat/agua": {"oxigenio": 8},
   "habitat/chuveiro": {"condicao": 8},
   "estufa/regar": {"comida": 5, "condicao": 5, "oxigenio": 3},
-  "abrigo/blindagem": {}
+  "abrigo/blindagem": {},
+  "emergencia/energia": {"energia": -20, "condicao": -10},
+  "emergencia/suporte": {"oxigenio": -15, "condicao": -10},
+  "emergencia/abrigo": {"condicao": -15, "oxigenio": -10},
+  "emergencia/habitat": {"comida": -10, "condicao": -15},
+  "emergencia/estufa": {"comida": -15, "oxigenio": -10}
  },
  "protecao": {
   "_leia": "Tarefas que reforçam a blindagem contra a erupção solar (em vez de mudar um recurso): cada vez conta +N reforços em Missao.blindagem.",

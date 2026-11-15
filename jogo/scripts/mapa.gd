@@ -8,6 +8,7 @@ const Porta = preload("res://scripts/porta.gd")
 const MenuPausa = preload("res://scripts/menu_pausa.gd")
 const CicloDias = preload("res://scripts/ciclo_dias.gd")
 const Tempestade = preload("res://scripts/tempestade.gd")
+const Tutorial = preload("res://scripts/tutorial_minigame.gd")
 const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
@@ -40,6 +41,11 @@ var feitas := {}
 var usadas := {}
 var portas := []
 var obstaculos: Array[Rect2] = []  # colisão dos objetos soltos das salas (o robô do demo desvia deles)
+const EmergenciaMeteorosScript = preload("res://scripts/emergencia_meteoros.gd")
+var emergencia: EmergenciaMeteoros = null
+var camera: Camera2D = null
+var t_shake: float = 0.0
+var forca_shake: float = 0.0
 var marcas := {}
 var pc_item := {}                  # a interação do computador de navegação (mesa do Suporte)
 var marca_pc: Polygon2D            # setinha azul sobre ela enquanto a previsão do dia não foi lida
@@ -107,10 +113,13 @@ func _ready() -> void:
 		portas.append(porta)
 	_navegacao()
 	_interface()
+	emergencia = EmergenciaMeteorosScript.new()
+	add_child(emergencia)
 	Recursos.iniciar()                             # começa com as condições do local de pouso
 	Recursos.mudou.connect(_recursos_mudaram)
 	ciclo.noite_fechou.connect(_amanhecer)
 	ciclo.iniciar()                                # dia 1: boletim da manhã
+	emergencia.iniciar(self)                       # depois do ciclo: o dia dos meteoros evita o da erupção já sorteado
 
 
 func _entradas() -> void:
@@ -241,6 +250,7 @@ func _jogador() -> void:
 	cam.offset = Vector2(0, -14)
 	jogador.add_child(cam)
 	cam.make_current()
+	camera = cam
 
 
 func _navegacao() -> void:
@@ -370,8 +380,20 @@ func _perto(lista: Array, feito: Dictionary) -> Dictionary:
 	return melhor
 
 
+func tremer_tela(duracao: float = 0.5, forca: float = 3.5) -> void:
+	t_shake = duracao
+	forca_shake = forca
+
+
 func _process(delta: float) -> void:
 	t += delta
+	if t_shake > 0.0:
+		t_shake = maxf(0.0, t_shake - delta)
+		if camera != null:
+			if t_shake > 0.0:
+				camera.offset = Vector2(0, -14) + Vector2(randf_range(-forca_shake, forca_shake), randf_range(-forca_shake, forca_shake))
+			else:
+				camera.offset = Vector2(0, -14)
 	t_aviso = max(0.0, t_aviso - delta)
 	confirmar_dormir = max(0.0, confirmar_dormir - delta)
 	desistir = max(0.0, desistir - delta)
@@ -395,10 +417,15 @@ func _process(delta: float) -> void:
 			_avisar(str(salas[agora]["dados"].get("titulo", agora)))
 	var tf := _perto(tarefas, feitas)
 	var it := _perto(interacoes, usadas)
+	var perto_em: bool = emergencia != null and emergencia.perto_estacao(jogador.global_position)
 	if demo:
 		_demo(delta)
 	if dormindo or em_minigame or fim or ciclo.ocupado() or tempestade.ativo:
 		pass
+	elif perto_em and (Input.is_action_just_pressed("usar") or (demo and _bot_usa_emergencia())):
+		emergencia.ativar_escudos()
+	elif emergencia != null and emergencia.ativa:
+		pass                                       # alarme dos meteoros: só a alavanca (nada de tarefa, computador ou cama)
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
 	elif not it.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(it))):
@@ -432,7 +459,12 @@ func _usar(tf: Dictionary) -> void:
 
 
 ## Abre um minigame por cima do jogo. Com `tf` vazio (aba DEV do menu de pausa), terminar não conclui tarefa nenhuma.
+## Na primeira vez de cada minigame (fora do demo), antes aparece o tutorial dele (tutorial_minigame.gd).
 func abrir_minigame(caminho: String, tf := {}) -> void:
+	var id_tutorial := Tutorial.id_de(caminho)
+	if not demo and Tutorial.tem(id_tutorial) and not Tutorial.ja_visto(id_tutorial):
+		_abrir_tutorial(id_tutorial, caminho, tf)
+		return
 	em_minigame = true
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
@@ -471,6 +503,24 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 			elif Engine.get_process_frames() != quadro_desistir:
 				falhar.call()
 		)
+
+
+## Tutorial de primeira vez: E começa o minigame (e o tutorial não aparece mais); Esc ou X volta ao jogo sem gastar
+## nada (e o tutorial aparece de novo na próxima vez).
+func _abrir_tutorial(id_tutorial: String, caminho: String, tf: Dictionary) -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var tut: Control = Tutorial.new()
+	tut.id = id_tutorial
+	camada_ui.add_child(tut)
+	tut.continuar.connect(func():
+		Tutorial.marcar_visto(id_tutorial)
+		tut.queue_free()
+		abrir_minigame(caminho, tf)
+	)
+	tut.cancelou.connect(func(): _fechar_minigame(tut))
 
 
 ## Computador de navegação (mesa do Suporte): clima espacial, diário, previsão e situação da base. Consultar não
@@ -606,6 +656,10 @@ func _bot_usa(item: Dictionary) -> bool:
 	return not alvo_demo.is_empty() and alvo_demo["id"] == item["id"] and jogador.bot_quer_usar(item)
 
 
+func _bot_usa_emergencia() -> bool:
+	return emergencia != null and emergencia.bot_quer_usar(jogador.global_position) and jogador.bot_espera > 0.2
+
+
 ## O robô escolhe, entre as tarefas do dia, a que deixa o indicador mais baixo o mais alto possível (empate: a
 ## ordem das salas em ordem_demo) e, sem ações, vai dormir.
 func _proximo_alvo() -> Dictionary:
@@ -613,6 +667,13 @@ func _proximo_alvo() -> Dictionary:
 		var ab: Dictionary = salas[Tempestade.SALA_ABRIGO]
 		var tam: Array = ab["dados"]["tamanho"]
 		return {"id": "erupcao/abrigo", "pos": ab["pos"] + Vector2(tam[0], tam[1]) / 2.0}
+	if emergencia != null and emergencia.ativa:
+		return {
+			"id": "emergencia/escudos",
+			"pos": emergencia.posicao_estacao,
+			"sala": emergencia.setor_atual,
+			"texto": "PULL EMERGENCY LEVER"
+		}
 	var melhor := {}
 	var nota := -INF
 	for sala in mapa["ordem_demo"]:
@@ -717,11 +778,18 @@ func _desenha_hud() -> void:
 	Fonte.desenhar(hud, "- " + acoes, Vector2(8 + Fonte.largura(rodape) + 4, y), cor_acoes)
 	_desenha_recursos()
 	_desenha_minimapa()
+	if emergencia != null:
+		emergencia.desenhar_hud(hud, t)
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
+	var perto_em: bool = emergencia != null and emergencia.perto_estacao(jogador.global_position)
 	if tempestade.ativo:
 		pass                                       # alarme da erupção: nada de "E:" (as tarefas ficam bloqueadas)
+	elif perto_em and not dormindo:
+		Fonte.centralizado(hud, "E: PULL EMERGENCY LEVER", 160, 154, AMARELO)
+	elif emergencia != null and emergencia.ativa:
+		pass                                       # alarme dos meteoros: nada de "E:" fora da alavanca
 	elif not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
 		var n := ciclo.acoes_restantes()
 		Fonte.centralizado(hud, "E AGAIN: END THE DAY NOW", 160, 154, AMARELO)
@@ -776,6 +844,15 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
 			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
+	if emergencia != null and emergencia.ativa:
+		var m_em := _na_planta(emergencia.posicao_estacao, tex, canto)
+		var aceso_em := fmod(t, 0.4) < 0.25
+		if aceso_em and emergencia.tex_icone:               # ícone do meteoro piscando na sala atingida
+			hud.draw_texture(emergencia.tex_icone, m_em - Vector2(4, 4))
+		elif aceso_em:
+			hud.draw_rect(Rect2(m_em + Vector2(-2, -2), Vector2(5, 5)), CONTORNO)
+			hud.draw_rect(Rect2(m_em + Vector2(-1, -1), Vector2(3, 3)), VERMELHO)
+			hud.draw_rect(Rect2(m_em, Vector2(1, 1)), AMARELO)
 	if not pc_item.is_empty() and not tempestade.ativo:   # computador: monitorzinho, piscando com previsão nova
 		var pc := _na_planta(pc_item["pos"] + MESA_PC, tex, canto)
 		hud.draw_rect(Rect2(pc + Vector2(-2, -2), Vector2(5, 4)), CONTORNO)
