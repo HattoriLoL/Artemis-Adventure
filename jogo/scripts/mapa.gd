@@ -7,6 +7,7 @@ const Fonte = preload("res://scripts/fonte.gd")
 const Porta = preload("res://scripts/porta.gd")
 const MenuPausa = preload("res://scripts/menu_pausa.gd")
 const CicloDias = preload("res://scripts/ciclo_dias.gd")
+const Tempestade = preload("res://scripts/tempestade.gd")
 const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
@@ -44,6 +45,7 @@ var jogador: CharacterBody2D
 var hud: Control
 var camada_ui: CanvasLayer
 var ciclo: CicloDias               # ciclo_dias.gd: dias, ações, boletim, noite e fim da missão
+var tempestade: Tempestade         # tempestade.gd: o alarme da erupção solar e a corrida até o Abrigo
 var em_minigame := false
 var desistir := 0.0                # > 0: o jogador tentou fechar um minigame já começado; de novo = desiste (falha)
 var quadro_desistir := -1          # quadro do primeiro pedido (Esc e clique no X no mesmo quadro não confirmam)
@@ -261,6 +263,9 @@ func _interface() -> void:
 	ciclo = CicloDias.new()
 	ciclo.mapa = self
 	add_child(ciclo)
+	tempestade = Tempestade.new()
+	tempestade.mapa = self
+	add_child(tempestade)
 	var menu := MenuPausa.new()                   # Esc; fica por último na árvore para ver o Esc antes do minigame
 	menu.mapa = self
 	add_child(menu)
@@ -308,6 +313,8 @@ func _recursos_mudaram(_id: String, mudancas: Dictionary) -> void:
 ## O que a tarefa rende, em texto para o HUD e o boletim. Uma tarefa de energia solar à noite não rende nada.
 func texto_previa(id: String) -> String:
 	var txt := _texto_efeito(Recursos.previa(id))
+	if Recursos.protege(id):                      # blindagem: protege da erupção solar em vez de mudar um recurso
+		return (txt + " " if txt != "" else "") + "+1 STORM SHIELD"
 	if txt == "" and Recursos.noite and not Recursos.regras["efeitos"].get(id, {}).is_empty():
 		return SEM_SOL
 	return txt
@@ -367,7 +374,7 @@ func _process(delta: float) -> void:
 	var it := _perto(interacoes, usadas)
 	if demo:
 		_demo(delta)
-	if dormindo or em_minigame or fim or ciclo.ocupado():
+	if dormindo or em_minigame or fim or ciclo.ocupado() or tempestade.ativo:
 		pass
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
@@ -466,6 +473,9 @@ func _concluir_tarefa(tf: Dictionary, fator := 1.0, perdeu := false) -> void:
 	else:
 		Recursos.aplicar(tf["id"], fator)
 		_avisar(("DONE: " if fator >= 1.0 else "DONE WITH ERRORS: ") + texto)
+	if ciclo.erupcao_agora():                      # dia da erupção: o alarme toca depois da 1ª ou 2ª tarefa (sorteado)
+		tempestade.iniciar()
+		return
 	if ciclo.acoes_restantes() == 0:
 		await get_tree().create_timer(2.0).timeout
 		if not dormindo and not fim:
@@ -479,11 +489,24 @@ func _interagir(it: Dictionary) -> void:
 			confirmar_dormir = TEMPO_CONFIRMAR
 			return
 		confirmar_dormir = 0.0
+		if ciclo.erupcao_pendente():               # dia da erupção e o alarme ainda não tocou: toca agora, em vez de
+			tempestade.iniciar()                   # a tempestade passar escondida na noite (e dormir cedo não foge dela)
+			return
 		usadas[it["id"]] = true
 		encerrar_dia(it["id"])
 	else:
 		usadas[it["id"]] = true
 		Recursos.aplicar(it["id"])
+
+
+## Aba DEV: dispara o alarme da erupção agora (hoje vira o dia da erupção), para testar sem esperar o sorteio.
+func erupcao_agora_dev() -> bool:
+	if em_minigame or dormindo or fim or ciclo.ocupado() or tempestade.ativo:
+		return false
+	Missao.dia_erupcao = Missao.dia
+	Missao.tempestade = {}
+	tempestade.iniciar()
+	return true
 
 
 ## Dormir: a tela escurece e o ciclo fecha o dia (resumo da noite). Com `id_cama` vazio (aba DEV), sem o efeito
@@ -511,6 +534,22 @@ func _levantar(id_cama: String) -> void:
 			jogador.reset_physics_interpolation()
 
 
+## A erupção acabou com o dia (chegou ao Abrigo ou foi pego fora): mostra o resultado, escurece e fecha o dia
+## onde ele está (sem a cama); o dano da erupção entra no resumo da noite.
+func fim_do_dia_tempestade(no_abrigo: bool) -> void:
+	if dormindo or fim:
+		return
+	dormindo = true
+	jogador.velocity = Vector2.ZERO
+	jogador.t_usar = 2.0
+	_avisar("SAFE IN THE SHELTER: THE STORM PASSES" if no_abrigo else "CAUGHT OUTSIDE THE SHELTER!")
+	await get_tree().create_timer(1.6).timeout
+	var tw := create_tween()
+	tw.tween_property(self, "escuro", 1.0, 0.8)
+	await tw.finished
+	ciclo.fechar_dia("")
+
+
 func _amanhecer() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "escuro", 0.0, 0.8)
@@ -526,6 +565,10 @@ func _bot_usa(item: Dictionary) -> bool:
 ## O robô escolhe, entre as tarefas do dia, a que deixa o indicador mais baixo o mais alto possível (empate: a
 ## ordem das salas em ordem_demo) e, sem ações, vai dormir.
 func _proximo_alvo() -> Dictionary:
+	if tempestade.ativo:                           # alarme da erupção: corre para o meio do Abrigo
+		var ab: Dictionary = salas[Tempestade.SALA_ABRIGO]
+		var tam: Array = ab["dados"]["tamanho"]
+		return {"id": "erupcao/abrigo", "pos": ab["pos"] + Vector2(tam[0], tam[1]) / 2.0}
 	var melhor := {}
 	var nota := -INF
 	for sala in mapa["ordem_demo"]:
@@ -566,7 +609,8 @@ func _demo(delta: float) -> void:
 		caminho = astar.get_point_path(de, para)
 		i_caminho = 0
 	# segue o caminho olhando um pouco à frente; a última parada é a própria tarefa
-	while i_caminho < caminho.size() - 1 and jogador.global_position.distance_to(caminho[i_caminho]) < 24.0:
+	var olhar := 21.0 if jogador.bot_correr else 24.0  # correndo, mirar longe faz ele cortar a curva e enroscar; com menos de 20 ele acha que chegou ao parar numa porta
+	while i_caminho < caminho.size() - 1 and jogador.global_position.distance_to(caminho[i_caminho]) < olhar:
 		i_caminho += 1
 	if caminho.is_empty() or i_caminho >= caminho.size() - 1:
 		jogador.bot_alvo = alvo["pos"]
@@ -632,7 +676,9 @@ func _desenha_hud() -> void:
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
-	if not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
+	if tempestade.ativo:
+		pass                                       # alarme da erupção: nada de "E:" (as tarefas ficam bloqueadas)
+	elif not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
 		var n := ciclo.acoes_restantes()
 		Fonte.centralizado(hud, "E AGAIN: END THE DAY NOW", 160, 154, AMARELO)
 		Fonte.centralizado(hud, "%d %s LEFT WILL BE LOST" % [n, "ACTION" if n == 1 else "ACTIONS"], 160, 162,
@@ -647,7 +693,7 @@ func _desenha_hud() -> void:
 		hud.draw_rect(Rect2(0, 0, 320, 180), Color(0.02, 0.02, 0.05, escuro))
 		var zs := "Z" + " Z".repeat(int(t * 2.0) % 3)
 		Fonte.centralizado(hud, zs, 160, 86, Color(BRANCO, escuro))
-	if t_aviso > 0.0 and escuro < 0.3:
+	if t_aviso > 0.0 and escuro < 0.3 and not tempestade.ativo:
 		var w := Fonte.largura(aviso) + 8
 		hud.draw_rect(Rect2(160 - w / 2.0, 54, w, 11), Color(0.035, 0.04, 0.08, 0.8))
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
@@ -669,7 +715,7 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 	hud.draw_texture(tex, canto)
 	var aceso := fmod(t, 0.8) < 0.55
 	for id in ciclo.hoje:
-		if feitas.has(id) or not ciclo.disponivel(id):
+		if feitas.has(id) or not ciclo.disponivel(id) or tempestade.ativo:   # no alarme só o Abrigo importa
 			continue
 		var tf := _tarefa(id)
 		if tf.is_empty():
@@ -686,6 +732,14 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
 			hud.draw_rect(Rect2(m + Vector2(0, -1), Vector2(1, 3)), AMARELO)
 			hud.draw_rect(Rect2(m + Vector2(-1, 0), Vector2(3, 1)), AMARELO)
+	if tempestade.ativo and fmod(t, 0.5) < 0.3:   # erupção: o Abrigo pisca em vermelho
+		var ab: Dictionary = salas[Tempestade.SALA_ABRIGO]
+		var tam_ab: Array = ab["dados"]["tamanho"]
+		var a := _na_planta(ab["pos"], tex, canto)
+		var b := _na_planta(ab["pos"] + Vector2(tam_ab[0], tam_ab[1]), tex, canto)
+		var r := Rect2(a, b - a + Vector2.ONE)
+		hud.draw_rect(r, Color(VERMELHO, 0.45))
+		hud.draw_rect(r, VERMELHO, false)
 	var j := _na_planta(jogador.global_position, tex, canto)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
