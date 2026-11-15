@@ -35,13 +35,13 @@ const NOMES_SETORES: Dictionary = {
 	"estufa": "GREENHOUSE"
 }
 
-# Coordenadas fixadas nas PAREDES SUPERIORES de cada sala (nunca no meio do chão!)
+# Coordenadas fixadas nas PAREDES de cada sala (acessíveis e nunca no meio do corredor)
 const POSICOES_SETORES: Dictionary = {
-	"energia": Vector2(198, 106),
-	"habitat": Vector2(188, 508),
-	"suporte": Vector2(188, 906),
-	"abrigo": Vector2(696, 510),
-	"estufa": Vector2(686, 910)
+	"energia": Vector2(270, 110),
+	"habitat": Vector2(240, 516),
+	"suporte": Vector2(208, 914),
+	"abrigo": Vector2(686, 516),
+	"estufa": Vector2(744, 900)
 }
 
 var mapa: Node2D = null
@@ -70,9 +70,31 @@ var som_impacto: AudioStreamWAV = null
 var som_clank: AudioStreamWAV = null
 
 
+var corpos_colisao: Array[StaticBody2D] = []
+
+
 func _ready() -> void:
-	z_index = 2
+	y_sort_enabled = true
 	_criar_audio()
+	_criar_colisoes_alavancas()
+
+
+func _criar_colisoes_alavancas() -> void:
+	# Cria corpos de colisão física sólida para as alavancas nas paredes
+	# Assim o personagem bate nelas e NUNCA mais as atravessa!
+	for s: String in SETORES:
+		var p: Vector2 = POSICOES_SETORES[s]
+		var corpo := StaticBody2D.new()
+		corpo.name = "AlavancaParede_" + s
+		corpo.position = p
+		var col := CollisionShape2D.new()
+		var shape := RectangleShape2D.new()
+		shape.size = Vector2(16.0, 10.0)
+		col.shape = shape
+		col.position = Vector2(0.0, -2.0)
+		corpo.add_child(col)
+		add_child(corpo)
+		corpos_colisao.append(corpo)
 
 
 func _criar_audio() -> void:
@@ -176,7 +198,7 @@ func disparar(setor_forcado: String = "") -> void:
 	else:
 		setor_atual = SETORES.pick_random()
 
-	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(198, 106))
+	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(270, 110))
 	tempo_restante = DURACAO_JANELA
 	ativa = true
 	alavanca_puxada = false
@@ -281,14 +303,13 @@ func _aplicar_dano_recursos() -> void:
 
 
 func _draw() -> void:
-	# A alavanca na parede SÓ APARECE durante a emergência ativa e no feedback de resolução!
-	# Quando não há alarme, a sala fica 100% limpa, sem nenhum objeto no caminho.
-	if not ativa and t_banner_resolucao <= 0.0:
-		return
-
-	if setor_atual != "" and POSICOES_SETORES.has(setor_atual):
-		var pos: Vector2 = POSICOES_SETORES[setor_atual]
-		_desenhar_estacao_alavanca(pos, ativa, t_banner_resolucao > 0.0)
+	# As alavancas são equipamentos permanentes da base lunar fixados nas paredes!
+	# Nunca somem: em repouso ficam em standby; sob alarme, a sala alvo dispara o giroflex.
+	for s: String in SETORES:
+		var pos: Vector2 = POSICOES_SETORES[s]
+		var eh_alvo_ativo: bool = ativa and (s == setor_atual)
+		var eh_alvo_resolvido: bool = (t_banner_resolucao > 0.0) and (s == setor_atual)
+		_desenhar_estacao_alavanca(pos, eh_alvo_ativo, eh_alvo_resolvido)
 
 
 func _desenhar_estacao_alavanca(p: Vector2, alvo_ativo: bool, alvo_resolvido: bool) -> void:
