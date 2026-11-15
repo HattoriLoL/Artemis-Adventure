@@ -14,6 +14,9 @@ const Fonte = preload("res://scripts/fonte.gd")
 const Relatorio = preload("res://scripts/relatorio.gd")
 const ARQUIVO := "res://dados/dias.json"
 const TELA_POUSO := "res://cenas/escolha_pouso.tscn"
+const EVENTOS_SOLARES := "res://dados/eventos_solares.json"
+const BLINDAGEM := "abrigo/blindagem"         # o dia da erupção sempre oferece reforçar a blindagem
+const LARANJA := Color("#de9e41")
 
 const PRETO := Color("#090a14")
 const FUNDO := Color("#151d28")
@@ -91,12 +94,38 @@ func iniciar() -> void:
 	Missao.historico = []
 	Missao.resultado = ""
 	Missao.causa = ""
+	Missao.blindagem = 0
+	Missao.tempestade = {}
 	Missao.eventos = []
 	Missao.decisao_impacto = {}
 	baixos_antes = {}
 	Missao.registrar_evento(1, "pouso", "LANDING", "The crew landed at the %s and set up the base." % str(
 		Missao.dados_local.get("titulo", "site")).to_lower(), "", 10)
+	_sortear_erupcao()
 	_comecar_dia()
+
+
+## O dia da erupção solar (entre radiacao.dia_min e dia_max) e o evento real do DONKI que serve de referência.
+func _sortear_erupcao() -> void:
+	var r: Dictionary = Recursos.regras.get("radiacao", {})
+	if r.is_empty():
+		Missao.dia_erupcao = 0
+		return
+	Missao.dia_erupcao = randi_range(int(r["dia_min"]), mini(int(r["dia_max"]), total_dias()))
+	Missao.alarme_apos = int(r.get("alarme_apos", [1]).pick_random())
+	var eventos: Array = JSON.parse_string(FileAccess.get_file_as_string(EVENTOS_SOLARES))["eventos"]
+	Missao.evento_solar = eventos.pick_random()
+
+
+## Hoje é o dia da erupção e o alarme ainda não tocou (ele toca depois da tarefa sorteada ou quando o jogador vai
+## dormir antes disso).
+func erupcao_pendente() -> bool:
+	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty()
+
+
+## Hoje é o dia da erupção, ela ainda não aconteceu e o jogador já fez a tarefa sorteada (1ª ou 2ª): o alarme toca.
+func erupcao_agora() -> bool:
+	return Missao.dia == Missao.dia_erupcao and Missao.tempestade.is_empty() and acoes >= Missao.alarme_apos
 
 
 ## Uma tarefa foi concluída: gasta uma ação e entra no diário do dia.
@@ -124,8 +153,12 @@ func fechar_dia(id_cama := "") -> void:
 	if id_cama != "":
 		Recursos.aplicar(id_cama)
 	var partes := Recursos.fechar_dia()
+	if Missao.dia == Missao.dia_erupcao:
+		if Missao.tempestade.is_empty():           # dormiu sem fazer nada no dia da erupção: pego fora do Abrigo
+			Missao.tempestade = {"dia": Missao.dia, "abrigo": false, "dormindo": true}
+		Missao.tempestade["dano"] = Recursos.ferir("condicao", Recursos.dano_tempestade(Missao.tempestade["abrigo"]))
 	resumo = {"antes": antes, "depois": Recursos.valores.duplicate(), "solar": partes["solar"],
-		"desgaste": partes["desgaste"]}
+		"desgaste": partes["desgaste"], "tempestade": Missao.tempestade if Missao.dia == Missao.dia_erupcao else {}}
 	Missao.historico[-1]["valores"] = Recursos.valores.duplicate()
 	_registrar_noite(partes)
 	_abrir("noite")
@@ -145,6 +178,8 @@ func _registrar_noite(partes: Dictionary) -> void:
 
 func _comecar_dia() -> void:
 	hoje = regras["dias"][Missao.dia - 1]["tarefas"].duplicate()
+	if Missao.dia == Missao.dia_erupcao and not BLINDAGEM in hoje:
+		hoje.append(BLINDAGEM)
 	acoes = 0
 	Recursos.noite = eh_noite(Missao.dia)
 	Missao.historico.append({"dia": Missao.dia, "noite": Recursos.noite, "acoes": [], "ids": [], "valores": {}})
@@ -185,7 +220,7 @@ func _terminar(resultado: String, causa := "") -> void:
 	mapa.fim = true
 	pagina = 0
 	Relatorio.preparar(regras["dias"])
-	print("Missao: ", resultado, " no dia ", Missao.dia, " ", Recursos.valores)
+	print("Missao: ", resultado, " no dia ", Missao.dia, " ", Recursos.valores, " erupcao=", Missao.dia_erupcao, " ", Missao.tempestade)
 	_abrir("fim")
 	if mapa.demo:
 		await get_tree().create_timer(4.0).timeout
@@ -284,7 +319,8 @@ func _desenha_manha() -> void:
 	var largura := 252
 	var boletim := quebrar(str(regras["dias"][Missao.dia - 1]["boletim"]), largura - 16)
 	var baixos := Recursos.NOMES.filter(func(n): return Recursos.baixo(n))
-	var linhas := boletim.size() + 2 + hoje.size()
+	var clima := _clima_espacial(largura - 16)
+	var linhas := boletim.size() + 2 + hoje.size() + clima.size()
 	if Recursos.noite:
 		linhas += 1
 	if not baixos.is_empty():
@@ -299,6 +335,9 @@ func _desenha_manha() -> void:
 		y += 8
 	for l in boletim:
 		Fonte.desenhar(tela, l, Vector2(x, y), BRANCO)
+		y += 8
+	for l in clima:
+		Fonte.desenhar(tela, l, Vector2(x, y), VERMELHO if Missao.dia == Missao.dia_erupcao else LARANJA)
 		y += 8
 	y += 4
 	Fonte.desenhar(tela, "TODAY'S TASKS - YOU HAVE TIME FOR %d:" % acoes_por_dia(), Vector2(x, y), METAL)
@@ -318,11 +357,24 @@ func _desenha_manha() -> void:
 	Fonte.centralizado(tela, "E: START THE DAY", 160, r.end.y + 4, METAL)
 
 
+## Previsão do clima espacial no boletim: na véspera da erupção, o aviso; no dia, o que fazer quando o alarme tocar.
+func _clima_espacial(largura: float) -> Array[String]:
+	if Missao.dia_erupcao == 0:
+		return []
+	if Missao.dia == Missao.dia_erupcao - 1:
+		return quebrar("SPACE WEATHER: solar activity rising. A solar storm is likely tomorrow. Reinforcing the shielding cuts the dose. Details on the navigation computer.", largura)
+	if Missao.dia == Missao.dia_erupcao:
+		return quebrar("SOLAR STORM TODAY: when the alarm sounds, run to the shielded shelter.", largura)
+	return []
+
+
 ## Resumo da noite: cada indicador antes e depois (barra, números e diferença), a geração solar e o desgaste.
 func _desenha_noite() -> void:
 	var largura := 216
 	var linhas := Recursos.NOMES.size() + 2
 	if resumo["desgaste"] > 0.0:
+		linhas += 1
+	if not resumo["tempestade"].is_empty():
 		linhas += 1
 	var r := _painel(largura, 18 + linhas * 8 + 6)
 	moldura(tela, r)
@@ -343,6 +395,12 @@ func _desenha_noite() -> void:
 	if resumo["desgaste"] > 0.0:
 		Fonte.desenhar(tela, "LOW SUPPLIES HURT THE CREW: %+d HEALTH" % -roundi(resumo["desgaste"]),
 			Vector2(x, y), VERMELHO)
+		y += 8
+	if not resumo["tempestade"].is_empty():
+		var tp: Dictionary = resumo["tempestade"]
+		var onde := "SHELTERED" if tp["abrigo"] else "CAUGHT OUTSIDE"
+		Fonte.desenhar(tela, "SOLAR STORM, %s: %+d HEALTH" % [onde, -roundi(tp.get("dano", 0.0))], Vector2(x, y),
+			LARANJA if tp["abrigo"] else VERMELHO)
 	var dica := "E: MISSION RESULT" if _ultima_noite() else "E: NEXT DAY"
 	Fonte.centralizado(tela, dica, 160, r.end.y + 4, METAL)
 

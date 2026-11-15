@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bn33466802qyv"
-path="res://.godot/imported/minimapa.png-53880bdfaceed7842ea5c439ec73ab35.ctex"
+uid="uid://x1dy5subrhcq"
+path="res://.godot/imported/energia_tanques.png-a8f13ad181248d15de37114ee92c8cb6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/mapa/minimapa.png"
-dest_files=["res://.godot/imported/minimapa.png-53880bdfaceed7842ea5c439ec73ab35.ctex"]
+source_file="res://assets/icones/energia_tanques.png"
+dest_files=["res://.godot/imported/energia_tanques.png-a8f13ad181248d15de37114ee92c8cb6.ctex"]
 
 [params]
 
