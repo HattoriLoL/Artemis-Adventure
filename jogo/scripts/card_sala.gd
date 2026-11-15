@@ -5,8 +5,9 @@ extends "res://scripts/tutorial_minigame.gd"
 ## Fatos em dados/salas_fatos.json, pela chave da sala (habitat, energia, suporte, estufa, abrigo). As tarefas vêm
 ## do JSON da própria sala (menos as de "ocultar"), então a lista acompanha o que estiver na sala.
 ## Ilustração em assets/cards_salas/<sala>.png (120x80); enquanto ela não existe, usa a arte da sala reduzida.
-## Visto fica guardado em user://tutoriais.cfg (seção "salas"); o "SHOW TUTORIALS AGAIN" do menu de pausa zera
-## junto com os tutoriais. E, Enter, clique, Esc ou X fecham (e o card não aparece mais).
+## Visto fica em Missao.tutoriais_vistos ("sala/<sala>"), junto com os tutoriais: cada missão nova mostra os cards
+## de novo, e o "SHOW TUTORIALS AGAIN" do menu de pausa zera. E, Enter, clique, Esc ou X fecham (e o card não
+## aparece mais nesta missão).
 
 const ARQUIVO_FATOS := "res://dados/salas_fatos.json"
 const PASTA_CARDS := "res://assets/cards_salas/"
@@ -30,15 +31,11 @@ static func tem_sala(nome: String) -> bool:
 
 
 static func sala_vista(nome: String) -> bool:
-	var cfg := ConfigFile.new()
-	return cfg.load(ARQUIVO_VISTOS) == OK and bool(cfg.get_value("salas", nome, false))
+	return Missao.tutoriais_vistos.has("sala/" + nome)
 
 
 static func marcar_sala(nome: String) -> void:
-	var cfg := ConfigFile.new()
-	cfg.load(ARQUIVO_VISTOS)
-	cfg.set_value("salas", nome, true)
-	cfg.save(ARQUIVO_VISTOS)
+	Missao.tutoriais_vistos["sala/" + nome] = true
 
 
 func _ready() -> void:
