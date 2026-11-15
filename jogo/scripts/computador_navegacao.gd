@@ -17,6 +17,7 @@ const Fonte = preload("res://scripts/fonte.gd")
 const Ciclo = preload("res://scripts/ciclo_dias.gd")
 const EVENTOS := "res://dados/eventos_solares.json"
 const BLINDAGEM := "abrigo/blindagem"
+const HORIZONTE := 2                  # dias à frente que o modelo solar enxerga (o boletim só vê 1)
 
 const BRANCO := Color("#ebede9")
 const AMARELO := Color("#e8c170")
@@ -45,6 +46,7 @@ var dia_log := 1                       # dia na janela 2
 var dia_prev := 1                      # dia selecionado na janela 3
 var eventos: Array = []
 var t := 0.0
+var som: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -54,6 +56,10 @@ func _ready() -> void:
 		eventos = dados.get("eventos", [])
 	dia_log = maxi(1, Missao.dia)
 	dia_prev = dia_log
+	som = AudioStreamPlayer.new()
+	som.volume_db = -20.0
+	add_child(som)
+	_bipe([880.0, 1320.0], 0.06)                                  # ligou
 
 
 func _total() -> int:
@@ -62,12 +68,7 @@ func _total() -> int:
 
 func _input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-		var p := get_local_mouse_position()
-		if BOTAO_X.grow(2).has_point(p):
-			_fechar()
-		for i in ABAS.size():
-			if _ret_aba(i).has_point(p):
-				aba = i
+		_clique(get_local_mouse_position())
 		get_viewport().set_input_as_handled()
 		return
 	if not (ev is InputEventKey and ev.pressed and not ev.echo):
@@ -77,9 +78,9 @@ func _input(ev: InputEvent) -> void:
 	else:
 		match ev.physical_keycode:
 			KEY_1, KEY_2, KEY_3, KEY_4:
-				aba = ev.physical_keycode - KEY_1
+				_mudar_aba(ev.physical_keycode - KEY_1)
 			KEY_TAB:
-				aba = (aba + (ABAS.size() - 1 if ev.shift_pressed else 1)) % ABAS.size()
+				_mudar_aba((aba + (ABAS.size() - 1 if ev.shift_pressed else 1)) % ABAS.size())
 			KEY_A, KEY_LEFT, KEY_W, KEY_UP:
 				_passar(-1)
 			KEY_D, KEY_RIGHT, KEY_S, KEY_DOWN:
@@ -87,7 +88,39 @@ func _input(ev: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
+## Mouse: o X, as abas, as setas (< A / D >) do DONKI e do diário e as linhas da previsão.
+func _clique(p: Vector2) -> void:
+	if BOTAO_X.grow(2).has_point(p):
+		_fechar()
+		return
+	for i in ABAS.size():
+		if _ret_aba(i).has_point(p):
+			_mudar_aba(i)
+			return
+	match aba:
+		0:
+			if Rect2(250, 108, 50, 9).has_point(p):                 # "< A   D >" do arquivo do DONKI
+				_passar(-1 if p.x < 278 else 1)
+		1:
+			if Rect2(20, 38, 60, 12).has_point(p):
+				_passar(-1)
+			elif Rect2(240, 38, 60, 12).has_point(p):
+				_passar(1)
+		2:
+			for d in range(1, _total() + 1):
+				if Rect2(20, 55 + (d - 1) * 10, 280, 9).has_point(p) and d != dia_prev:
+					dia_prev = d
+					_bipe([1200.0], 0.025)
+
+
+func _mudar_aba(i: int) -> void:
+	if i != aba:
+		aba = i
+		_bipe([1040.0], 0.035)
+
+
 func _passar(d: int) -> void:
+	var antes := [evento, dia_log, dia_prev]
 	match aba:
 		0:
 			if not eventos.is_empty():
@@ -96,6 +129,28 @@ func _passar(d: int) -> void:
 			dia_log = clampi(dia_log + d, 1, _total())
 		2:
 			dia_prev = clampi(dia_prev + d, 1, _total())
+	if antes != [evento, dia_log, dia_prev]:
+		_bipe([1200.0], 0.025)
+
+
+## Bipe de terminal feito no código (onda quadrada suave), como a sirene da erupção: um tom por item de `tons`.
+func _bipe(tons: Array, dur: float) -> void:
+	var taxa := 22050
+	var n_tom := int(taxa * dur)
+	var dados := PackedByteArray()
+	dados.resize(n_tom * tons.size() * 2)
+	var fase := 0.0
+	for k in tons.size():
+		for i in n_tom:
+			fase += TAU * float(tons[k]) / taxa
+			var env := minf(1.0, minf(float(i), float(n_tom - i)) / 60.0)          # sem estalo nas pontas
+			dados.encode_s16((k * n_tom + i) * 2, int((0.5 if sin(fase) > 0.0 else -0.5) * env * 9000.0))
+	var s := AudioStreamWAV.new()
+	s.format = AudioStreamWAV.FORMAT_16_BITS
+	s.mix_rate = taxa
+	s.data = dados
+	som.stream = s
+	som.play()
 
 
 func _fechar() -> void:
@@ -112,12 +167,16 @@ func _process(delta: float) -> void:
 
 
 # ---------------------------------------------------------------- o que a base sabe do Sol
-## O Sol num dia da missão, só com o que já se sabe hoje: a erupção aparece a partir do boletim da véspera.
-## {titulo, risco, cor, barra (0 a 10), vento, nota}
+## O Sol num dia da missão, só com o que o computador sabe hoje. O modelo enxerga HORIZONTE dias à frente: dois
+## dias antes da erupção ele já avisa que ela é possível (o boletim da manhã só avisa na véspera), então quem
+## consulta o computador ganha um dia para reforçar a blindagem. {titulo, risco, cor, barra (0 a 10), vento, nota}
+## Na CME, a velocidade é a real do evento do DONKI sorteado para a missão (eventos_solares.json).
 func _sol(d: int) -> Dictionary:
 	var e := Missao.dia_erupcao
 	var hoje := Missao.dia
 	var passou := not Missao.tempestade.is_empty()
+	var v := int(Missao.evento_solar.get("velocidade", 1200))
+	var vel := "%d KM/S" % v
 	var calmo := {"titulo": "QUIET SUN", "risco": "LOW", "cor": VERDE, "barra": 2, "vento": "350 KM/S",
 		"nota": "NO ALERTS FROM NASA DONKI. ROUTINE WORK OUTSIDE IS SAFE."}
 	if e == 0:
@@ -127,23 +186,39 @@ func _sol(d: int) -> Dictionary:
 		var onde := "THE CREW REACHED THE SHELTER" if tp.get("abrigo", false) else "THE CREW WAS CAUGHT OUTSIDE"
 		var dano := " (-%d HEALTH)" % roundi(tp["dano"]) if tp.has("dano") else ""
 		return {"titulo": "PROTON STORM HIT THE BASE", "risco": "CRITICAL", "cor": VERMELHO, "barra": 10,
-			"vento": "1280 KM/S", "nota": onde + dano + "."}
+			"vento": vel, "nota": onde + dano + "."}
 	if d == e and hoje == e:
-		return {"titulo": "PROTON STORM TODAY", "risco": "CRITICAL", "cor": VERMELHO, "barra": 10,
-			"vento": "1280 KM/S", "nota": "WHEN THE ALARM SOUNDS, RUN TO THE SHIELDED SHELTER."}
-	if d > hoje + 1:                     # o modelo só enxerga um dia à frente (nem "calmo" ele garante)
+		return {"titulo": "PROTON STORM TODAY", "risco": "CRITICAL", "cor": VERMELHO, "barra": 10, "vento": vel,
+			"nota": "WHEN THE ALARM SOUNDS, RUN TO THE SHIELDED SHELTER."}
+	if d > hoje + HORIZONTE:             # além do horizonte o modelo não garante nada (nem "calmo")
 		return {"titulo": "NO DATA YET", "risco": "UNKNOWN", "cor": CINZA, "barra": 0, "vento": "--",
-			"nota": "THE SOLAR MODEL ONLY SEES ABOUT ONE DAY AHEAD. CHECK AGAIN LATER."}
+			"nota": "THE SOLAR MODEL ONLY SEES ABOUT TWO DAYS AHEAD. CHECK AGAIN LATER."}
 	if d == e and hoje == e - 1:
-		return {"titulo": "CME IMPACT EXPECTED", "risco": "CRITICAL", "cor": VERMELHO, "barra": 9,
-			"vento": "1280 KM/S", "nota": "A PROTON STORM WILL HIT THE BASE THIS DAY. SHIELD THE SHELTER."}
+		return {"titulo": "CME IMPACT EXPECTED", "risco": "CRITICAL", "cor": VERMELHO, "barra": 9, "vento": vel,
+			"nota": "A PROTON STORM WILL HIT THE BASE THIS DAY. SHIELD THE SHELTER."}
+	if d == e and hoje == e - 2:         # o alerta antecipado: só o computador sabe
+		return {"titulo": "STORM POSSIBLE", "risco": "HIGH", "cor": LARANJA, "barra": 6, "vento": "--",
+			"nota": "AN ACTIVE SUNSPOT REGION IS TURNING TOWARD THE MOON. SHIELD EARLY."}
 	if d == e - 1 and hoje >= e - 1:
-		return {"titulo": "CME DETECTED", "risco": "HIGH", "cor": LARANJA, "barra": 7, "vento": "1100 KM/S",
-			"nota": "A CORONAL MASS EJECTION IS ON ITS WAY. IMPACT IN ABOUT 24 HOURS."}
-	if d == e + 1 and hoje >= e:
+		return {"titulo": "CME DETECTED", "risco": "HIGH", "cor": LARANJA, "barra": 7, "vento": vel,
+			"nota": "CME AT %s ON ITS WAY: REACHES THE MOON IN ABOUT %d HOURS." % [vel, _horas_ate_lua(v)]}
+	if d == e + 1 and hoje >= e - 1:
 		return {"titulo": "STORM DECAYING", "risco": "MODERATE", "cor": AMARELO, "barra": 4, "vento": "560 KM/S",
 			"nota": "PARTICLE FLUX FALLING BACK TO NORMAL LEVELS."}
 	return calmo
+
+
+## Quanto a CME leva do Sol à Lua (1 UA) na velocidade medida, sem contar a desaceleração no caminho.
+func _horas_ate_lua(v: int) -> int:
+	return roundi(149.6e6 / maxf(1.0, float(v)) / 3600.0)
+
+
+## O pior risco que o computador vê de hoje até o horizonte (o LED da barra de título e a setinha do mapa).
+func risco_a_frente() -> int:
+	var pior := 0
+	for d in range(Missao.dia, mini(Missao.dia + HORIZONTE, _total()) + 1):
+		pior = maxi(pior, int(_sol(d)["barra"]))
+	return pior
 
 
 ## Tarefas previstas num dia (as de dias.json; no dia da erupção, já conhecido, também a blindagem).
@@ -199,9 +274,9 @@ func _barra_titulo() -> void:
 	draw_rect(Rect2(16, 12, 288, 12), Color("#0e151f"))
 	Fonte.desenhar(self, "ARTEMIS-OS V2.4", Vector2(20, 15), AMARELO)
 	Fonte.desenhar(self, "%s BASE // DAY %d OF %d" % [_site(), Missao.dia, _total()], Vector2(88, 15), BRANCO)
-	var s := _sol(Missao.dia)                                     # LED: a cor do Sol hoje; pisca no alerta
-	var cor: Color = s["cor"]
-	if s["barra"] >= 7 and fmod(t, 0.8) < 0.4:
+	var pior := risco_a_frente()                                  # LED: o pior risco até o horizonte; pisca no alerta
+	var cor := VERMELHO if pior >= 9 else (LARANJA if pior >= 6 else (AMARELO if pior >= 4 else VERDE))
+	if pior >= 6 and fmod(t, 0.8) < 0.4:
 		cor = Color(cor, 0.25)
 	draw_rect(Rect2(281, 16, 4, 4), cor)
 	draw_rect(BOTAO_X.grow(1), PRETO)
@@ -255,30 +330,54 @@ func _janela_clima() -> void:
 	_direita("NASA DONKI / SDO", 296, 49, CINZA)
 	Fonte.desenhar(self, str(s["nota"]), Vector2(26, 57), BRANCO)
 
+	# os próximos dias que o modelo enxerga (onde aparece o alerta antecipado)
+	var pior := 0
+	var x := 26.0
+	for d in range(Missao.dia + 1, mini(Missao.dia + HORIZONTE, _total()) + 1):
+		pior = maxi(pior, int(_sol(d)["barra"]))
+	_caixa(Rect2(20, 69, 280, 12), LARANJA if pior >= 6 else VERDE)
+	Fonte.desenhar(self, "OUTLOOK:", Vector2(x, 72), CINZA)
+	x += Fonte.largura("OUTLOOK:") + 6
+	if Missao.dia >= _total():
+		Fonte.desenhar(self, "LAST DAY OF THE MISSION", Vector2(x, 72), CINZA)
+	for d in range(Missao.dia + 1, mini(Missao.dia + HORIZONTE, _total()) + 1):
+		var sd := _sol(d)
+		var txt := "DAY %d %s" % [d, sd["titulo"]]
+		Fonte.desenhar(self, txt, Vector2(x, 72), sd["cor"])
+		x += Fonte.largura(txt) + 10
+
 	# a blindagem de agora e quanto a erupção tiraria da saúde
 	var n := Missao.blindagem
-	_caixa(Rect2(20, 69, 280, 20), VERDE if n > 0 else LARANJA)
+	_caixa(Rect2(20, 84, 280, 20), VERDE if n > 0 else LARANJA)
 	Fonte.desenhar(self, "SHELTER SHIELDING: %d %s" % [n, "REINFORCEMENT" if n == 1 else "REINFORCEMENTS"],
-		Vector2(26, 72), VERDE if n > 0 else LARANJA)
+		Vector2(26, 87), VERDE if n > 0 else LARANJA)
 	Fonte.desenhar(self, "STORM DOSE: IN THE SHELTER -%d HEALTH / OUTSIDE -%d HEALTH" % [
-		roundi(Recursos.dano_tempestade(true)), roundi(Recursos.dano_tempestade(false))], Vector2(26, 80), BRANCO)
+		roundi(Recursos.dano_tempestade(true)), roundi(Recursos.dano_tempestade(false))], Vector2(26, 95), BRANCO)
 
-	# arquivo de eventos reais do DONKI
-	_caixa(Rect2(20, 92, 280, 60), AMARELO)
+	# arquivo de eventos reais do DONKI (com a CME e a velocidade medidas)
+	_caixa(Rect2(20, 107, 280, 45), AMARELO)
 	if eventos.is_empty():
 		return
 	var ev: Dictionary = eventos[evento]
-	Fonte.desenhar(self, "NASA DONKI ARCHIVE - REAL EVENT %d/%d" % [evento + 1, eventos.size()], Vector2(26, 95),
+	Fonte.desenhar(self, "NASA DONKI ARCHIVE - REAL EVENT %d/%d" % [evento + 1, eventos.size()], Vector2(26, 110),
 		AMARELO)
-	_direita("< A   D >", 296, 95, CINZA)
-	Fonte.desenhar(self, str(ev["data"]), Vector2(26, 104), AZUL)
-	Fonte.desenhar(self, str(ev["titulo"]), Vector2(26 + Fonte.largura(str(ev["data"])) + 8, 104), BRANCO)
-	var y := 113
-	for l in Ciclo.quebrar(str(ev["detalhe"]), 266):
+	_direita("< A   D >", 296, 110, CINZA)
+	Fonte.desenhar(self, str(ev["data"]), Vector2(26, 119), AZUL)
+	Fonte.desenhar(self, str(ev["titulo"]), Vector2(26 + Fonte.largura(str(ev["data"])) + 8, 119), BRANCO)
+	var y := 128
+	if ev.has("velocidade"):
+		var cme := str(ev.get("cme", "")).replace("T", " ").replace("Z", " UTC")   # o Z da fonte 3x5 parece um 2
+		Fonte.desenhar(self, "CME %s - %d KM/S - MOON IN ABOUT %d H" % [cme, int(ev["velocidade"]),
+			_horas_ate_lua(int(ev["velocidade"]))], Vector2(26, y), LARANJA)
+		y += 8
+	# depois da tempestade, o evento em que ela se baseou ganha uma linha verde (no lugar da 2ª linha do texto)
+	var modelo := not Missao.tempestade.is_empty() and str(ev["data"]) == str(Missao.evento_solar.get("data", ""))
+	var linhas := Ciclo.quebrar(str(ev["detalhe"]), 266).slice(0, 1 if modelo else 2)
+	for l in linhas:
 		Fonte.desenhar(self, l, Vector2(26, y), CINZA)
 		y += 8
-	if not Missao.tempestade.is_empty() and str(ev["data"]) == str(Missao.evento_solar.get("data", "")):
-		Fonte.desenhar(self, "THIS MISSION'S STORM WAS MODELED ON THIS EVENT.", Vector2(26, 142), VERDE)
+	if modelo:
+		Fonte.desenhar(self, "THIS MISSION'S STORM WAS MODELED ON THIS EVENT.", Vector2(26, y), VERDE)
 
 
 # ---------------------------------------------------------------- janela 2: diário de bordo
