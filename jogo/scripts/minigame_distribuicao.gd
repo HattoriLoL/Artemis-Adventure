@@ -2,13 +2,15 @@ extends Control
 ## Minigame "balancear a energia" (BALANCE THE POWER), no painel de distribuição da sala de Energia: 3 canais de
 ## carga (LIFE SUPPORT, BASE, SHIELDS), cada um com um medidor vertical e uma alavanca. O jogador escolhe o canal
 ## (A/D) e sobe ou desce a carga (W/S) até os três ficarem na faixa verde ao mesmo tempo por TEMPO_OK segundos
-## seguidos. Não tem falha nem taxa de erro: a tarefa rende tudo.
+## seguidos. A energia da base é uma só: mexer num canal empurra os outros dois para o lado contrário
+## (ACOPLAMENTO). Não tem falha (é uma das tarefas de energia que funcionam à noite), mas passar do ponto, tirando o
+## canal escolhido da faixa verde, é erro: taxa_erro diminui o que a tarefa rende.
 ## A ideia e a mecânica (3 canais com faixas, A/D escolhe, W/S regula, estável por 2 s) vieram do PR #17
 ## (IltonBJSilva).
 ## Arte (paleta Apollo, PixelAi) em res://assets/minigames/distribuicao/: fundo.png (192x121) com os 3 trilhos e
 ## alavanca.png / alavanca_sel.png. Se um arquivo faltar, o minigame desenha uma versão provisória no lugar dele.
 ## A carga, a faixa verde, os nomes dos canais e a barra de estabilidade são desenhados aqui.
-## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc) e `demo`.
+## Contrato com o mapa: sinais `terminou` e `cancelou` (X ou Esc), taxa_erro() e `demo`.
 
 signal terminou
 signal cancelou
@@ -48,6 +50,7 @@ const FAIXAS := [[0.40, 0.65], [0.50, 0.75], [0.35, 0.60]]   # faixa verde de ca
 const INICIO := [0.15, 0.85, 0.20]
 const VELOCIDADE := 0.45                           # quanto a carga anda por segundo segurando W/S
 const TEMPO_OK := 2.0                              # segundos com os três canais na faixa
+const ACOPLAMENTO := 0.3                           # o que um canal sobe, os outros dois descem juntos (30%, metade cada)
 const TEMPO_FIM := 1.2
 
 var demo := false
@@ -58,6 +61,8 @@ var acabou := false
 var t := 0.0
 var t_fim := -1.0
 var t_demo := 0.0
+var erros := 0                                     # vezes que o jogador tirou o canal escolhido da faixa
+var t_erro := 0.0                                  # aviso OVERSHOT! na tela
 var faiscas: Array = []                            # [pos, vel, vida] no canal fora da faixa mexido agora
 
 var tex_fundo: Texture2D
@@ -91,6 +96,7 @@ func _input(ev: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
+	t_erro = maxf(0.0, t_erro - delta)
 	if not acabou:
 		if demo:
 			_jogar_sozinho(delta)
@@ -119,7 +125,26 @@ func _controles(delta: float) -> void:
 		selecionado = mini(NOMES.size() - 1, selecionado + 1)
 	var ajuste := Input.get_axis("baixo", "cima")
 	if ajuste != 0.0:
-		niveis[selecionado] = clampf(niveis[selecionado] + ajuste * VELOCIDADE * delta, 0.0, 1.0)
+		var estava := na_faixa(selecionado)
+		_mover(selecionado, ajuste * VELOCIDADE * delta)
+		if estava and not na_faixa(selecionado):    # passou do ponto: erro
+			erros += 1
+			t_erro = 0.8
+
+
+## Muda a carga de um canal; os outros dois mudam ao contrário (a energia total da base é uma só).
+func _mover(i: int, d: float) -> void:
+	var antes := niveis[i]
+	niveis[i] = clampf(niveis[i] + d, 0.0, 1.0)
+	var real := niveis[i] - antes
+	for j in NOMES.size():
+		if j != i:
+			niveis[j] = clampf(niveis[j] - real * ACOPLAMENTO / 2.0, 0.0, 1.0)
+
+
+## Fração de erros (3 canais para acertar): 1 erro ~ 94% do ganho, 2 ~ 75%, 3 ~ 62%.
+func taxa_erro() -> float:
+	return erros / (erros + 3.0)
 
 
 ## Demo: vai para o primeiro canal longe do meio da faixa e leva a carga até lá.
@@ -131,7 +156,8 @@ func _jogar_sozinho(delta: float) -> void:
 			if absf(niveis[i] - _meio(i)) > 0.05:
 				selecionado = i
 				break
-	niveis[selecionado] = move_toward(niveis[selecionado], _meio(selecionado), VELOCIDADE * delta)
+	var alvo := move_toward(niveis[selecionado], _meio(selecionado), VELOCIDADE * delta)
+	_mover(selecionado, alvo - niveis[selecionado])
 
 
 func _meio(i: int) -> float:
@@ -193,6 +219,9 @@ func _draw() -> void:
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
 	if acabou:
 		Fonte.centralizado(self, "GRID BALANCED!", 160, y_txt, VERDE_LIMA)
+	elif t_erro > 0.0:
+		Fonte.centralizado(self, "OVERSHOT! (%d)" % erros, 160, y_txt,
+			VERMELHO_CLARO if fmod(t, 0.3) < 0.18 else LARANJA)
 	elif canais_ok() == NOMES.size():
 		Fonte.centralizado(self, "ALL CHANNELS GREEN - HOLD IT...", 160, y_txt, VERDE_LIMA)
 	else:

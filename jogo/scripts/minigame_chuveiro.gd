@@ -49,7 +49,8 @@ const TAM_PROVISORIO := Vector2(30, 52)          # astronauta desenhado enquanto
 const TECLAS := {"cima": "W", "esquerda": "A", "direita": "D", "baixo": "S"}
 
 const PASSOS := 8                                # jatos na sequência (2 de cada lado)
-const TEMPO_PASSO := 2.2                         # segundos para apertar a direção do jato aceso
+const TEMPO_PASSO := 1.8                         # segundos para apertar a direção do jato aceso (era 2.2: calmo demais)
+const TEMPO_PRONTO := 0.8                        # READY antes do primeiro jato: dá tempo de ler a cabine
 const TEMPO_SOPRO := 0.45                        # o jato sopra por este tempo depois do acerto
 const TEMPO_FIM := 1.2
 const MAX_ERROS := 3
@@ -63,6 +64,7 @@ var perdeu := false
 var acabou := false
 var t := 0.0
 var t_passo := 0.0                               # quanto falta para o jato aceso apagar (erro por demora)
+var t_pronto := TEMPO_PRONTO                     # > 0: ainda no READY (nenhum jato aceso, o tempo não corre)
 var t_sopro := 0.0
 var lado_sopro := ""
 var t_erro := 0.0
@@ -163,7 +165,9 @@ func _process(delta: float) -> void:
 	t += delta
 	t_sopro = maxf(0.0, t_sopro - delta)
 	t_erro = maxf(0.0, t_erro - delta)
-	if not acabou:
+	if t_pronto > 0.0 and not acabou:
+		t_pronto -= delta
+	elif not acabou:
 		var apertou := _direcao_apertada()
 		if demo:
 			t_demo += delta
@@ -299,6 +303,8 @@ func _draw() -> void:
 	var y_txt := JANELA.y + TAM_JANELA.y + 5
 	if mensagem != "":
 		Fonte.centralizado(self, mensagem, 160, y_txt, cor_mensagem)
+	elif t_pronto > 0.0:
+		Fonte.centralizado(self, "READY...", 160, y_txt, AMARELO)
 	else:
 		Fonte.centralizado(self, "PRESS THE KEY OF THE LIT AIR JET: W A S D", 160, y_txt, BRANCO_SUJO)
 
@@ -322,7 +328,7 @@ func _astronauta() -> void:
 ## Bico de ar: o aceso pisca (com a tecla dele do lado); os outros ficam apagados.
 func _bico(lado: String) -> void:
 	var c: Vector2 = BICOS[lado]
-	var aceso := not acabou and passo < sequencia.size() and sequencia[passo] == lado
+	var aceso := not acabou and t_pronto <= 0.0 and passo < sequencia.size() and sequencia[passo] == lado
 	var piscando := aceso and (fmod(t, 0.4) < 0.28 or t_passo < 0.8)
 	var soprando := t_sopro > 0.0 and lado_sopro == lado
 	if tex_bico and tex_bico_aceso:

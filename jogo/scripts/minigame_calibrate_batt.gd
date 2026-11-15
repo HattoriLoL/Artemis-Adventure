@@ -55,7 +55,7 @@ const VELOCIDADES := [70.0, 95.0, 120.0]         # velocidade do ponteiro em cad
 const TEMPO_ERRO := 0.3                          # quanto tempo o mostrador fica vermelho depois de um erro
 const TEMPO_CARGA := 0.45                        # tempo da carga subindo no visor ao calibrar
 const TEMPO_FIM := 1.2
-const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
+const MAX_ERROS := 4                             # com tantos erros a tarefa é perdida (era 6: tolerante demais)
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
 var bateria := 0                                 # bateria atual: 0, 1 ou 2 (3 = acabou)

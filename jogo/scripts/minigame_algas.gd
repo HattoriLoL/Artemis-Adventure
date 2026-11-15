@@ -52,7 +52,7 @@ const INICIO := [0.20, 0.85]                     # cada tubo começa fora da fai
 const VEL_AJUSTE := 0.50                         # quanto o jogador sobe ou desce por segundo
 const TEMPO_OK := 2.0                            # segundos com os 2 tubos na faixa para terminar
 const TEMPO_FIM := 1.3
-const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
+const MAX_ERROS := 4                             # com tantos erros a tarefa é perdida (era 6: tolerante demais)
 const TEMPO_ERRO := 0.6                          # quanto tempo o aviso de erro fica na tela
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho

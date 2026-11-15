@@ -54,7 +54,7 @@ const DERIVA := [-0.03, -0.02, 0.04]                          # quanto cada nív
 const VEL_AJUSTE := 0.35                                      # quanto o jogador sobe ou desce por segundo
 const TEMPO_OK := 2.0                                         # segundos com as 3 na faixa para terminar
 const TEMPO_FIM := 1.3
-const MAX_ERROS := 6                             # com tantos erros a tarefa é perdida
+const MAX_ERROS := 4                             # com tantos erros a tarefa é perdida (era 6: tolerante demais)
 const TEMPO_ERRO := 0.6                          # quanto tempo o aviso de erro fica na tela
 
 var demo := false                                # o jogo coloca true no modo demo: o minigame se resolve sozinho
