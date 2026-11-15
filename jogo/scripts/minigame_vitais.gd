@@ -39,6 +39,8 @@ const TELA := Rect2(10, 10, 172, 78)              # a tela do ECG dentro do fund
 const BASE_Y := 62.0                               # linha de base das ondas (dentro do fundo)
 const ESCALA := 34.0
 const ROTULO_Y := 92.0                             # AMP e RATE embaixo da tela
+const BOTAO_AMP := Vector2(73, 98)                 # botões giratórios do painel (raio 6); a marca gira com o valor
+const BOTAO_RITMO := Vector2(119, 98)
 
 const RODADAS := 3
 const MAX_ERROS := 3
@@ -266,11 +268,24 @@ func _tela() -> void:
 		VERMELHO_CLARO if erros > 0 else BRANCO_SUJO)
 
 
-## Os rótulos dos dois botões giratórios do painel, com o valor do jogador.
+## Os rótulos dos dois botões giratórios do painel, com o valor do jogador, e a marca de cada botão girando junto.
 func _rotulos() -> void:
+	_marca(BOTAO_AMP, inverse_lerp(AMP_MIN, AMP_MAX, amp))
+	_marca(BOTAO_RITMO, inverse_lerp(FREQ_MIN, FREQ_MAX, freq))
 	Fonte.desenhar(self, "AMP %.1f" % amp, JANELA + Vector2(12, ROTULO_Y), BRANCO_SUJO)
 	var tx := "RATE %.1f" % freq
 	Fonte.desenhar(self, tx, JANELA + Vector2(180 - Fonte.largura(tx), ROTULO_Y), BRANCO_SUJO)
+
+
+## A marca de um botão giratório: de -135 graus (mínimo) a +135 graus (máximo), com 0 apontando para cima.
+func _marca(c: Vector2, f: float) -> void:
+	var a := deg_to_rad(lerpf(-135.0, 135.0, clampf(f, 0.0, 1.0)))
+	var d := Vector2(sin(a), -cos(a))
+	var centro := JANELA + c + Vector2(0.5, 0.5)
+	if tex_fundo:                                   # cobre a marca fixa da arte (para cima) com o miolo do botão
+		draw_circle(centro, 3.5, CINZA_ESC)
+	for k in range(1, 5):
+		draw_rect(Rect2((centro + d * k).floor(), Vector2.ONE), AMARELO if k > 2 else BRANCO_SUJO)
 
 
 ## Quanto falta para travar a onda (casada por TEMPO_SYNC segundos).
