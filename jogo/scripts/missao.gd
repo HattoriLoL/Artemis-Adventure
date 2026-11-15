@@ -24,6 +24,19 @@ var blindagem := 0                       # quantas vezes a blindagem foi reforç
 var tempestade: Dictionary = {}          # o que aconteceu: {"dia": 3, "abrigo": true, "dano": 5}; vazio = ainda não
 
 
+## Relatório final: o que aconteceu de verdade durante a partida (registrado pelo ciclo_dias.gd conforme ocorre).
+## um item por acontecimento: {"n": 0, "dia": 3, "tipo": "critico", "titulo": "POWER LOW", "descricao": "...", "impacto": "energia", "peso": 8}
+var eventos: Array = []
+## a decisão de maior impacto (escolhida no fim por Relatorio.preparar): {"tipo", "titulo", "texto", "tradeoff", "curiosidade", ...}
+var decisao_impacto: Dictionary = {}
+## Resultado científico. Ainda não existe sistema de ciência: o relatório mostra "--" enquanto isto estiver vazio.
+## objetivos: [{"nome": "LUNAR ICE INVESTIGATION", "feito": false}, ...]  (vazio = o relatório mostra os 3 padrão como pendentes)
+var ciencia := {"amostras": [], "objetivos": [], "dados_transmitidos": 0.0, "dados_totais": 0.0}
+## Evento da NASA DONKI usado como referência. Vazio = integração pendente.
+## Quando existir: {"id": "...", "tipo": "CME", "data": "2026-03-04", "fonte": "ao_vivo" ou "arquivo", "relacao": "texto curto"}
+var donki: Dictionary = {}
+
+
 func escolher_local(id: String) -> void:
 	for local in JSON.parse_string(FileAccess.get_file_as_string(ARQUIVO)):
 		if local["id"] == id:
@@ -33,6 +46,12 @@ func escolher_local(id: String) -> void:
 			print("Missao: pouso em ", id, " ", condicoes)
 			return
 	push_error("Local de pouso desconhecido: " + id)
+
+
+## Guarda um acontecimento importante da missão (peso maior = mais chance de entrar na linha do tempo do relatório).
+func registrar_evento(dia_ev: int, tipo: String, titulo: String, descricao: String, impacto := "", peso := 1) -> void:
+	eventos.append({"n": eventos.size(), "dia": dia_ev, "tipo": tipo, "titulo": titulo, "descricao": descricao,
+		"impacto": impacto, "peso": peso})
 
 
 ## Nova missão: volta tudo ao começo (a tela de pouso escolhe o local de novo).
@@ -49,3 +68,8 @@ func reiniciar() -> void:
 	evento_solar = {}
 	blindagem = 0
 	tempestade = {}
+	eventos = []
+	decisao_impacto = {}
+	ciencia = {"amostras": [], "objetivos": [], "dados_transmitidos": 0.0, "dados_totais": 0.0}
+	donki = {}
+

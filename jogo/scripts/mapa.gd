@@ -508,7 +508,7 @@ func _concluir_tarefa(tf: Dictionary, fator := 1.0, perdeu := false) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
 	var texto := str(tf["texto"])
-	ciclo.registrar({"texto": texto + " (FAILED)"} if perdeu else tf)   # gasta uma das ações do dia
+	ciclo.registrar({"id": tf["id"], "texto": texto + " (FAILED)"} if perdeu else tf, perdeu, fator)  # gasta uma das ações do dia
 	_atualizar_marcas()
 	if perdeu:
 		_avisar("FAILED: " + texto)
