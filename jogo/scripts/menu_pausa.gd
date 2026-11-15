@@ -1,8 +1,8 @@
 extends CanvasLayer
-## Menu de pausa (Esc): continuar, opções (tela cheia) e sair. Em build de debug (rodando pelo editor) aparece também
+## Menu de pausa (Esc): continuar, opções (tela cheia) e sair. Só rodando pelo editor do Godot aparece também
 ## a aba DEV, com atalhos para testar o jogo: ir para uma sala, concluir/refazer as tarefas do dia, encerrar o dia,
 ## abrir um minigame direto, atravessar paredes, correr mais, destravar as portas e desenhar FPS, posição, colisões
-## e a grade de navegação.
+## e a grade de navegação. No jogo exportado para os jogadores (mesmo com "Export With Debug") a aba DEV não existe.
 ## O jogo fica pausado (get_tree().paused) enquanto o menu está aberto; este nó roda sempre.
 ## Teclado: W/S ou setas escolhem, A/D trocam o valor, E/Enter confirma, Esc volta. O mouse também funciona.
 ## Desenhado em código, como o HUD e o minigame da estufa: moldura de metal, fonte 3x5 e cores da paleta.
@@ -164,7 +164,7 @@ func _itens() -> Array:
 				{"id": "voltar", "texto": "BACK"},
 			]
 	var lista := [{"id": "continuar", "texto": "RESUME"}, {"id": "opcoes", "texto": "OPTIONS"}]
-	if OS.is_debug_build():
+	if OS.has_feature("editor"):                   # só para a equipe: o jogo exportado não tem a aba DEV
 		lista.append({"id": "dev", "texto": "DEV"})
 	lista.append({"id": "sair", "texto": "PRESS AGAIN TO QUIT" if confirmar_sair else "QUIT GAME"})
 	return lista

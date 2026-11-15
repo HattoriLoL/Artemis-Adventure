@@ -1,5 +1,5 @@
 extends Node
-## Prints de tela para testes (autoload "Prints"): F12 em build de debug, em qualquer tela, ou o item SCREENSHOT da
+## Prints de tela para testes (autoload "Prints"): F12 rodando pelo editor (não no jogo exportado), em qualquer tela, ou o item SCREENSHOT da
 ## aba DEV do menu de pausa. Salva em user://prints/ (no Windows: %APPDATA%\Godot\app_userdata\Artemis Outpost\prints),
 ## fora do projeto: não vai para o git nem é importado pelo Godot. A tela de 320x180 é ampliada 4x sem borrar.
 
@@ -24,7 +24,7 @@ func _ready() -> void:
 
 
 func _input(ev: InputEvent) -> void:
-	if OS.is_debug_build() and ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F12:
+	if OS.has_feature("editor") and ev is InputEventKey and ev.pressed and not ev.echo and ev.physical_keycode == KEY_F12:
 		tirar()
 
 
