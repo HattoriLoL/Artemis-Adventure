@@ -6,17 +6,15 @@ extends Node2D
 const Fonte = preload("res://scripts/fonte.gd")
 const Porta = preload("res://scripts/porta.gd")
 const MenuPausa = preload("res://scripts/menu_pausa.gd")
+const CicloDias = preload("res://scripts/ciclo_dias.gd")
 const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
 const VERDE := Color("#75a743")
 const VERMELHO := Color("#cf573c")
 const ESCURO := Color("#394a50")
-# os 4 indicadores no HUD (canto de cima à direita), na ordem do plano
-const INDICADORES := ["energia", "oxigenio", "comida", "condicao"]
-const ROTULOS := {"energia": "POWER", "oxigenio": "OXYGEN", "comida": "FOOD", "condicao": "CREW"}
-const CORES := {"energia": Color("#e8c170"), "oxigenio": Color("#73bed3"), "comida": Color("#a8ca58"),
-	"condicao": Color("#df84a5")}
+const AZUL := Color("#73bed3")
+const SEM_SOL := "NO SUN TODAY: NO EFFECT"
 
 var mapa: Dictionary
 var salas := {}                    # nome -> {"dados": ..., "pos": Vector2}
@@ -29,6 +27,7 @@ var marcas := {}
 var jogador: CharacterBody2D
 var hud: Control
 var camada_ui: CanvasLayer
+var ciclo: CicloDias               # ciclo_dias.gd: dias, ações, boletim, noite e fim da missão
 var em_minigame := false
 var quadro_fechou_minigame := -1   # o Esc que fecha o minigame não pode abrir o menu de pausa no mesmo quadro
 var aviso := ""
@@ -82,7 +81,8 @@ func _ready() -> void:
 	_interface()
 	Recursos.iniciar()                             # começa com as condições do local de pouso
 	Recursos.mudou.connect(_recursos_mudaram)
-	_avisar("LUNAR BASE")
+	ciclo.noite_fechou.connect(_amanhecer)
+	ciclo.iniciar()                                # dia 1: boletim da manhã
 
 
 func _entradas() -> void:
@@ -182,7 +182,10 @@ func _interface() -> void:
 	hud.size = Vector2(320, 180)
 	hud.draw.connect(_desenha_hud)
 	camada_ui.add_child(hud)
-	var menu := MenuPausa.new()                    # Esc; fica por último na árvore para ver o Esc antes do minigame
+	ciclo = CicloDias.new()
+	ciclo.mapa = self
+	add_child(ciclo)
+	var menu := MenuPausa.new()                   # Esc; fica por último na árvore para ver o Esc antes do minigame
 	menu.mapa = self
 	add_child(menu)
 
@@ -196,17 +199,50 @@ func _avisar(txt: String) -> void:
 	t_aviso = 2.2
 
 
+## Painel do ciclo aberto (boletim, noite, fim): o astronauta para e o E fica com o painel.
+func travar(v: bool) -> void:
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(not v)
+
+
+## Começo de cada dia (chamado pelo ciclo): as tarefas de ontem voltam a poder ser feitas, se forem oferecidas.
+func novo_dia() -> void:
+	feitas.clear()
+	usadas.clear()
+	_atualizar_marcas()
+
+
+## Aba DEV: refaz o dia (tarefas e ações).
+func zerar_dia() -> void:
+	ciclo.zerar_dia()
+	novo_dia()
+
+
+## A seta amarela só aparece nas tarefas que dá para fazer agora.
+func _atualizar_marcas() -> void:
+	for id in marcas:
+		marcas[id].visible = ciclo.disponivel(id) and not feitas.has(id)
+
+
 func _recursos_mudaram(_id: String, mudancas: Dictionary) -> void:
 	for nome in mudancas:
 		variacoes[nome] = [mudancas[nome], 2.0]
 
 
+## O que a tarefa rende, em texto para o HUD e o boletim. Uma tarefa de energia solar à noite não rende nada.
+func texto_previa(id: String) -> String:
+	var txt := _texto_efeito(Recursos.previa(id))
+	if txt == "" and Recursos.noite and not Recursos.regras["efeitos"].get(id, {}).is_empty():
+		return SEM_SOL
+	return txt
+
+
 ## {"comida": -5, "condicao": 10} -> "-5 FOOD +10 CREW"
 func _texto_efeito(efeito: Dictionary) -> String:
 	var partes := PackedStringArray()
-	for nome in INDICADORES:
+	for nome in Recursos.NOMES:
 		if efeito.has(nome) and roundi(efeito[nome]) != 0:
-			partes.append("%+d %s" % [roundi(efeito[nome]), ROTULOS[nome]])
+			partes.append("%+d %s" % [roundi(efeito[nome]), Recursos.ROTULOS[nome]])
 	return " ".join(partes)
 
 
@@ -222,7 +258,7 @@ func _perto(lista: Array, feito: Dictionary) -> Dictionary:
 	var melhor := {}
 	var dist := 20.0
 	for item in lista:
-		if feito.has(item["id"]) and lista == tarefas:
+		if lista == tarefas and (feito.has(item["id"]) or not ciclo.disponivel(item["id"])):
 			continue
 		var d := jogador.global_position.distance_to(item["pos"])
 		if d < dist:
@@ -250,7 +286,7 @@ func _process(delta: float) -> void:
 	var it := _perto(interacoes, usadas)
 	if demo:
 		_demo(delta)
-	if dormindo or em_minigame:
+	if dormindo or em_minigame or fim or ciclo.ocupado():
 		pass
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
@@ -315,37 +351,44 @@ func _fechar_minigame(mg: Control) -> void:
 func _concluir_tarefa(tf: Dictionary) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
-	marcas[tf["id"]].visible = false
+	ciclo.registrar(tf)                            # gasta uma das ações do dia
+	_atualizar_marcas()
 	Recursos.aplicar(tf["id"])
 	_avisar("DONE: " + str(tf["texto"]))
-	var sala: String = tf["sala"]
-	var faltam := tarefas.filter(func(x): return x["sala"] == sala and not feitas.has(x["id"]))
-	if faltam.is_empty():
-		await get_tree().create_timer(1.2).timeout
-		_avisar(str(salas[sala]["dados"].get("concluida", "ROOM DONE")))
-	if feitas.size() == tarefas.size():
-		await get_tree().create_timer(2.4).timeout
-		Recursos.ativo = false                      # fim provisório: os indicadores param (o fim de verdade é outra task)
-		_avisar("BASE SECURED")
-		t_aviso = 999.0
-		_demo_fim()
+	if ciclo.acoes_restantes() == 0:
+		await get_tree().create_timer(2.0).timeout
+		if not dormindo and not fim:
+			_avisar("NO TIME LEFT TODAY: GO TO BED")
 
 
 func _interagir(it: Dictionary) -> void:
 	usadas[it["id"]] = true
-	Recursos.aplicar(it["id"])
 	if it["acao"] == "dormir":
-		dormindo = true
-		jogador.t_usar = 3.6
-		jogador.spr.play("idle_down")
-		var tw := create_tween()
-		tw.tween_property(self, "escuro", 1.0, 0.8)
-		tw.tween_interval(1.8)
-		tw.tween_property(self, "escuro", 0.0, 0.8)
-		await tw.finished
-		dormindo = false
-		_avisar("RESTED")
-		_demo_fim()
+		encerrar_dia(it["id"])
+	else:
+		Recursos.aplicar(it["id"])
+
+
+## Dormir: a tela escurece e o ciclo fecha o dia (resumo da noite). Com `id_cama` vazio (aba DEV), sem o efeito
+## da cama. A tela clareia quando o jogador sai do resumo (_amanhecer); se a missão acabou, fica escura.
+func encerrar_dia(id_cama := "") -> void:
+	if dormindo or fim:
+		return
+	dormindo = true
+	jogador.velocity = Vector2.ZERO
+	jogador.t_usar = 0.9
+	jogador.spr.play("idle_down")
+	var tw := create_tween()
+	tw.tween_property(self, "escuro", 1.0, 0.8)
+	await tw.finished
+	ciclo.fechar_dia(id_cama)
+
+
+func _amanhecer() -> void:
+	var tw := create_tween()
+	tw.tween_property(self, "escuro", 0.0, 0.8)
+	await tw.finished
+	dormindo = false
 
 
 # ---------------------------------------------------------------- modo demo
@@ -353,19 +396,33 @@ func _bot_usa(item: Dictionary) -> bool:
 	return not alvo_demo.is_empty() and alvo_demo["id"] == item["id"] and jogador.bot_quer_usar(item)
 
 
+## O robô escolhe, entre as tarefas do dia, a que deixa o indicador mais baixo o mais alto possível (empate: a
+## ordem das salas em ordem_demo) e, sem ações, vai dormir.
 func _proximo_alvo() -> Dictionary:
+	var melhor := {}
+	var nota := -INF
 	for sala in mapa["ordem_demo"]:
 		for item in tarefas:
-			if item["sala"] == sala and not feitas.has(item["id"]):
-				return item
-		for item in interacoes:
-			if item["sala"] == sala and not usadas.has(item["id"]):
-				return item
+			if item["sala"] != sala or feitas.has(item["id"]) or not ciclo.disponivel(item["id"]):
+				continue
+			var depois: Dictionary = Recursos.valores.duplicate()
+			var efeito := Recursos.previa(item["id"])
+			for nome in efeito:
+				depois[nome] = clampf(depois[nome] + efeito[nome], 0.0, 100.0)
+			var n: float = depois.values().min()
+			if n > nota + 0.01:
+				nota = n
+				melhor = item
+	if not melhor.is_empty():
+		return melhor
+	for item in interacoes:
+		if item["acao"] == "dormir":
+			return item
 	return {}
 
 
 func _demo(delta: float) -> void:
-	if fim or em_minigame:
+	if fim or em_minigame or dormindo or ciclo.ocupado():
 		return
 	var alvo := _proximo_alvo()
 	if alvo.is_empty():
@@ -402,25 +459,24 @@ func _livre_perto(c: Vector2i) -> Vector2i:
 	return c
 
 
-func _demo_fim() -> void:
-	if not demo or feitas.size() < tarefas.size() or usadas.size() < interacoes.size():
-		return
-	fim = true
-	await get_tree().create_timer(2.5).timeout
-	get_tree().quit()
-
-
 # ---------------------------------------------------------------- interface
+## Canto de cima à esquerda: a sala, as tarefas oferecidas hoje (as de outras salas com o nome da sala em cinza),
+## o dia e quantas ações faltam. Tarefa feita fica com o quadradinho verde; sem ações, as que sobraram apagam.
 func _desenha_hud() -> void:
-	var lista := []
 	var titulo := "TUNNEL"
 	if sala_atual != "":
 		titulo = str(salas[sala_atual]["dados"].get("titulo", sala_atual))
-		lista = tarefas.filter(func(x): return x["sala"] == sala_atual)
+	var lista := ciclo.hoje.map(func(id): return _tarefa(id)).filter(func(x): return not x.is_empty())
+	var rodape := "DAY %d/%d" % [Missao.dia, ciclo.total_dias()]
+	var acoes := "%d ACTIONS LEFT" % ciclo.acoes_restantes() if ciclo.acoes_restantes() != 1 else "1 ACTION LEFT"
+	if ciclo.acoes_restantes() == 0:
+		acoes = "SLEEP TO END THE DAY"
 	var largura := 104.0
 	largura = max(largura, Fonte.largura(titulo) + 14)
+	largura = max(largura, Fonte.largura(rodape + " - " + acoes) + 10)
 	for tf in lista:
-		largura = max(largura, Fonte.largura(str(tf["texto"])) + 14)
+		var extra: float = 0.0 if tf["sala"] == sala_atual else Fonte.largura(_titulo_sala(tf["sala"])) + 8
+		largura = max(largura, Fonte.largura(str(tf["texto"])) + 14 + extra)
 	var linhas := lista.size() + 2
 	hud.draw_rect(Rect2(4, 3, largura, 2 + 8 * linhas), Color(0.035, 0.04, 0.08, 0.7))
 	var y := 6
@@ -428,16 +484,22 @@ func _desenha_hud() -> void:
 	for tf in lista:
 		y += 8
 		var feito := feitas.has(tf["id"])
-		hud.draw_rect(Rect2(8, y + 1, 3, 3), VERDE if feito else CINZA)
-		Fonte.desenhar(hud, str(tf["texto"]), Vector2(14, y), CINZA if feito else BRANCO)
+		var pode := ciclo.disponivel(tf["id"]) and not feito
+		hud.draw_rect(Rect2(8, y + 1, 3, 3), VERDE if feito else (AMARELO if pode else ESCURO))
+		Fonte.desenhar(hud, str(tf["texto"]), Vector2(14, y), BRANCO if pode else CINZA)
+		if tf["sala"] != sala_atual:
+			var s := _titulo_sala(tf["sala"])
+			Fonte.desenhar(hud, s, Vector2(4 + largura - 4 - Fonte.largura(s), y), ESCURO if not pode else CINZA)
 	y += 8
-	Fonte.desenhar(hud, "BASE %d/%d" % [feitas.size(), tarefas.size()], Vector2(8, y), CINZA)
+	Fonte.desenhar(hud, rodape, Vector2(8, y), AZUL if Recursos.noite else CINZA)
+	var cor_acoes := AMARELO if ciclo.acoes_restantes() == 0 and fmod(t, 1.0) < 0.6 else CINZA
+	Fonte.desenhar(hud, "- " + acoes, Vector2(8 + Fonte.largura(rodape) + 4, y), cor_acoes)
 	_desenha_recursos()
 	var tf := _perto(tarefas, feitas)
 	if tf.is_empty():
 		tf = _perto(interacoes, usadas)
 	if not tf.is_empty() and not dormindo:
-		var efeito := _texto_efeito(Recursos.previa(tf["id"]))
+		var efeito := texto_previa(tf["id"])
 		var y_e := 160 if efeito == "" else 154
 		Fonte.centralizado(hud, "E: " + str(tf["texto"]), 160, y_e, AMARELO)
 		if efeito != "":                           # custo e benefício antes de fazer
@@ -452,18 +514,22 @@ func _desenha_hud() -> void:
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
 
 
+func _titulo_sala(sala: String) -> String:
+	return str(salas[sala]["dados"].get("titulo", sala))
+
+
 ## Os 4 indicadores no canto de cima à direita: nome, barra e valor. Abaixo do limite, a barra pisca em vermelho.
 ## Quando uma tarefa muda um indicador, aparece "+15" (ou "-5") à esquerda dele por 2 s.
 func _desenha_recursos() -> void:
 	var largura := 82
 	var x0 := 320 - 4 - largura
-	hud.draw_rect(Rect2(x0, 3, largura, 2 + 8 * INDICADORES.size()), Color(0.035, 0.04, 0.08, 0.7))
-	for i in INDICADORES.size():
-		var nome: String = INDICADORES[i]
+	hud.draw_rect(Rect2(x0, 3, largura, 2 + 8 * Recursos.NOMES.size()), Color(0.035, 0.04, 0.08, 0.7))
+	for i in Recursos.NOMES.size():
+		var nome: String = Recursos.NOMES[i]
 		var v: float = Recursos.valores[nome]
 		var y := 6 + 8 * i
-		var cor: Color = CORES[nome]
-		Fonte.desenhar(hud, ROTULOS[nome], Vector2(x0 + 4, y), cor)
+		var cor: Color = Recursos.CORES[nome]
+		Fonte.desenhar(hud, Recursos.ROTULOS[nome], Vector2(x0 + 4, y), cor)
 		var barra := Rect2(x0 + 30, y, 32, 5)
 		hud.draw_rect(barra, ESCURO)
 		var cor_barra := cor

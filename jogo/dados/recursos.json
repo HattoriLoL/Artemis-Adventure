@@ -1,9 +1,9 @@
 {
- "_leia": "Números provisórios para o balanceamento. Valores de 0 a 100. Consumo e geração por segundo de jogo.",
- "consumo_por_segundo": {"energia": 0.25, "oxigenio": 0.15, "comida": 0.08, "condicao": 0.03},
- "geracao_solar_por_segundo": 0.12,
+ "_leia": "Números provisórios para o balanceamento. Valores de 0 a 100. O consumo e a geração solar são cobrados no fechamento de cada dia (ao dormir). Os efeitos valem quando o jogador conclui a tarefa.",
+ "consumo_por_dia": {"energia": 15, "oxigenio": 11, "comida": 6, "condicao": 15},
+ "geracao_solar_por_dia": 6,
  "limite_baixo": 25,
- "queda_condicao_por_recurso_baixo": 0.1,
+ "queda_condicao_por_recurso_baixo": 6,
  "efeitos": {
   "energia/paineis": {"energia": 12},
   "energia/baterias": {"energia": 15},

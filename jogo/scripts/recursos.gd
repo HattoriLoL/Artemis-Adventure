@@ -1,19 +1,22 @@
 extends Node
 ## Os 4 indicadores da missão (autoload "Recursos"): energia, oxigênio, comida e condição da equipe, de 0 a 100.
 ## Começam com as condições do local de pouso (Missao.condicoes) e mudam assim:
-##   - descem sozinhos com o tempo (consumo da base e da equipe); a energia ganha a geração dos painéis, que
-##     depende do local (geracao_solar). A condição da equipe cai mais rápido quando outro recurso está baixo;
-##   - sobem (ou trocam um pelo outro) quando o jogador conclui uma tarefa ou dorme: aplicar("sala/id").
+##   - sobem (ou trocam um pelo outro) quando o jogador conclui uma tarefa ou dorme: aplicar("sala/id");
+##   - no fechamento de cada dia (fechar_dia, chamado pelo ciclo_dias.gd ao dormir) a base e a equipe consomem a
+##     parte do dia e os painéis geram energia conforme o local (geracao_solar). Nas noites não há geração solar.
+##     A condição da equipe cai mais quando outro recurso está baixo.
 ## Todos os números ficam em res://dados/recursos.json, para o balanceamento mexer sem tocar no código.
-## Ainda não há dias, noites nem eventos: entram nas próximas tasks e usam este mesmo script.
 
 signal mudou(id: String, mudancas: Dictionary)   # depois de aplicar(): {"oxigenio": 15.0, ...}
 
 const ARQUIVO := "res://dados/recursos.json"
-const NOMES := ["energia", "oxigenio", "comida", "condicao"]
+const NOMES := ["energia", "oxigenio", "comida", "condicao"]   # também a ordem no HUD
+const ROTULOS := {"energia": "POWER", "oxigenio": "OXYGEN", "comida": "FOOD", "condicao": "CREW"}
+const CORES := {"energia": Color("#e8c170"), "oxigenio": Color("#73bed3"), "comida": Color("#a8ca58"),
+	"condicao": Color("#df84a5")}
 
 var valores := {"energia": 0.0, "oxigenio": 0.0, "comida": 0.0, "condicao": 0.0}
-var ativo := false                       # só corre na base (não na tela de pouso nem no fim)
+var noite := false                       # o ciclo de dias liga nas noites do local: painéis sem sol
 var regras: Dictionary = {}
 
 
@@ -27,22 +30,12 @@ func iniciar() -> void:
 		Missao.escolher_local("planicie")
 	for nome in NOMES:
 		valores[nome] = clampf(float(Missao.condicoes.get(nome, 70.0)), 0.0, 100.0)
-	ativo = true
+	noite = false
 
 
-func _process(delta: float) -> void:
-	if not ativo:
-		return
-	var consumo: Dictionary = regras["consumo_por_segundo"]
-	var solar := float(regras["geracao_solar_por_segundo"]) * float(Missao.condicoes.get("geracao_solar", 1.0))
-	_somar("energia", (solar - float(consumo["energia"])) * delta)
-	_somar("oxigenio", -float(consumo["oxigenio"]) * delta)
-	_somar("comida", -float(consumo["comida"]) * delta)
-	var queda := float(consumo["condicao"])
-	for nome in ["energia", "oxigenio", "comida"]:
-		if baixo(nome):
-			queda += float(regras["queda_condicao_por_recurso_baixo"])
-	_somar("condicao", -queda * delta)
+## Quanto os painéis rendem agora: a geração do local, ou nada à noite.
+func fator_solar() -> float:
+	return 0.0 if noite else float(Missao.condicoes.get("geracao_solar", 1.0))
 
 
 ## O que uma tarefa ou interação ("habitat/cama"...) vai mudar, sem aplicar: {"comida": -5.0, "condicao": 10.0}.
@@ -51,7 +44,8 @@ func previa(id: String) -> Dictionary:
 	var efeito: Dictionary = regras["efeitos"].get(id, {})
 	var mult := 1.0
 	if regras["multiplicadores"].has(id):      # ex.: a água rende mais no polo (gelo_por_coleta)
-		mult = float(Missao.condicoes.get(regras["multiplicadores"][id], 1.0))
+		var chave: String = regras["multiplicadores"][id]
+		mult = fator_solar() if chave == "geracao_solar" else float(Missao.condicoes.get(chave, 1.0))
 	var r := {}
 	for nome in efeito:
 		var v := float(efeito[nome])
@@ -74,8 +68,32 @@ func aplicar(id: String) -> Dictionary:
 	return mudancas
 
 
+## Fechamento do dia: consumo da base e da equipe, geração dos painéis. Devolve as partes para o resumo da noite:
+## {"solar": 4.2, "desgaste": 6.0} (desgaste = o extra que a equipe perdeu por causa de recursos baixos).
+func fechar_dia() -> Dictionary:
+	var consumo: Dictionary = regras["consumo_por_dia"]
+	var solar := float(regras["geracao_solar_por_dia"]) * fator_solar()
+	var desgaste := 0.0
+	for nome in ["energia", "oxigenio", "comida"]:
+		if baixo(nome):
+			desgaste += float(regras["queda_condicao_por_recurso_baixo"])
+	_somar("energia", solar - float(consumo["energia"]))
+	_somar("oxigenio", -float(consumo["oxigenio"]))
+	_somar("comida", -float(consumo["comida"]))
+	_somar("condicao", -float(consumo["condicao"]) - desgaste)
+	return {"solar": solar, "desgaste": desgaste}
+
+
 func baixo(nome: String) -> bool:
 	return valores[nome] < float(regras["limite_baixo"])
+
+
+## O primeiro indicador que chegou a zero ("" se nenhum): a missão é abortada.
+func esgotado() -> String:
+	for nome in NOMES:
+		if valores[nome] <= 0.0:
+			return nome
+	return ""
 
 
 func _somar(nome: String, v: float) -> void:
