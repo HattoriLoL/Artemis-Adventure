@@ -46,7 +46,7 @@ const CELULA := 22
 const GRADE := Vector2(44, 25)                     # canto do encaixe (0, 0)
 const LINHA_ENTRADA := 1                           # a água entra pela esquerda nesta linha (y 58)
 const TANQUE := Rect2(6, 20, 32, 76)
-const CAMA_X := 173.0                              # centro das camas (uma por linha)
+const CAMA_X := 174.0                              # centro das camas (uma por linha; canto em x 159, depois da entrada)
 const TAM_CAMA := Vector2(30, 20)
 
 const FOLGA := 8                                   # giros a mais permitidos além do mínimo do tabuleiro
@@ -409,7 +409,7 @@ func _barra_giros() -> void:
 	var resta := clampi(limite_giros() - giros, 0, limite_giros())
 	var f := float(resta) / float(limite_giros())
 	draw_rect(Rect2(r.position, Vector2(roundf(r.size.x * f), r.size.y)), VERDE_LIMA if resta > 3 else VERMELHO_CLARO)
-	Fonte.desenhar(self, "TURNS %d" % resta, JANELA + Vector2(8, TAM_JANELA.y - 15), BRANCO_SUJO if resta > 3 else
+	Fonte.desenhar(self, "TURNS %d" % resta, JANELA + Vector2(8, TAM_JANELA.y - 12), BRANCO_SUJO if resta > 3 else
 		VERMELHO_CLARO)
 
 
