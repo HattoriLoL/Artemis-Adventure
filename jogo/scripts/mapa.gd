@@ -22,6 +22,13 @@ const MINI_ORIGEM := Vector2(40, 40)
 const MINI_ESCALA := Vector2(944.0 / 53.0, 1146.0 / 64.0)
 const MINI_POS := Vector2(320 - 5 - 53, 180 - 5 - 64)
 const CONTORNO := Color("#090a14")
+# a parede de baixo de cada sala e a verga da porta de cima ficam fora do fundo da sala: entram no Y-sort do mapa
+# junto com o astronauta, então ele passa atrás delas (antes ele ficava em cima da parede na porta de baixo)
+const TEX_PAREDE := preload("res://assets/mapa/parede.png")
+const TEX_VERGA := preload("res://assets/mapa/verga.png")
+const PAREDE_POS := Vector2(5, 181)        # canto da parede de baixo na sala; a base dela é a borda de baixo da sala
+const VERGA_POS := Vector2(176, 0)         # a verga em cima do vão da porta de cima
+const VERGA_BASE := 48.0                   # pé do astronauta acima disto (dentro do vão): a verga passa na frente
 const TEMPO_CONFIRMAR := 3.0       # quanto tempo o "E AGAIN: END THE DAY NOW" espera o segundo E
 const TEMPO_DESISTIR := 2.5        # quanto tempo o "ESC OR X AGAIN: GIVE UP" espera a segunda vez
 
@@ -66,6 +73,7 @@ func _ready() -> void:
 	_entradas()
 	demo = "--demo" in OS.get_cmdline_user_args()
 	mapa = JSON.parse_string(FileAccess.open("res://mapa/mapa.json", FileAccess.READ).get_as_text())
+	y_sort_enabled = true                          # astronauta x paredes da frente: quem tem o pé mais embaixo fica na frente
 	# o regolito no fundo e, por cima, os túneis em tiles (editáveis no editor do Godot)
 	var fundo := Sprite2D.new()
 	fundo.centered = false
@@ -134,6 +142,9 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 	fundo.position = pos
 	fundo.z_index = -10
 	add_child(fundo)
+	var tam := Vector2(dados["tamanho"][0], dados["tamanho"][1])
+	_na_frente(TEX_PAREDE, pos + PAREDE_POS, pos.y + tam.y)
+	_na_frente(TEX_VERGA, pos + VERGA_POS, pos.y + VERGA_BASE)
 	for r in dados["solidos"]:
 		_ret(corpo, r, pos)
 	for tf in dados["tarefas"]:
@@ -153,6 +164,16 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		if it.has("acordar"):                        # cama: onde o astronauta aparece de manhã (fora do alcance do E)
 			item["acordar"] = pos + Vector2(it["acordar"][0], it["acordar"][1])
 		interacoes.append(item)
+
+
+## Sprite que entra no Y-sort pela linha `base` (onde ele toca o chão), desenhado com o canto em `canto`.
+func _na_frente(tex: Texture2D, canto: Vector2, base: float) -> void:
+	var s := Sprite2D.new()
+	s.texture = tex
+	s.centered = false
+	s.position = Vector2(canto.x, base)
+	s.offset = Vector2(0, canto.y - base)
+	add_child(s)
 
 
 func _jogador() -> void:
