@@ -15,6 +15,7 @@
   "suporte/algas": {"oxigenio": 5, "comida": 3},
   "habitat/refeicao": {"comida": -5, "condicao": 10},
   "habitat/agua": {"oxigenio": 8},
+  "habitat/chuveiro": {"condicao": 8},
   "estufa/regar": {"comida": 5, "condicao": 5, "oxigenio": 3},
   "abrigo/blindagem": {}
  },
