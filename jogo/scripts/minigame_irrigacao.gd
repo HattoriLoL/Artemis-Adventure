@@ -352,7 +352,7 @@ func _draw() -> void:
 	elif acabou:
 		Fonte.centralizado(self, "IRRIGATION FIXED!", 160, y_txt, VERDE_LIMA)
 	else:
-		Fonte.centralizado(self, "ARROWS: MOVE   E: TURN THE PIPE", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "[W A S D]: MOVE   [E]: TURN THE PIPE", 160, y_txt, BRANCO_SUJO, Color("#cf573c"))
 
 
 ## Um cano: a peça básica da canos.png girada até a máscara (giros de 90 graus não estragam o pixel art).

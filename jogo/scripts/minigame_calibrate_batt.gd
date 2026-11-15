@@ -219,7 +219,7 @@ func _draw() -> void:
 		Fonte.centralizado(self, "MISSED - TRY AGAIN (%d/%d)" % [erros, MAX_ERROS], 160, y_txt,
 			VERMELHO_CLARO)
 	else:
-		Fonte.centralizado(self, "PRESS E WHEN THE NEEDLE IS ON THE GREEN BAND", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "PRESS [E] WHEN NEEDLE IS ON GREEN BAND", 160, y_txt, BRANCO_SUJO, VERMELHO_CLARO)
 
 
 func _px(p: Vector2, cor: Color) -> void:

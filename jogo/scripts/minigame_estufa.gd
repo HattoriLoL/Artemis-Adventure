@@ -239,7 +239,7 @@ func _draw() -> void:
 	if t_aviso > 0.0:
 		Fonte.centralizado(self, aviso, 160, y_txt, cor_aviso)
 	else:
-		Fonte.centralizado(self, "HOLD E OR CLICK: KEEP THE DROP IN THE WATER", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "HOLD [E] OR CLICK: KEEP DROP IN THE WATER", 160, y_txt, BRANCO_SUJO, Color("#cf573c"))
 
 
 func _moldura() -> void:

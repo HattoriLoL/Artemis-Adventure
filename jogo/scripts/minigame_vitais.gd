@@ -238,7 +238,7 @@ func _draw() -> void:
 	if t_msg > 0.0 or acabou:
 		Fonte.centralizado(self, msg, 160, y_txt, msg_cor)
 	else:
-		Fonte.centralizado(self, "W/S: AMPLITUDE   A/D: RATE", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "[W/S]: AMPLITUDE   [A/D]: RATE", 160, y_txt, BRANCO_SUJO, Color("#cf573c"))
 
 
 ## A tela do ECG: grade de monitor, linha de base, a onda-alvo (faixa amarela) e a do jogador por cima, os batimentos

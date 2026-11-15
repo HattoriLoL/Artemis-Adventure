@@ -278,7 +278,7 @@ func _draw() -> void:
  
  
 func _desenha_topo() -> void:
-	Fonte.centralizado(topo, "E: SKIP   HOLD UP OR DOWN: SLOW OR FAST", 160, 5, METAL)
+	Fonte.centralizado_com_teclas(topo, "[E]: SKIP   [W / S]: SLOW OR FAST", 160, 5, METAL, Color("#cf573c"))
 	var veu := 0.0
 	if fase == 2:
 		veu = clampf(t_fade / DURACAO_FADE, 0.0, 1.0)

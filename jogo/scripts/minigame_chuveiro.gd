@@ -306,7 +306,7 @@ func _draw() -> void:
 	elif t_pronto > 0.0:
 		Fonte.centralizado(self, "READY...", 160, y_txt, AMARELO)
 	else:
-		Fonte.centralizado(self, "PRESS THE KEY OF THE LIT AIR JET: W A S D", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "PRESS THE LIT JET KEY: [W] [A] [S] [D]", 160, y_txt, BRANCO_SUJO, VERMELHO_CLARO)
 
 
 func _px(p: Vector2, cor: Color) -> void:

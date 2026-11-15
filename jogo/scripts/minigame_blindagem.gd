@@ -277,9 +277,9 @@ func _draw() -> void:
 	if mensagem != "":
 		Fonte.centralizado(self, mensagem, 160, y_txt, cor_mensagem)
 	elif alinhada():
-		Fonte.centralizado(self, "ALIGNED! PRESS E TO BOLT IT", 160, y_txt, VERDE_LIMA)
+		Fonte.centralizado_com_teclas(self, "ALIGNED! PRESS [E] TO BOLT IT", 160, y_txt, VERDE_LIMA, AMARELO)
 	else:
-		Fonte.centralizado(self, "SLIDE THE PLATE (W A S D) OVER THE LEAK", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "SLIDE THE PLATE [W A S D] OVER THE LEAK", 160, y_txt, BRANCO_SUJO, VERMELHO_CLARO)
 
 
 func _px(p: Vector2, cor: Color) -> void:

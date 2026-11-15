@@ -214,7 +214,7 @@ func _draw() -> void:
 	elif mirando():
 		Fonte.centralizado(self, "FACING THE SUN - HOLD IT...", 160, y_txt, VERDE_LIMA)
 	else:
-		Fonte.centralizado(self, "A/D: TURN PANEL %d TO FACE THE SUN" % (atual + 1), 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "[A/D]: TURN PANEL %d TO FACE THE SUN" % (atual + 1), 160, y_txt, BRANCO_SUJO, Color("#cf573c"))
 
 
 ## O Sol baixo no horizonte: disco amarelo com um halo que pulsa de leve.

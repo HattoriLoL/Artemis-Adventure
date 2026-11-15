@@ -748,11 +748,11 @@ func _desenhar_painel_inferior() -> void:
 		Fonte.centralizado(self, "ALERT: PRESSURE OUT OF THE SAFE RANGE [55-72]", 160.0, y_txt, VERMELHO_CLARO)
 	else:
 		if selecionado == 0:
-			Fonte.centralizado(self, "CROSSFEED A-B // [W] A->B   [S] B->A", 160.0, y_txt, BRANCO)
+			Fonte.centralizado_com_teclas(self, "CROSSFEED A-B // [W] A->B   [S] B->A", 160.0, y_txt, BRANCO, VERMELHO_CLARO)
 		elif selecionado == 1:
-			Fonte.centralizado(self, "CROSSFEED B-C // [W] B->C   [S] C->B", 160.0, y_txt, BRANCO)
+			Fonte.centralizado_com_teclas(self, "CROSSFEED B-C // [W] B->C   [S] C->B", 160.0, y_txt, BRANCO, VERMELHO_CLARO)
 		else:
-			Fonte.centralizado(self, "CRYO PURGE // [W / E] VENT THE GAS", 160.0, y_txt, AMARELO)
+			Fonte.centralizado_com_teclas(self, "CRYO PURGE // [W / E] VENT THE GAS", 160.0, y_txt, AMARELO, VERMELHO_CLARO)
 
 	# Barra de Estabilidade (y = 134.0 a 141.0)
 	draw_rect(BARRA_ESTAB.grow(1), PRETO)
@@ -767,7 +767,7 @@ func _desenhar_painel_inferior() -> void:
 		draw_rect(Rect2(BARRA_ESTAB.position + Vector2(2, 2), Vector2(w_prog, 1.0)), BRANCO if progresso >= 1.0 else VERDE_LIMA)
 
 	# Guia de Atalhos no Rodapé (y = 147.0) com cor BRANCO_SUJO de alto contraste sobre FUNDO escuro
-	Fonte.centralizado(self, "A/D: VALVE   W/S: FLOW   E: QUICK PURGE", 160.0, 147.0, BRANCO_SUJO)
+	Fonte.centralizado_com_teclas(self, "[A/D]: VALVE   [W/S]: FLOW   [E]: PURGE", 160.0, 147.0, BRANCO_SUJO, VERMELHO_CLARO)
 
 
 func _moldura() -> void:

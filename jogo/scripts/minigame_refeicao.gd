@@ -203,9 +203,9 @@ func _draw() -> void:
 	elif na_faixa():
 		Fonte.centralizado(self, "PERFECT TEMPERATURE - KEEP IT THERE", 160, y_txt, VERDE_LIMA)
 	elif temp > FAIXA_MAX:
-		Fonte.centralizado(self, "TOO HOT! RELEASE E TO COOL", 160, y_txt, VERMELHO_CLARO if fmod(t, 0.4) < 0.25 else LARANJA)
+		Fonte.centralizado_com_teclas(self, "TOO HOT! RELEASE [E] TO COOL", 160, y_txt, VERMELHO_CLARO if fmod(t, 0.4) < 0.25 else LARANJA, AMARELO)
 	else:
-		Fonte.centralizado(self, "TOO COLD - HOLD E TO HEAT", 160, y_txt, CIANO)
+		Fonte.centralizado_com_teclas(self, "TOO COLD - HOLD [E] TO HEAT", 160, y_txt, CIANO, VERMELHO)
 
 
 func _px(p: Vector2, cor: Color) -> void:
