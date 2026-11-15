@@ -1,0 +1,29 @@
+{
+ "_leia": "Card de sala (scripts/card_sala.gd): na primeira vez que o jogador entra em cada sala aparece a ilustração (assets/cards_salas/<sala>.png, 120x80; sem ela, a arte da própria sala), as tarefas da sala (lidas de salas/<sala>.json, menos as de 'ocultar') e um fato real sobre para que ela serve, com a fonte. A chave é o nome da sala. Só letras sem acento, números e . ! : - / ? > ' , + ( ) % para caber na fonte do jogo; cada fato cabe em 3 linhas (até uns 195 caracteres).",
+ "habitat": {
+  "ocultar": ["vitais"],
+  "fato": "ON THE ISS EACH ASTRONAUT SLEEPS IN A SMALL PRIVATE CABIN, IN A SLEEPING BAG TIED TO THE WALL SO THEY DO NOT DRIFT AWAY. ONE CREW MEMBER USED NO TIES AND SLEPT FLOATING FREE.",
+  "fonte": "NASA - ON-ORBIT SLEEPING ACCOMMODATIONS",
+  "url": "https://ntrs.nasa.gov/api/citations/20190027189/downloads/20190027189.pdf"
+ },
+ "energia": {
+  "fato": "SOLAR PANELS GO DARK IN THE LONG LUNAR NIGHT. NASA IS DESIGNING A 40 KW FISSION REACTOR FOR THE MOON - ENOUGH TO POWER 30 HOMES FOR AT LEAST 10 YEARS.",
+  "fonte": "NASA - FISSION SURFACE POWER",
+  "url": "https://www.nasa.gov/exploration-systems-development-mission-directorate/fission-surface-power/"
+ },
+ "suporte": {
+  "fato": "THE ISS MAKES OXYGEN BY SPLITTING WATER WITH ELECTRICITY. A SABATIER REACTOR THEN JOINS THE LEFTOVER HYDROGEN WITH THE CO2 THE CREW BREATHES OUT TO MAKE WATER AGAIN.",
+  "fonte": "NASA - ISS LIFE SUPPORT SYSTEM",
+  "url": "https://www.nasa.gov/wp-content/uploads/2020/10/g-281237_eclss_0.pdf"
+ },
+ "estufa": {
+  "fato": "IN 2022 SCIENTISTS PLANTED SEEDS IN MOON SOIL BROUGHT BACK BY APOLLO 11, 12 AND 17. THE PLANTS GREW, BUT SLOWER AND MORE STRESSED THAN IN SOIL FROM EARTH.",
+  "fonte": "NASA - PLANTS IN LUNAR SOIL",
+  "url": "https://www.nasa.gov/humans-in-space/scientists-grow-plants-in-lunar-soil/"
+ },
+ "abrigo": {
+  "fato": "APOLLO ASTRONAUTS SAW FLASHES OF LIGHT EVEN WITH THEIR EYES CLOSED: COSMIC RAYS CROSSING THEIR EYES. THE MOON HAS NO THICK AIR OR MAGNETIC FIELD, SO THE WALLS MUST SHIELD THE CREW.",
+  "fonte": "NASA - APOLLO 17 LIGHT FLASH TEST",
+  "url": "https://www.nasa.gov/history/afj/ap17fj/10_day04_part2_light_flash.html"
+ }
+}

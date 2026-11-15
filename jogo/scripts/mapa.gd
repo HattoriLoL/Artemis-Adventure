@@ -9,6 +9,7 @@ const MenuPausa = preload("res://scripts/menu_pausa.gd")
 const CicloDias = preload("res://scripts/ciclo_dias.gd")
 const Tempestade = preload("res://scripts/tempestade.gd")
 const Tutorial = preload("res://scripts/tutorial_minigame.gd")
+const CardSala = preload("res://scripts/card_sala.gd")
 const AMARELO := Color("#e8c170")
 const BRANCO := Color("#ebede9")
 const CINZA := Color("#819796")
@@ -17,7 +18,7 @@ const VERMELHO := Color("#cf573c")
 const ESCURO := Color("#394a50")
 const AZUL := Color("#73bed3")
 const SEM_SOL := "NO SUN TODAY: NO EFFECT"
-# minimapa (canto de baixo à direita): a planta da base (arte do PixelAi, ver arte/minimapa.py), que cobre o retângulo
+# minimapa (canto de baixo à direita): a planta da base (arte na paleta Apollo), que cobre o retângulo
 # PLANTA_ORIGEM + PLANTA_TAM do mapa (salas e túneis); a escala sai do tamanho da imagem
 const TEX_MINIMAPA := preload("res://assets/mapa/minimapa_canto.png")     # 64x78 (testados: 53x64 e 74x90)
 const PLANTA_ORIGEM := Vector2(40, 40)
@@ -70,6 +71,7 @@ var escuro := 0.0
 var dormindo := false
 var confirmar_dormir := 0.0        # > 0: o jogador apertou E na cama com ações sobrando; outro E encerra o dia
 var sala_atual := ""
+var card_checado := ""             # a sala em que o card de sala (card_sala.gd) já foi conferido nesta entrada
 var fim := false
 var variacoes := {}                # indicador -> [quanto mudou, tempo na tela]: o "+15" ao lado da barra
 
@@ -413,6 +415,7 @@ func _process(delta: float) -> void:
 	var agora := _sala_de(jogador.global_position)
 	if agora != sala_atual:
 		sala_atual = agora
+		card_checado = ""
 		if agora != "" and t > 0.5:
 			_avisar(str(salas[agora]["dados"].get("titulo", agora)))
 	var tf := _perto(tarefas, feitas)
@@ -426,6 +429,8 @@ func _process(delta: float) -> void:
 		emergencia.ativar_escudos()
 	elif emergencia != null and emergencia.ativa:
 		pass                                       # alarme dos meteoros: só a alavanca (nada de tarefa, computador ou cama)
+	elif _card_pendente():
+		_abrir_card_sala(sala_atual)
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
 	elif not it.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(it))):
@@ -521,6 +526,33 @@ func _abrir_tutorial(id_tutorial: String, caminho: String, tf: Dictionary) -> vo
 		abrir_minigame(caminho, tf)
 	)
 	tut.cancelou.connect(func(): _fechar_minigame(tut))
+
+
+## Card de sala: na primeira vez em cada sala (fora do demo), assim que o jogo estiver livre (sem boletim, minigame,
+## tempestade nem alarme de meteoros), aparece o fato real sobre para que ela serve. Se o jogador entrou num desses
+## momentos, o card espera; se ele saiu da sala antes, aparece na próxima entrada.
+func _card_pendente() -> bool:
+	if demo or sala_atual == "" or card_checado == sala_atual or t < 0.5:
+		return false
+	card_checado = sala_atual
+	return CardSala.tem_sala(sala_atual) and not CardSala.sala_vista(sala_atual)
+
+
+## Abre o card de sala por cima do jogo, como o tutorial; fechar (E, Esc ou X) não gasta nada e o card não volta.
+func _abrir_card_sala(nome: String) -> void:
+	em_minigame = true
+	hud.visible = false
+	jogador.velocity = Vector2.ZERO
+	jogador.set_physics_process(false)
+	var card: Control = CardSala.new()
+	card.id = nome
+	card.sala = salas[nome]["dados"]
+	camada_ui.add_child(card)
+	var fechar := func():
+		CardSala.marcar_sala(nome)
+		_fechar_minigame(card)
+	card.continuar.connect(fechar)
+	card.cancelou.connect(fechar)
 
 
 ## Computador de navegação (mesa do Suporte): clima espacial, diário, previsão e situação da base. Consultar não
