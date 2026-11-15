@@ -153,7 +153,7 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 	for tf in dados["tarefas"]:
 		var item := {"sala": nome, "id": nome + "/" + str(tf["id"]), "texto": tf["texto"],
 			"pos": pos + Vector2(tf["x"], tf["y"]), "minigame": str(tf.get("minigame", "")),
-			"icone": _icone(nome + "/" + str(tf["id"]))}
+			"icone": _icone(nome + "/" + str(tf["id"])), "icone_mini": _icone(nome + "/" + str(tf["id"]) + "_mini")}
 		tarefas.append(item)
 		var m := Polygon2D.new()                     # seta amarela pulando sobre a tarefa (como no Among Us)
 		m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
@@ -170,8 +170,9 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		interacoes.append(item)
 
 
-## Ícone 7x7 da tarefa (lista do HUD e minimapa): res://assets/icones/<sala>_<tarefa>.png. Sem arquivo, null (a
-## lista volta ao quadradinho e o minimapa à cruz amarela). Desenhados em arte/icones_tarefas.py.
+## Ícone da tarefa: res://assets/icones/<sala>_<tarefa>.png (7x7, lista do HUD) e <sala>_<tarefa>_mini.png (5x5,
+## minimapa). Sem arquivo, null (a lista volta ao quadradinho e o minimapa à cruz amarela). Desenhados em
+## arte/icones_tarefas.py.
 func _icone(id: String) -> Texture2D:
 	var c := "res://assets/icones/%s.png" % id.replace("/", "_")
 	return load(c) if ResourceLoader.exists(c) else null
@@ -672,11 +673,13 @@ func _desenha_minimapa() -> void:
 		if tf.is_empty():
 			continue
 		var m := _no_minimapa(tf["pos"])
-		var ic: Texture2D = tf.get("icone")
-		if ic:                                     # o ícone da lista, fixo, com a moldura amarela piscando
-			var c := m.clamp(MINI_POS + Vector2(3, 3), MINI_POS + TEX_MINIMAPA.get_size() - Vector2(4, 4))
-			var r := Rect2(c - Vector2(3, 3), Vector2(7, 7))
-			_moldura_px(r.grow(1), AMARELO if aceso else CONTORNO)
+		var ic: Texture2D = tf.get("icone_mini") if tf.get("icone_mini") else tf.get("icone")
+		if ic:                                     # o ícone da lista (versão pequena), fixo, com contorno piscando
+			var tam_ic := ic.get_size()
+			var meio := (tam_ic / 2.0).floor()
+			var c := m.clamp(MINI_POS + meio, MINI_POS + TEX_MINIMAPA.get_size() - tam_ic + meio)
+			var r := Rect2(c - meio, tam_ic)
+			hud.draw_rect(r.grow(1), AMARELO if aceso else CONTORNO)
 			hud.draw_rect(r, CONTORNO)
 			hud.draw_texture(ic, r.position)
 		elif aceso:
@@ -687,14 +690,6 @@ func _desenha_minimapa() -> void:
 	var j := _no_minimapa(jogador.global_position)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
-
-
-## Moldura de 1 px por dentro do retângulo.
-func _moldura_px(r: Rect2, cor: Color) -> void:
-	hud.draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), cor)
-	hud.draw_rect(Rect2(r.position + Vector2(0, r.size.y - 1), Vector2(r.size.x, 1)), cor)
-	hud.draw_rect(Rect2(r.position, Vector2(1, r.size.y)), cor)
-	hud.draw_rect(Rect2(r.position + Vector2(r.size.x - 1, 0), Vector2(1, r.size.y)), cor)
 
 
 ## Visto verde (5x4) com contorno escuro, por cima do ícone de uma tarefa feita.
