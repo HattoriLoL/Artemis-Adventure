@@ -39,14 +39,14 @@ const JANELA := Vector2(64, 29)                   # canto do fundo (192x121) na 
 const TAM_JANELA := Vector2(192, 121)
 const BOTAO_X := Rect2(245, 17, 8, 8)
 # dentro do fundo: o centro do pacote de comida e o miolo do tubo do termômetro (x, topo, base)
-const COMIDA := Vector2(72, 66)
+const COMIDA := Vector2(88, 62)                   # dentro do forno, apoiada no fundo do compartimento (base em y 82)
 const TAM_COMIDA_PROVISORIA := Vector2(56, 40)
-const TERMOMETRO := Vector2(160, 14)              # canto do termometro.png (16x84)
-const TUBO_X := TERMOMETRO.x + 6.0                 # miolo do tubo no termometro.png: x 6..11, de y 5 a 71
+const TERMOMETRO := Vector2(134, 23)              # canto do termometro.png (16x60), na fenda do painel do forno
+const TUBO_X := TERMOMETRO.x + 6.0                 # miolo do tubo no termometro.png: x 6..11, de y 5 a 47
 const TUBO_LARG := 6.0
 const TUBO_TOPO := TERMOMETRO.y + 5.0
-const TUBO_BASE := TERMOMETRO.y + 71.0
-const BULBO := TERMOMETRO + Vector2(8.5, 76.5)     # centro do bulbo (raio 4.6): sempre cheio de líquido
+const TUBO_BASE := TERMOMETRO.y + 47.0
+const BULBO := TERMOMETRO + Vector2(8.5, 52.5)     # centro do bulbo (raio 4.6): sempre cheio de líquido
 
 const FAIXA_MIN := 0.40                            # faixa ideal (fração do tubo)
 const FAIXA_MAX := 0.75
