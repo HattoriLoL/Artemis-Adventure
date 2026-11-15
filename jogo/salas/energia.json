@@ -108,10 +108,18 @@
  ],
  "tarefas": [
   {
+   "id": "paineis",
+   "x": 200,
+   "y": 66,
+   "texto": "CLEAN THE SOLAR PANELS",
+   "minigame": "res://cenas/minigame_paineis.tscn"
+  },
+  {
    "id": "baterias",
    "x": 295,
    "y": 66,
-   "texto": "SWAP THE BATTERIES"
+   "texto": "CALIBRATE THE BATTERIES",
+   "minigame": "res://cenas/minigame_calibrate_batt.tscn"
   },
   {
    "id": "terminal",

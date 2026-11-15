@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cyse60uswy0k3"]
+
+[ext_resource type="Script" uid="uid://ieo3uky6dffp" path="res://scripts/abertura.gd" id="1_ijc5j"]
+
+[node name="Abertura" type="Control" unique_id=311508480]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_ijc5j")
