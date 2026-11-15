@@ -1,4 +1,4 @@
-[gd_scene format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/minigame_refeicao.gd" id="1_refeicao"]
 
@@ -9,69 +9,5 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_refeicao")
-
-[node name="Fundo" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 60.0
-offset_top = 30.0
-offset_right = 260.0
-offset_bottom = 150.0
-color = Color(0.0352941, 0.0392157, 0.0784314, 1)
-
-[node name="Prato" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 88.0
-offset_top = 62.0
-offset_right = 132.0
-offset_bottom = 106.0
-color = Color(0.223529, 0.290196, 0.313726, 1)
-
-[node name="Comida" type="ColorRect" parent="Prato"]
-layout_mode = 0
-offset_left = 6.0
-offset_top = 6.0
-offset_right = 38.0
-offset_bottom = 38.0
-color = Color(0.505882, 0.592157, 0.588235, 1)
-
-[node name="Termometro" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 160.0
-offset_top = 48.0
-offset_right = 180.0
-offset_bottom = 118.0
-color = Color(0.117647, 0.160784, 0.211765, 1)
-
-[node name="Faixa" type="ColorRect" parent="Termometro"]
-layout_mode = 0
-offset_left = -2.0
-offset_top = 20.0
-offset_right = 22.0
-offset_bottom = 46.0
-color = Color(0.27451, 0.509804, 0.196078, 1)
-
-[node name="Mercúrio" type="ColorRect" parent="Termometro"]
-layout_mode = 0
-offset_left = 4.0
-offset_top = 70.0
-offset_right = 16.0
-offset_bottom = 70.0
-color = Color(0.909804, 0.756863, 0.439216, 1)
-
-[node name="BarraPreparo" type="ColorRect" parent="."]
-layout_mode = 0
-offset_left = 80.0
-offset_top = 130.0
-offset_right = 80.0
-offset_bottom = 134.0
-color = Color(0.658824, 0.792157, 0.345098, 1)
-
-[node name="Textos" type="Control" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 mouse_filter = 2
+script = ExtResource("1_refeicao")
