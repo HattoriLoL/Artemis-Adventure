@@ -119,13 +119,13 @@
   {
    "id": "chuveiro",
    "png": "res://assets/objetos/chuveiro.png",
-   "x": 250,
-   "y": 98,
+   "x": 31,
+   "y": 62,
    "solido": [
-    3,
-    40,
-    31,
-    12
+    2,
+    0,
+    33,
+    52
    ]
   }
  ]
