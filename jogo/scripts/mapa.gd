@@ -53,6 +53,13 @@ var marca_pc: Polygon2D            # setinha azul sobre ela enquanto a previsão
 const MARCA_PC := Vector2(13, -3)  # logo acima dos monitores da mesa (o ponto da interação fica na frente dela)
 const MESA_PC := Vector2(13, 50)   # pé da mesa, na borda de baixo da sala (no minimapa, longe do ícone do gás)
 var pc_visto_dia := 0              # o dia em que o jogador abriu o computador pela última vez
+var cama_item := {}                # a interação da cama (Habitat)
+var marca_cama: Polygon2D          # setinha amarela sobre ela quando acabaram as ações do dia
+const MARCA_CAMA := Vector2(-60, -38)  # em cima do beliche (o ponto da interação fica no pé dele, à direita)
+# ícones 7x7 do minimapa para a cama e o computador (sem arquivo, um desenho simples no lugar)
+var ic_cama: Texture2D
+var ic_pc: Texture2D
+var ic_pc_alerta: Texture2D
 var jogador: CharacterBody2D
 var hud: Control
 var camada_ui: CanvasLayer
@@ -87,6 +94,9 @@ var t_recalcular := 0.0
 func _ready() -> void:
 	_entradas()
 	demo = "--demo" in OS.get_cmdline_user_args()
+	ic_cama = _icone("habitat/cama")
+	ic_pc = _icone("suporte/computador")
+	ic_pc_alerta = _icone("suporte/computador_alerta")
 	mapa = JSON.parse_string(FileAccess.open("res://mapa/mapa.json", FileAccess.READ).get_as_text())
 	y_sort_enabled = true                          # astronauta x paredes da frente: quem tem o pé mais embaixo fica na frente
 	# o regolito no fundo e, por cima, os túneis em tiles (editáveis no editor do Godot)
@@ -185,6 +195,11 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 		if it.has("acordar"):                        # cama: onde o astronauta aparece de manhã (fora do alcance do E)
 			item["acordar"] = pos + Vector2(it["acordar"][0], it["acordar"][1])
 		interacoes.append(item)
+		if item["acao"] == "dormir":
+			cama_item = item
+			marca_cama = _seta(AMARELO)
+			marca_cama.position = item["pos"] + MARCA_CAMA
+			add_child(marca_cama)
 		if item["acao"] == "computador":
 			pc_item = item
 			marca_pc = Polygon2D.new()
@@ -198,6 +213,21 @@ func _sala(nome: String, pos: Vector2, corpo: StaticBody2D) -> void:
 			marca_pc.position = item["pos"] + MARCA_PC
 			marca_pc.z_index = 5
 			add_child(marca_pc)
+
+
+## Setinha (6x4, com contorno escuro) que pula sobre um ponto do mapa.
+func _seta(cor: Color) -> Polygon2D:
+	var m := Polygon2D.new()
+	m.polygon = PackedVector2Array([Vector2(-3, 0), Vector2(3, 0), Vector2(0, 4)])
+	m.color = cor
+	var borda := Polygon2D.new()
+	borda.polygon = PackedVector2Array([Vector2(-5, -1), Vector2(5, -1), Vector2(0, 6)])
+	borda.color = CONTORNO
+	borda.show_behind_parent = true
+	m.add_child(borda)
+	m.z_index = 5
+	m.visible = false
+	return m
 
 
 ## Ícone 7x7 da tarefa (lista do HUD e minimapa): res://assets/icones/<sala>_<tarefa>.png. Sem arquivo, null (a
@@ -409,6 +439,9 @@ func _process(delta: float) -> void:
 	for id in marcas:
 		var item := _tarefa(id)
 		marcas[id].position.y = item["pos"].y - 44 + round(sin(t * 5.0) * 1.5)
+	if marca_cama:
+		marca_cama.visible = dia_sem_acoes()
+		marca_cama.position.y = cama_item["pos"].y + MARCA_CAMA.y + round(sin(t * 5.0 + 0.7) * 1.5)
 	if marca_pc:
 		marca_pc.visible = pc_nao_lido() and not tempestade.ativo
 		marca_pc.position.y = pc_item["pos"].y + MARCA_PC.y + round(sin(t * 5.0 + 1.5) * 1.5)
@@ -567,6 +600,12 @@ func abrir_computador() -> void:
 	pc.mapa = self
 	pc.fechou.connect(func(): _fechar_minigame(pc))
 	camada_ui.add_child(pc)
+
+
+## As ações do dia acabaram e só falta dormir: a seta amarela vai para a cama e o minimapa mostra só a cama e o
+## computador.
+func dia_sem_acoes() -> bool:
+	return ciclo.acoes_restantes() == 0 and not dormindo and not fim and not tempestade.ativo and not ciclo.ocupado()
 
 
 ## O computador tem previsão nova hoje (o jogador ainda não abriu): setinha no mapa e ícone piscando no minimapa.
@@ -867,10 +906,7 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 		var m := _na_planta(tf["pos"], tex, canto)
 		var ic: Texture2D = tf.get("icone")
 		if ic:                                     # o mesmo ícone da lista, sozinho (sem moldura nem fundo)
-			var tam_ic := ic.get_size()
-			var meio := (tam_ic / 2.0).floor()
-			var c := m.clamp(canto + meio, canto + tex.get_size() - tam_ic + meio)
-			hud.draw_texture(ic, c - meio)
+			_icone_na_planta(ic, m, tex, canto)
 		elif aceso:
 			hud.draw_rect(Rect2(m + Vector2(-1, -2), Vector2(3, 5)), CONTORNO)    # cruz amarela com contorno
 			hud.draw_rect(Rect2(m + Vector2(-2, -1), Vector2(5, 3)), CONTORNO)
@@ -887,9 +923,22 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 			hud.draw_rect(Rect2(m_em, Vector2(1, 1)), AMARELO)
 	if not pc_item.is_empty() and not tempestade.ativo:   # computador: monitorzinho, piscando com previsão nova
 		var pc := _na_planta(pc_item["pos"] + MESA_PC, tex, canto)
-		hud.draw_rect(Rect2(pc + Vector2(-2, -2), Vector2(5, 4)), CONTORNO)
-		var tela_pc := Color("#a4dddb") if (not pc_nao_lido() or aceso) else Color(AZUL, 0.3)
-		hud.draw_rect(Rect2(pc + Vector2(-1, -1), Vector2(3, 2)), tela_pc)
+		var alerta := pc_nao_lido() and aceso
+		var ic_tela: Texture2D = ic_pc_alerta if alerta and ic_pc_alerta else ic_pc
+		if ic_tela:
+			_icone_na_planta(ic_tela, pc, tex, canto, Color.WHITE if (alerta or not pc_nao_lido() or ic_pc_alerta) else Color(1, 1, 1, 0.5))
+		else:
+			hud.draw_rect(Rect2(pc + Vector2(-2, -2), Vector2(5, 4)), CONTORNO)
+			var tela_pc := Color("#a4dddb") if (not pc_nao_lido() or aceso) else Color(AZUL, 0.3)
+			hud.draw_rect(Rect2(pc + Vector2(-1, -1), Vector2(3, 2)), tela_pc)
+	if not cama_item.is_empty() and dia_sem_acoes():   # acabaram as ações: a cama aparece (piscando de leve)
+		var cm := _na_planta(cama_item["pos"], tex, canto)
+		if ic_cama:
+			_icone_na_planta(ic_cama, cm, tex, canto, Color.WHITE if aceso else Color(1, 1, 1, 0.6))
+		elif aceso:
+			hud.draw_rect(Rect2(cm + Vector2(-3, -2), Vector2(7, 5)), CONTORNO)
+			hud.draw_rect(Rect2(cm + Vector2(-2, -1), Vector2(5, 2)), AMARELO)
+			hud.draw_rect(Rect2(cm + Vector2(-2, -1), Vector2(1, 1)), BRANCO)
 	if tempestade.ativo and fmod(t, 0.5) < 0.3:   # erupção: o Abrigo pisca em vermelho
 		var ab: Dictionary = salas[Tempestade.SALA_ABRIGO]
 		var tam_ab: Array = ab["dados"]["tamanho"]
@@ -901,6 +950,14 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 	var j := _na_planta(jogador.global_position, tex, canto)
 	hud.draw_rect(Rect2(j - Vector2(1, 1), Vector2(4, 4)), CONTORNO)
 	hud.draw_rect(Rect2(j, Vector2(2, 2)), BRANCO)
+
+
+## Ícone com o meio em m, preso dentro da planta.
+func _icone_na_planta(ic: Texture2D, m: Vector2, tex: Texture2D, canto: Vector2, cor := Color.WHITE) -> void:
+	var tam_ic := ic.get_size()
+	var meio := (tam_ic / 2.0).floor()
+	var c := m.clamp(canto + meio, canto + tex.get_size() - tam_ic + meio)
+	hud.draw_texture(ic, c - meio, cor)
 
 
 ## Visto verde (5x4) com contorno escuro, por cima do ícone de uma tarefa feita.
