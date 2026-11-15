@@ -508,6 +508,8 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 		_abrir_tutorial(id_tutorial, caminho, tf)
 		return
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -551,6 +553,8 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 ## nada (e o tutorial aparece de novo na próxima vez).
 func _abrir_tutorial(id_tutorial: String, caminho: String, tf: Dictionary) -> void:
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -578,6 +582,8 @@ func _card_pendente() -> bool:
 ## Abre o card de sala por cima do jogo, como o tutorial; fechar (E, Esc ou X) não gasta nada e o card não volta.
 func _abrir_card_sala(nome: String) -> void:
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -597,6 +603,8 @@ func _abrir_card_sala(nome: String) -> void:
 func abrir_computador() -> void:
 	pc_visto_dia = Missao.dia
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -620,6 +628,8 @@ func pc_nao_lido() -> bool:
 func _fechar_minigame(mg: Control) -> void:
 	mg.queue_free()
 	em_minigame = false
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(false)
 	desistir = 0.0
 	aviso_desistir.visible = false
 	quadro_fechou_minigame = Engine.get_process_frames()
