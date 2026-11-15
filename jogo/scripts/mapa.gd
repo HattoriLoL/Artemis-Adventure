@@ -16,6 +16,7 @@ const ESCURO := Color("#394a50")
 const AZUL := Color("#73bed3")
 const SEM_SOL := "NO SUN TODAY: NO EFFECT"
 const TEMPO_CONFIRMAR := 3.0       # quanto tempo o "E AGAIN: END THE DAY NOW" espera o segundo E
+const TEMPO_DESISTIR := 2.5        # quanto tempo o "ESC OR X AGAIN: GIVE UP" espera a segunda vez
 
 var mapa: Dictionary
 var salas := {}                    # nome -> {"dados": ..., "pos": Vector2}
@@ -30,6 +31,9 @@ var hud: Control
 var camada_ui: CanvasLayer
 var ciclo: CicloDias               # ciclo_dias.gd: dias, ações, boletim, noite e fim da missão
 var em_minigame := false
+var desistir := 0.0                # > 0: o jogador tentou fechar um minigame já começado; de novo = desiste (falha)
+var quadro_desistir := -1          # quadro do primeiro pedido (Esc e clique no X no mesmo quadro não confirmam)
+var aviso_desistir: Control        # o aviso por cima do minigame
 var quadro_fechou_minigame := -1   # o Esc que fecha o minigame não pode abrir o menu de pausa no mesmo quadro
 var aviso := ""
 var t_aviso := 0.0
@@ -187,6 +191,12 @@ func _interface() -> void:
 	hud.size = Vector2(320, 180)
 	hud.draw.connect(_desenha_hud)
 	camada_ui.add_child(hud)
+	aviso_desistir = Control.new()
+	aviso_desistir.size = Vector2(320, 180)
+	aviso_desistir.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	aviso_desistir.visible = false
+	aviso_desistir.draw.connect(_desenha_aviso_desistir)
+	camada_ui.add_child(aviso_desistir)
 	ciclo = CicloDias.new()
 	ciclo.mapa = self
 	add_child(ciclo)
@@ -276,6 +286,10 @@ func _process(delta: float) -> void:
 	t += delta
 	t_aviso = max(0.0, t_aviso - delta)
 	confirmar_dormir = max(0.0, confirmar_dormir - delta)
+	desistir = max(0.0, desistir - delta)
+	aviso_desistir.visible = em_minigame and desistir > 0.0
+	if aviso_desistir.visible:
+		aviso_desistir.queue_redraw()
 	for nome in variacoes.keys():
 		variacoes[nome][1] -= delta
 		if variacoes[nome][1] <= 0.0:
@@ -336,31 +350,61 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 	var mg: Control = cena_mg.instantiate()
 	mg.demo = demo
 	camada_ui.add_child(mg)
+	camada_ui.move_child(aviso_desistir, -1)       # o aviso de desistir fica por cima do minigame
+	desistir = 0.0
+	# terminou: a tarefa rende conforme os erros (o minigame diz a taxa em taxa_erro(), de 0 a 1; sem ela, 0)
 	mg.terminou.connect(func():
+		var taxa := clampf(float(mg.taxa_erro()), 0.0, 1.0) if mg.has_method("taxa_erro") else 0.0
 		_fechar_minigame(mg)
 		if not tf.is_empty():
-			_concluir_tarefa(tf)
+			_concluir_tarefa(tf, Recursos.fator_erro(taxa))
 	)
-	# fechou no X ou no Esc: volta ao jogo sem concluir a tarefa
+	# falhou (errou demais, ou desistiu depois de começar): a tarefa é perdida, gasta a ação do dia e não rende nada
+	var falhar := func():
+		_fechar_minigame(mg)
+		if not tf.is_empty():
+			_concluir_tarefa(tf, 0.0, true)
+	if mg.has_signal("falhou"):
+		mg.falhou.connect(falhar)
+	# fechou no X ou no Esc: antes de começar, volta ao jogo de graça. Depois de começar (comecou() no minigame),
+	# o primeiro pedido só avisa e o segundo, em até TEMPO_DESISTIR, é desistir: conta como falha. Sem isso, o
+	# jogador fugiria de qualquer derrota (e dos erros) fechando e abrindo o minigame de novo.
 	if mg.has_signal("cancelou"):
-		mg.cancelou.connect(func(): _fechar_minigame(mg))
+		mg.cancelou.connect(func():
+			var pode_falhar: bool = not tf.is_empty() and mg.has_signal("falhou") and mg.has_method("comecou")
+			if not pode_falhar or not mg.comecou():
+				_fechar_minigame(mg)
+			elif desistir <= 0.0:
+				desistir = TEMPO_DESISTIR
+				quadro_desistir = Engine.get_process_frames()
+			elif Engine.get_process_frames() != quadro_desistir:
+				falhar.call()
+		)
 
 
 func _fechar_minigame(mg: Control) -> void:
 	mg.queue_free()
 	em_minigame = false
+	desistir = 0.0
+	aviso_desistir.visible = false
 	quadro_fechou_minigame = Engine.get_process_frames()
 	hud.visible = true
 	jogador.set_physics_process(true)
 
 
-func _concluir_tarefa(tf: Dictionary) -> void:
+## `fator`: quanto do ganho a tarefa rende (1 = tudo; menos quando o minigame teve erros). `perdeu`: o minigame
+## falhou; a tarefa gasta a ação do dia do mesmo jeito, mas não rende nada.
+func _concluir_tarefa(tf: Dictionary, fator := 1.0, perdeu := false) -> void:
 	jogador.usar()
 	feitas[tf["id"]] = true
-	ciclo.registrar(tf)                            # gasta uma das ações do dia
+	var texto := str(tf["texto"])
+	ciclo.registrar({"texto": texto + " (FAILED)"} if perdeu else tf)   # gasta uma das ações do dia
 	_atualizar_marcas()
-	Recursos.aplicar(tf["id"])
-	_avisar("DONE: " + str(tf["texto"]))
+	if perdeu:
+		_avisar("FAILED: " + texto)
+	else:
+		Recursos.aplicar(tf["id"], fator)
+		_avisar(("DONE: " if fator >= 1.0 else "DONE WITH ERRORS: ") + texto)
 	if ciclo.acoes_restantes() == 0:
 		await get_tree().create_timer(2.0).timeout
 		if not dormindo and not fim:
@@ -539,6 +583,14 @@ func _desenha_hud() -> void:
 		var w := Fonte.largura(aviso) + 8
 		hud.draw_rect(Rect2(160 - w / 2.0, 54, w, 11), Color(0.035, 0.04, 0.08, 0.8))
 		Fonte.centralizado(hud, aviso, 160, 57, BRANCO)
+
+
+## Faixa embaixo da tela, por cima do minigame: fechar agora é desistir, e a tarefa conta como falha.
+func _desenha_aviso_desistir() -> void:
+	aviso_desistir.draw_rect(Rect2(0, 168, 320, 12), Color(0.035, 0.04, 0.08, 0.92))
+	aviso_desistir.draw_rect(Rect2(0, 168, 320, 1), VERMELHO)
+	var cor := AMARELO if fmod(desistir, 0.5) > 0.25 else BRANCO
+	Fonte.centralizado(aviso_desistir, "ESC OR X AGAIN: GIVE UP - THE TASK FAILS", 160, 172, cor)
 
 
 func _titulo_sala(sala: String) -> String:
