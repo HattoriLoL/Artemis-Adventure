@@ -819,7 +819,9 @@ func _desenha_planta(tex: Texture2D, canto: Vector2) -> void:
 	if emergencia != null and emergencia.ativa:
 		var m_em := _na_planta(emergencia.posicao_estacao, tex, canto)
 		var aceso_em := fmod(t, 0.4) < 0.25
-		if aceso_em:
+		if aceso_em and emergencia.tex_icone:               # ícone do meteoro piscando na sala atingida
+			hud.draw_texture(emergencia.tex_icone, m_em - Vector2(4, 4))
+		elif aceso_em:
 			hud.draw_rect(Rect2(m_em + Vector2(-2, -2), Vector2(5, 5)), CONTORNO)
 			hud.draw_rect(Rect2(m_em + Vector2(-1, -1), Vector2(3, 3)), VERMELHO)
 			hud.draw_rect(Rect2(m_em, Vector2(1, 1)), AMARELO)

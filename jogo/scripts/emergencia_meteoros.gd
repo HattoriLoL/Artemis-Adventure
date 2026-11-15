@@ -36,13 +36,23 @@ const NOMES_SETORES: Dictionary = {
 }
 
 # Coordenadas montadas DIRETAMENTE NAS PAREDES (altura da parede, sem bloquear o chão ou passagens)
+## Onde fica a alavanca de cada sala: o meio da base da caixa, na parede de cima, numa parte lisa do painel
+## (sala + ponto da sala de 400x240: energia (76,44), habitat (124,44), suporte (120,44), abrigo (110,42), estufa (110,46)).
 const POSICOES_SETORES: Dictionary = {
-	"energia": Vector2(140, 92),
-	"habitat": Vector2(140, 494),
-	"suporte": Vector2(140, 892),
-	"abrigo": Vector2(686, 494),
-	"estufa": Vector2(686, 892)
+	"energia": Vector2(124, 92),
+	"habitat": Vector2(172, 492),
+	"suporte": Vector2(168, 892),
+	"abrigo": Vector2(686, 490),
+	"estufa": Vector2(686, 894)
 }
+## Arte (paleta Apollo): a tira da alavanca (3 quadros de 12x16: espera, alarme, puxada; o encaixe é o meio da base,
+## (6, 16) no quadro) e o ícone de meteoro (9x9) do aviso e do minimapa. Sem os arquivos, desenha em código.
+const ARTE_ALAVANCA := "res://assets/emergencia/alavanca.png"
+const ARTE_ICONE := "res://assets/emergencia/meteoro_icone.png"
+const QUADRO_ALAVANCA := Vector2(12, 16)
+const ENCAIXE_ALAVANCA := Vector2(6, 16)
+var tex_alavanca: Texture2D = null
+var tex_icone: Texture2D = null
 
 var mapa: Node2D = null
 var ativa: bool = false
@@ -74,6 +84,10 @@ func _ready() -> void:
 	# Sem colisão física no chão: a alavanca fica na parede e o astronauta anda 100% livre!
 	z_index = 0
 	_criar_audio()
+	if ResourceLoader.exists(ARTE_ALAVANCA):
+		tex_alavanca = load(ARTE_ALAVANCA)
+	if ResourceLoader.exists(ARTE_ICONE):
+		tex_icone = load(ARTE_ICONE)
 
 
 func _criar_audio() -> void:
@@ -270,6 +284,20 @@ func _desenhar_estacao_alavanca(p: Vector2, alvo_ativo: bool, alvo_resolvido: bo
 	# Interruptor/disjuntor sutil de parede (apenas 5x7 pixels)
 	# Fica meio escondido na chapa de aço da parede, sem caixas no chão nem obstrução!
 	var cor_pulso: Color = VERMELHO.lerp(AMARELO, (sin(t_animacao * 8.0) + 1.0) * 0.5)
+	if tex_alavanca:
+		var q := 0                                       # 0 espera, 1 alarme (pisca com o 0), 2 puxada
+		if alvo_resolvido and alavanca_puxada:
+			q = 2
+		elif alvo_ativo and fmod(t_animacao, 0.4) < 0.25:
+			q = 1
+		draw_texture_rect_region(tex_alavanca, Rect2((p - ENCAIXE_ALAVANCA).floor(), QUADRO_ALAVANCA),
+			Rect2(Vector2(q * QUADRO_ALAVANCA.x, 0), QUADRO_ALAVANCA))
+		if alvo_ativo:                                   # setinha e "LEVER" acima da caixa
+			var y_s: float = p.y - QUADRO_ALAVANCA.y - 5.0 + round(sin(t_animacao * 6.0) * 1.5)
+			draw_polygon(PackedVector2Array([Vector2(p.x - 3, y_s - 2), Vector2(p.x + 3, y_s - 2),
+				Vector2(p.x, y_s + 2)]), [cor_pulso])
+			Fonte.centralizado(self, "LEVER", p.x, y_s - 8.0, AMARELO)
+		return
 
 	# Placa metálica embutida na parede (5x7 px)
 	draw_rect(Rect2(p.x - 2, p.y - 3, 5, 7), PRETO)
@@ -333,10 +361,13 @@ func desenhar_hud(hud: Control, t: float) -> void:
 		hud.draw_rect(Rect2(bx, by, bw, bh), cor_borda, false, 1.0)
 		hud.draw_rect(Rect2(bx + 1, by + 1, 3, bh - 2), cor_borda)
 
-		# Linha 1: Contagem de impacto
-		Fonte.centralizado(hud, "[!] METEOR %dS" % segs, bx + bw / 2.0 + 1.0, by + 4.0, cor_header)
-		# Linha 2: Sala alvo
-		Fonte.centralizado(hud, "> " + sala_nome, bx + bw / 2.0 + 1.0, by + 13.0, cor_borda)
+		# Linha 1: Contagem de impacto; linha 2: sala alvo (com o ícone do meteoro à esquerda, se houver arte)
+		var cx: float = bx + bw / 2.0 + 1.0
+		if tex_icone:
+			hud.draw_texture(tex_icone, Vector2(bx + 6, by + 8))
+			cx += 6.0
+		Fonte.centralizado(hud, ("METEOR %dS" if tex_icone else "[!] METEOR %dS") % segs, cx, by + 4.0, cor_header)
+		Fonte.centralizado(hud, "> " + sala_nome, cx, by + 13.0, cor_borda)
 
 	elif t_banner_resolucao > 0.0:
 		var sala_nome: String = NOMES_SETORES.get(setor_atual, setor_atual.to_upper())
