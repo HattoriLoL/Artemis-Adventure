@@ -108,7 +108,11 @@
    "x": 136,
    "y": 168,
    "texto": "SLEEP (END THE DAY)",
-   "acao": "dormir"
+   "acao": "dormir",
+   "acordar": [
+    164,
+    156
+   ]
   }
  ]
 }
