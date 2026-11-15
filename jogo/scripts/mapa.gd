@@ -424,6 +424,8 @@ func _process(delta: float) -> void:
 		pass
 	elif perto_em and (Input.is_action_just_pressed("usar") or (demo and _bot_usa_emergencia())):
 		emergencia.ativar_escudos()
+	elif emergencia != null and emergencia.ativa:
+		pass                                       # alarme dos meteoros: só a alavanca (nada de tarefa, computador ou cama)
 	elif not tf.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(tf))):
 		_usar(tf)
 	elif not it.is_empty() and (Input.is_action_just_pressed("usar") or (demo and _bot_usa(it))):
@@ -786,6 +788,8 @@ func _desenha_hud() -> void:
 		pass                                       # alarme da erupção: nada de "E:" (as tarefas ficam bloqueadas)
 	elif perto_em and not dormindo:
 		Fonte.centralizado(hud, "E: PULL EMERGENCY LEVER", 160, 154, AMARELO)
+	elif emergencia != null and emergencia.ativa:
+		pass                                       # alarme dos meteoros: nada de "E:" fora da alavanca
 	elif not tf.is_empty() and not dormindo and tf.get("acao", "") == "dormir" and confirmar_dormir > 0.0:
 		var n := ciclo.acoes_restantes()
 		Fonte.centralizado(hud, "E AGAIN: END THE DAY NOW", 160, 154, AMARELO)
