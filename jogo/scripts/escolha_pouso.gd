@@ -2,6 +2,8 @@ extends Control
 ## Tela de escolha do local de pouso: 3 cartões lado a lado.
 ## Esquerda / direita (ou o mouse em cima) escolhem; E (ou clique) confirma. Depois guarda a escolha na Missao e
 ## abre a base. Os textos e números de cada local ficam em res://dados/locais_pouso.json.
+## Arte (paleta Apollo) em res://assets/pouso/: a Lua vista da órbita no fundo, a vista de cada local na faixa do
+## topo do cartão (local_<id>.png, 96x24, com 1 px da cor do local embaixo) e os ícones do Sol e do gelo nos medidores.
 
 const Fonte = preload("res://scripts/fonte.gd")
 const BRANCO := Color("#ebede9")
@@ -11,6 +13,9 @@ const VERDE := Color("#a8ca58")
 const VERMELHO := Color("#cf573c")
 const AZUL := Color("#73bed3")
 const APAGADO := Color("#394a50")
+const ICONE_SOL := preload("res://assets/pouso/icone_sol.png")     # 7x7
+const ICONE_GELO := preload("res://assets/pouso/icone_gelo.png")   # 7x7
+const ALTURA_VISTA := 23                 # a vista cobre a faixa menos a última linha, que fica com a cor do local
 
 const ARQUIVO := "res://dados/locais_pouso.json"
 const BASE := "res://cenas/mapa.tscn"
@@ -36,7 +41,17 @@ func _ready() -> void:
 	demo = "--demo" in OS.get_cmdline_user_args()
 	locais = JSON.parse_string(FileAccess.get_file_as_string(ARQUIVO))
 	for i in cartoes.size():
-		cartoes[i].get_node("Faixa").color = Color(locais[i]["cor"])
+		var faixa: ColorRect = cartoes[i].get_node("Faixa")
+		faixa.color = Color(locais[i]["cor"])
+		var vista := TextureRect.new()       # a vista do local por cima da faixa (o cartão apagado apaga ela junto)
+		vista.name = "Vista"
+		vista.texture = load("res://assets/pouso/local_%s.png" % locais[i]["id"])
+		vista.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # sem isso o tamanho mínimo é o da textura (24)
+		vista.size = Vector2(faixa.size.x, ALTURA_VISTA)
+		vista.stretch_mode = TextureRect.STRETCH_KEEP
+		vista.clip_contents = true
+		vista.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		faixa.add_child(vista)
 	textos.draw.connect(_desenhar_textos)
 	_atualizar_visual()
 
@@ -143,9 +158,10 @@ func _desenhar_cartao(local: Dictionary, pos: Vector2, ativo: bool) -> void:
 
 
 func _medidor(nome: String, nivel: int, pos: Vector2, cor: Color) -> void:
-	Fonte.desenhar(textos, nome, pos, BRANCO)
+	textos.draw_texture(ICONE_SOL if nome == "SUN" else ICONE_GELO, pos + Vector2(0, -1))
+	Fonte.desenhar(textos, nome, pos + Vector2(9, 0), BRANCO)
 	for i in 3:
-		textos.draw_rect(Rect2(pos.x + 16 + i * 6, pos.y, 4, 5), cor if i < nivel else APAGADO)
+		textos.draw_rect(Rect2(pos.x + 25 + i * 5, pos.y, 4, 5), cor if i < nivel else APAGADO)
 
 
 func _quebrar(texto: String) -> Array:
