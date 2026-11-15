@@ -35,13 +35,13 @@ const NOMES_SETORES: Dictionary = {
 	"estufa": "GREENHOUSE"
 }
 
-# Coordenadas fixadas diretamente NAS PAREDES de cada sala (meio escondidas, discretas e embutidas)
+# Coordenadas fixadas diretamente NAS PAREDES de cada sala, BEM LONGE das portas e corredores (zero tráfego)
 const POSICOES_SETORES: Dictionary = {
-	"energia": Vector2(270, 88),
-	"habitat": Vector2(240, 492),
-	"suporte": Vector2(208, 890),
-	"abrigo": Vector2(686, 492),
-	"estufa": Vector2(760, 884)
+	"energia": Vector2(140, 104),
+	"habitat": Vector2(140, 508),
+	"suporte": Vector2(140, 906),
+	"abrigo": Vector2(686, 508),
+	"estufa": Vector2(686, 906)
 }
 
 var mapa: Node2D = null
@@ -198,7 +198,7 @@ func disparar(setor_forcado: String = "") -> void:
 	else:
 		setor_atual = SETORES.pick_random()
 
-	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(270, 88))
+	posicao_estacao = POSICOES_SETORES.get(setor_atual, Vector2(140, 104))
 	tempo_restante = DURACAO_JANELA
 	ativa = true
 	alavanca_puxada = false
