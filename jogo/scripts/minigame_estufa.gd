@@ -63,6 +63,7 @@ const ENCHE := 0.105                            # crescimento por segundo com a 
 const ESVAZIA := 0.075                          # crescimento perdido por segundo com a gota fora
 const COMECO := 0.3                             # crescimento no começo de cada rodada
 const TENTATIVAS := 3
+const MARGEM_ERRO := 4.0                        # a gota só conta como erro mais longe que isso do jato (px)
 
 var demo := false
 var e_liberado := false                         # o E que abriu o minigame ainda pode estar apertado
@@ -170,14 +171,14 @@ func _gota_no_jato() -> bool:
 	return gota_y >= jato_y and gota_y <= jato_y + ALT_JATO
 
 
-## Fração do tempo de jogo com a gota fora do jato.
+## Fração do tempo de jogo com a gota longe do jato (mais que MARGEM_ERRO): passar raspando não conta.
 func taxa_erro() -> float:
 	return t_fora / maxf(0.001, t_jogando)
 
 
 func _crescer(delta: float) -> void:
 	t_jogando += delta
-	if not _gota_no_jato():
+	if maxf(jato_y - gota_y, gota_y - (jato_y + ALT_JATO)) > MARGEM_ERRO:
 		t_fora += delta
 	crescimento += (ENCHE if _gota_no_jato() else -ESVAZIA) * delta
 	if crescimento >= 1.0:

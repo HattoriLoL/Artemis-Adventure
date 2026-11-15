@@ -1,8 +1,8 @@
 extends Control
 ## Minigame "reabastecer a água" (REFILL THE WATER), no dispensador do Habitat: segurar E abre a torneira e enche o
 ## galão; soltar com o nível na faixa verde conclui. Soltar antes avisa que falta água (dá para continuar); passar do
-## limite transborda e o galão drena até a metade. Cada transbordo é um erro (taxa_erro diminui o que a tarefa
-## rende); MAX_ERROS transbordos perdem a tarefa (sinal falhou).
+## limite transborda e o galão drena até a metade (soltar acima da faixa também drena). Cada vez que passa da faixa é
+## um erro (taxa_erro diminui o que a tarefa rende); MAX_ERROS erros perdem a tarefa (sinal falhou).
 ## Arte (paleta Apollo) em res://assets/minigames/agua/; água, jato, respingos, bolhas, faixa, moldura e texto
 ## animados aqui. Contrato com o mapa: sinais `terminou`, `falhou` e `cancelou` (X ou Esc), taxa_erro() e `demo`.
 
@@ -106,16 +106,8 @@ func _process(delta: float) -> void:
 		nivel += ENCHE * delta
 		if nivel >= 1.0:
 			nivel = 1.0
-			transbordou = true
 			t_derrame = 0.9
-			erros += 1
-			if erros >= MAX_ERROS and not acabou:
-				perdeu = true
-				acabou = true
-				t_fim = TEMPO_FIM + 0.6
-				_avisar("TOO MANY SPILLS - TASK FAILED", VERMELHO_CLARO)
-			else:
-				_avisar("OVERFLOW! DRAINING... (%d/%d)" % [erros, MAX_ERROS], VERMELHO_CLARO)
+			_errar("OVERFLOW! DRAINING...")
 	if transbordou:
 		nivel = maxf(NIVEL_DRENADO, nivel - DRENA * delta)
 		if nivel <= NIVEL_DRENADO:
@@ -134,9 +126,22 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-## Fração das tentativas que transbordaram (a tentativa certa é a que conclui).
+## Fração das tentativas que passaram da faixa (a tentativa certa é a que conclui).
 func taxa_erro() -> float:
 	return erros / float(erros + 1)
+
+
+## Passou da faixa (transbordou ou soltou acima dela): conta um erro e o galão drena até a metade.
+func _errar(txt: String) -> void:
+	transbordou = true
+	erros += 1
+	if erros >= MAX_ERROS and not acabou:
+		perdeu = true
+		acabou = true
+		t_fim = TEMPO_FIM + 0.6
+		_avisar("TOO MANY SPILLS - TASK FAILED", VERMELHO_CLARO)
+	else:
+		_avisar("%s (%d/%d)" % [txt, erros, MAX_ERROS], VERMELHO_CLARO)
 
 
 func _verificar_resultado() -> void:
@@ -144,6 +149,8 @@ func _verificar_resultado() -> void:
 		acabou = true
 		t_fim = TEMPO_FIM
 		_avisar("WATER TANK FULL!", VERDE_LIMA)
+	elif nivel > FAIXA_MAX:
+		_errar("TOO MUCH WATER! DRAINING...")      # soltou acima da faixa sem transbordar
 	elif nivel < FAIXA_MIN and nivel > 0.1:
 		_avisar("NOT ENOUGH WATER - KEEP FILLING", AMARELO)
 
