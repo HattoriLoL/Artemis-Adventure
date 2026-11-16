@@ -1,7 +1,7 @@
 extends CanvasLayer
 ## TouchOverlay: Camada de controles touch na tela para dispositivos móveis e navegadores web.
 ## Permite alternar entre Modo Celular (D-Pad + Ação na tela) e Modo Computador (tela limpa, sem setas).
-## O botão de alternância fica sempre disponível no topo para cliques com mouse ou toque.
+## O D-Pad e o botão [E] ficam disponíveis em TODOS os minigames e no mapa para controle total por toque.
 
 const Fonte = preload("res://scripts/fonte.gd")
 const VirtualDPad = preload("res://scripts/mobile/virtual_dpad.gd")
@@ -43,13 +43,15 @@ func _atualizar_visibilidade_controles() -> void:
 	var touch_ativo: bool = mm.touch_controls_enabled if mm else false
 	var minimizado: bool = mm.controls_minimized if mm else false
 	
-	# No modo computador (touch desativado) ou minimizado, as setas e botões somem
+	# O D-Pad e o botão de ação ficam SEMPRE disponíveis no modo celular (no mapa e em todos os minigames)
 	if dpad:
-		dpad.visible = touch_ativo and not em_minigame and not minimizado
+		dpad.visible = touch_ativo and not minimizado
+		dpad.position = Vector2(6, 118) if em_minigame else Vector2(10, 118)
 	if btn_correr:
 		btn_correr.visible = touch_ativo and not em_minigame and not minimizado
 	if btn_acao:
 		btn_acao.visible = touch_ativo and not minimizado
+		btn_acao.position = Vector2(272, 118) if em_minigame else Vector2(276, 62)
 	if btn_pausa:
 		btn_pausa.visible = touch_ativo
 		
@@ -58,18 +60,9 @@ func _atualizar_visibilidade_controles() -> void:
 
 
 ## Notificação chamada pelo mapa.gd quando entra ou sai de minigame
-func definir_modo_minigame(ativo: bool, precisa_usar := true) -> void:
+func definir_modo_minigame(ativo: bool, _precisa_usar := true) -> void:
 	em_minigame = ativo
-	var mm = get_node_or_null("/root/MobileManager")
-	var touch_ativo: bool = mm.touch_controls_enabled if mm else false
-	var minimizado: bool = mm.controls_minimized if mm else false
-	
-	if dpad:
-		dpad.visible = touch_ativo and not ativo and not minimizado
-	if btn_correr:
-		btn_correr.visible = touch_ativo and not ativo and not minimizado
-	if btn_acao:
-		btn_acao.visible = touch_ativo and (precisa_usar or not ativo) and not minimizado
+	_atualizar_visibilidade_controles()
 
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -88,7 +81,7 @@ func _construir_ui() -> void:
 	raiz_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(raiz_ui)
 	
-	# 1. D-Pad Virtual (Inferior Esquerdo)
+	# 1. D-Pad Virtual (Inferior Esquerdo - visível no mapa e em todos os minigames)
 	dpad = VirtualDPad.new()
 	dpad.name = "DPad"
 	dpad.raio = 24.0
@@ -104,7 +97,7 @@ func _construir_ui() -> void:
 	btn_correr.position = Vector2(12, 94)
 	raiz_ui.add_child(btn_correr)
 	
-	# 3. Botão de Interação [E] (Lado Direito, posicionado ergonomicamente)
+	# 3. Botão de Interação [E] (Lado Direito)
 	btn_acao = VirtualActionButton.new()
 	btn_acao.name = "BtnInteragir"
 	btn_acao.raio = 17.0
@@ -147,7 +140,6 @@ func _criar_botao_topo(pos: Vector2, tam: Vector2, tipo: String) -> Control:
 		var touch_ativo: bool = mm.touch_controls_enabled if mm else false
 		var r := Rect2(Vector2.ZERO, tam)
 		
-		# Moldura destacada se touch estiver ativo
 		var cor_borda := COR_ATIVO if (tipo == "toggle" and touch_ativo) else COR_BORDA_BOTAO
 		btn.draw_rect(r, COR_FUNDO_BOTAO)
 		btn.draw_rect(r, cor_borda, false, 1.0)
@@ -157,12 +149,10 @@ func _criar_botao_topo(pos: Vector2, tam: Vector2, tipo: String) -> Control:
 			btn.draw_rect(Rect2(8, 3, 2, 6), COR_ICONE)
 		elif tipo == "toggle":
 			if touch_ativo:
-				# Modo Celular ATIVO: desenha ícone de celular brilhante [📱]
 				btn.draw_rect(Rect2(5, 2, 6, 8), COR_ATIVO)
 				btn.draw_rect(Rect2(6, 3, 4, 6), Color("#090a14"))
 				btn.draw_rect(Rect2(7, 8, 2, 1), COR_ATIVO)
 			else:
-				# Modo Computador / Desktop: desenha ícone de monitor desktop [🖥]
 				btn.draw_rect(Rect2(4, 2, 8, 6), COR_ICONE)
 				btn.draw_rect(Rect2(5, 3, 6, 4), Color("#090a14"))
 				btn.draw_rect(Rect2(6, 8, 4, 1), COR_ICONE)
