@@ -275,7 +275,7 @@ func _draw() -> void:
 	elif tempo > TEMPO_IDEAL:
 		Fonte.centralizado(self, "HURRY - DUSTY PANELS LOSE POWER", 160, y_txt, AMARELO)
 	else:
-		Fonte.centralizado(self, "MOVE THE BRUSH OVER THE DUST", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "SWEEP DUST: [W A S D] OR MOUSE", 160, y_txt, BRANCO_SUJO, Color("#cf573c"))
 
 
 func _px(p: Vector2, cor: Color) -> void:

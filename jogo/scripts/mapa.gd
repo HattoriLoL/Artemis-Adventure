@@ -43,7 +43,7 @@ var usadas := {}
 var portas := []
 var obstaculos: Array[Rect2] = []  # colisão dos objetos soltos das salas (o robô do demo desvia deles)
 const EmergenciaMeteorosScript = preload("res://scripts/emergencia_meteoros.gd")
-var emergencia: EmergenciaMeteoros = null
+var emergencia: Node2D = null
 var camera: Camera2D = null
 var t_shake: float = 0.0
 var forca_shake: float = 0.0
@@ -62,6 +62,8 @@ var ic_pc: Texture2D
 var ic_pc_alerta: Texture2D
 var jogador: CharacterBody2D
 var hud: Control
+var hud_tarefas_minimizado := false
+var rect_hud_tarefas := Rect2()
 var camada_ui: CanvasLayer
 var ciclo: CicloDias               # ciclo_dias.gd: dias, ações, boletim, noite e fim da missão
 var tempestade: Tempestade         # tempestade.gd: o alarme da erupção solar e a corrida até o Abrigo
@@ -312,7 +314,9 @@ func _interface() -> void:
 	add_child(camada_ui)
 	hud = Control.new()
 	hud.size = Vector2(320, 180)
+	hud.mouse_filter = Control.MOUSE_FILTER_PASS
 	hud.draw.connect(_desenha_hud)
+	hud.gui_input.connect(_ao_gui_input_hud)
 	camada_ui.add_child(hud)
 	aviso_desistir = Control.new()
 	aviso_desistir.size = Vector2(320, 180)
@@ -504,6 +508,8 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 		_abrir_tutorial(id_tutorial, caminho, tf)
 		return
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -547,6 +553,8 @@ func abrir_minigame(caminho: String, tf := {}) -> void:
 ## nada (e o tutorial aparece de novo na próxima vez).
 func _abrir_tutorial(id_tutorial: String, caminho: String, tf: Dictionary) -> void:
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -574,6 +582,8 @@ func _card_pendente() -> bool:
 ## Abre o card de sala por cima do jogo, como o tutorial; fechar (E, Esc ou X) não gasta nada e o card não volta.
 func _abrir_card_sala(nome: String) -> void:
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -593,6 +603,8 @@ func _abrir_card_sala(nome: String) -> void:
 func abrir_computador() -> void:
 	pc_visto_dia = Missao.dia
 	em_minigame = true
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(true)
 	hud.visible = false
 	jogador.velocity = Vector2.ZERO
 	jogador.set_physics_process(false)
@@ -616,6 +628,8 @@ func pc_nao_lido() -> bool:
 func _fechar_minigame(mg: Control) -> void:
 	mg.queue_free()
 	em_minigame = false
+	if has_node("/root/TouchOverlay"):
+		get_node("/root/TouchOverlay").definir_modo_minigame(false)
 	desistir = 0.0
 	aviso_desistir.visible = false
 	quadro_fechou_minigame = Engine.get_process_frames()
@@ -818,35 +832,45 @@ func _desenha_hud() -> void:
 	var acoes := "%d ACTIONS LEFT" % ciclo.acoes_restantes() if ciclo.acoes_restantes() != 1 else "1 ACTION LEFT"
 	if ciclo.acoes_restantes() == 0:
 		acoes = "SLEEP TO END THE DAY"
-	var largura := 104.0
-	largura = max(largura, Fonte.largura(titulo) + 14)
-	largura = max(largura, Fonte.largura(rodape + " - " + acoes) + 10)
-	for tf in lista:
-		var extra: float = 0.0 if tf["sala"] == sala_atual else Fonte.largura(_titulo_sala(tf["sala"])) + 8
-		largura = max(largura, Fonte.largura(str(tf["texto"])) + 17 + extra)
-	var linhas := lista.size() + 2
-	hud.draw_rect(Rect2(4, 3, largura, 2 + 8 * linhas), Color(0.035, 0.04, 0.08, 0.7))
-	var y := 6
-	Fonte.desenhar(hud, titulo, Vector2(8, y), AMARELO)
-	for tf in lista:
+	if hud_tarefas_minimizado:
+		var txt_min := "%s [%s]" % [titulo, rodape]
+		var largura_min: float = max(80.0, float(Fonte.largura(txt_min) + 22))
+		rect_hud_tarefas = Rect2(4, 3, largura_min, 12)
+		hud.draw_rect(rect_hud_tarefas, Color(0.035, 0.04, 0.08, 0.8))
+		Fonte.desenhar(hud, txt_min, Vector2(8, 6), AMARELO)
+		_desenha_setinha_hud(Vector2(4 + largura_min - 12, 5), false)
+	else:
+		var largura := 104.0
+		largura = max(largura, float(Fonte.largura(titulo) + 24))
+		largura = max(largura, float(Fonte.largura(rodape + " - " + acoes) + 10))
+		for tf in lista:
+			var extra: float = 0.0 if tf["sala"] == sala_atual else float(Fonte.largura(_titulo_sala(tf["sala"])) + 8)
+			largura = max(largura, float(Fonte.largura(str(tf["texto"])) + 17) + extra)
+		var linhas := lista.size() + 2
+		rect_hud_tarefas = Rect2(4, 3, largura, 2 + 8 * linhas)
+		hud.draw_rect(rect_hud_tarefas, Color(0.035, 0.04, 0.08, 0.7))
+		var y := 6
+		Fonte.desenhar(hud, titulo, Vector2(8, y), AMARELO)
+		_desenha_setinha_hud(Vector2(4 + largura - 12, 5), true)
+		for tf in lista:
+			y += 8
+			var feito := feitas.has(tf["id"])
+			var pode := ciclo.disponivel(tf["id"]) and not feito
+			var ic: Texture2D = tf.get("icone")
+			if ic:                                     # o mesmo ícone do minimapa; feita = apagado com um visto verde
+				hud.draw_texture(ic, Vector2(7, y - 1), Color.WHITE if pode else Color(1, 1, 1, 0.35))
+				if feito:
+					_visto(Vector2(9, y + 1))
+			else:
+				hud.draw_rect(Rect2(8, y + 1, 3, 3), VERDE if feito else (AMARELO if pode else ESCURO))
+			Fonte.desenhar(hud, str(tf["texto"]), Vector2(17, y), BRANCO if pode else CINZA)
+			if tf["sala"] != sala_atual:
+				var s := _titulo_sala(tf["sala"])
+				Fonte.desenhar(hud, s, Vector2(4 + largura - 4 - Fonte.largura(s), y), ESCURO if not pode else CINZA)
 		y += 8
-		var feito := feitas.has(tf["id"])
-		var pode := ciclo.disponivel(tf["id"]) and not feito
-		var ic: Texture2D = tf.get("icone")
-		if ic:                                     # o mesmo ícone do minimapa; feita = apagado com um visto verde
-			hud.draw_texture(ic, Vector2(7, y - 1), Color.WHITE if pode else Color(1, 1, 1, 0.35))
-			if feito:
-				_visto(Vector2(9, y + 1))
-		else:
-			hud.draw_rect(Rect2(8, y + 1, 3, 3), VERDE if feito else (AMARELO if pode else ESCURO))
-		Fonte.desenhar(hud, str(tf["texto"]), Vector2(17, y), BRANCO if pode else CINZA)
-		if tf["sala"] != sala_atual:
-			var s := _titulo_sala(tf["sala"])
-			Fonte.desenhar(hud, s, Vector2(4 + largura - 4 - Fonte.largura(s), y), ESCURO if not pode else CINZA)
-	y += 8
-	Fonte.desenhar(hud, rodape, Vector2(8, y), AZUL if Recursos.noite else CINZA)
-	var cor_acoes := AMARELO if ciclo.acoes_restantes() == 0 and fmod(t, 1.0) < 0.6 else CINZA
-	Fonte.desenhar(hud, "- " + acoes, Vector2(8 + Fonte.largura(rodape) + 4, y), cor_acoes)
+		Fonte.desenhar(hud, rodape, Vector2(8, y), AZUL if Recursos.noite else CINZA)
+		var cor_acoes := AMARELO if ciclo.acoes_restantes() == 0 and fmod(t, 1.0) < 0.6 else CINZA
+		Fonte.desenhar(hud, "- " + acoes, Vector2(8 + Fonte.largura(rodape) + 4, y), cor_acoes)
 	_desenha_recursos()
 	_desenha_minimapa()
 	if emergencia != null:
@@ -1013,3 +1037,49 @@ func _desenha_recursos() -> void:
 			var xs := x0 - 4 - Fonte.largura(s)
 			hud.draw_rect(Rect2(xs - 3, y - 2, Fonte.largura(s) + 5, 9), Color(0.035, 0.04, 0.08, 0.85))
 			Fonte.desenhar(hud, s, Vector2(xs, y), Color("#a8ca58") if d > 0 else VERMELHO)
+
+
+## Desenha o botão com a setinha de minimizar (▲) ou maximizar (▼) no painel de tarefas do HUD.
+func _desenha_setinha_hud(pos: Vector2, para_cima: bool) -> void:
+	var r := Rect2(pos, Vector2(9, 7))
+	hud.draw_rect(r, Color("#151d28"))
+	hud.draw_rect(r.grow(-1), Color("#394a50"))
+	var cor_seta := AMARELO
+	var cx := pos.x + 4
+	var cy := pos.y + 3
+	if para_cima:
+		# Triângulo para CIMA [▲]
+		hud.draw_rect(Rect2(cx, cy - 2, 1, 1), cor_seta)
+		hud.draw_rect(Rect2(cx - 1, cy - 1, 3, 1), cor_seta)
+		hud.draw_rect(Rect2(cx - 2, cy, 5, 1), cor_seta)
+	else:
+		# Triângulo para BAIXO [▼]
+		hud.draw_rect(Rect2(cx - 2, cy - 1, 5, 1), cor_seta)
+		hud.draw_rect(Rect2(cx - 1, cy, 3, 1), cor_seta)
+		hud.draw_rect(Rect2(cx, cy + 1, 1, 1), cor_seta)
+
+
+func _ao_gui_input_hud(ev: InputEvent) -> void:
+	if em_minigame or fim or dormindo:
+		return
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		var m := hud.get_local_mouse_position()
+		if rect_hud_tarefas.grow(2).has_point(m):
+			hud_tarefas_minimizado = not hud_tarefas_minimizado
+			hud.queue_redraw()
+
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if em_minigame or fim or dormindo:
+		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and (ev.physical_keycode == KEY_TAB or ev.physical_keycode == KEY_T):
+		hud_tarefas_minimizado = not hud_tarefas_minimizado
+		hud.queue_redraw()
+		get_viewport().set_input_as_handled()
+	elif ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		var m := hud.get_local_mouse_position()
+		if rect_hud_tarefas.grow(2).has_point(m):
+			hud_tarefas_minimizado = not hud_tarefas_minimizado
+			hud.queue_redraw()
+			get_viewport().set_input_as_handled()
+

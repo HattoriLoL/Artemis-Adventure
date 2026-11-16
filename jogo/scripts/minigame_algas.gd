@@ -260,7 +260,7 @@ func _draw() -> void:
 		Fonte.centralizado(self, "OVERSHOT! (%d/%d)" % [erros, MAX_ERROS], 160, y_txt,
 			VERMELHO_CLARO)
 	else:
-		Fonte.centralizado(self, "LEFT/RIGHT PICK A TUBE - UP/DOWN FEED IT", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "[A/D]: PICK A TUBE   [W/S]: FEED IT", 160, y_txt, BRANCO_SUJO, Color("#cf573c"))
 
 
 func _px(p: Vector2, cor: Color) -> void:

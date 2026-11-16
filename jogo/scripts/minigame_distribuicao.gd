@@ -236,7 +236,7 @@ func _draw() -> void:
 	elif canais_ok() == NOMES.size():
 		Fonte.centralizado(self, "ALL CHANNELS GREEN - HOLD IT...", 160, y_txt, VERDE_LIMA)
 	else:
-		Fonte.centralizado(self, "A/D: PICK A CHANNEL   W/S: SET ITS LOAD", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "[A/D]: PICK CHANNEL   [W/S]: SET LOAD", 160, y_txt, BRANCO_SUJO, Color("#cf573c"))
 
 
 ## Um canal: a faixa verde na fenda, a carga subindo da base, a alavanca na altura da carga e o nome na plaquinha.

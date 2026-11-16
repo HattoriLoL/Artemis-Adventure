@@ -16,6 +16,8 @@ config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [autoload]
 
+MobileManager="*res://scripts/mobile/mobile_manager.gd"
+TouchOverlay="*res://cenas/mobile/touch_overlay.tscn"
 Opcoes="*res://scripts/opcoes.gd"
 Prints="*res://scripts/prints.gd"
 Missao="*res://scripts/missao.gd"
@@ -28,7 +30,12 @@ window/size/viewport_height=180
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
+window/stretch/aspect="keep"
 window/stretch/scale_mode="integer"
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true
 
 [physics]
 

@@ -384,7 +384,7 @@ func _desenha_manha() -> void:
 		y += 4
 		var nomes := PackedStringArray(baixos.map(func(n): return Recursos.ROTULOS[n]))
 		Fonte.desenhar(tela, "RUNNING LOW: " + ", ".join(nomes), Vector2(x, y), VERMELHO)
-	Fonte.centralizado(tela, "E: START THE DAY", 160, r.end.y + 4, METAL)
+	Fonte.centralizado_com_teclas(tela, "[E] START THE DAY", 160, r.end.y + 4, METAL, VERMELHO)
 
 
 ## Previsão do clima espacial no boletim: na véspera da erupção, o aviso; no dia, o que fazer quando o alarme tocar.
@@ -433,8 +433,8 @@ func _desenha_noite() -> void:
 		var onde := "SHELTERED" if tp["abrigo"] else "CAUGHT OUTSIDE"
 		Fonte.desenhar(tela, "SOLAR STORM, %s: %+d HEALTH" % [onde, -roundi(tp.get("dano", 0.0))], Vector2(x, y),
 			LARANJA if tp["abrigo"] else VERMELHO)
-	var dica := "E: MISSION RESULT" if _ultima_noite() else "E: NEXT DAY"
-	Fonte.centralizado(tela, dica, 160, r.end.y + 4, METAL)
+	var dica := "[E] MISSION RESULT" if _ultima_noite() else "[E] NEXT DAY"
+	Fonte.centralizado_com_teclas(tela, dica, 160, r.end.y + 4, METAL, VERMELHO)
 
 
 ## Fim da missão: o relatório de 4 páginas (relatorio.gd) dentro da mesma moldura de metal dos outros painéis.

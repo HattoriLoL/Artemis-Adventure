@@ -254,7 +254,7 @@ func _draw() -> void:
 	if mensagem != "" and (acabou or transbordou or not Input.is_action_pressed("usar")):
 		Fonte.centralizado(self, mensagem, 160, y_txt, cor_mensagem)
 	else:
-		Fonte.centralizado(self, "HOLD E TO FILL - RELEASE ON THE GREEN MARK", 160, y_txt, BRANCO_SUJO)
+		Fonte.centralizado_com_teclas(self, "HOLD [E] TO FILL - RELEASE ON THE GREEN MARK", 160, y_txt, BRANCO_SUJO, VERMELHO_CLARO)
 
 
 func _px(p: Vector2, cor: Color) -> void:

@@ -132,7 +132,7 @@ func _desenhar_textos() -> void:
 	if confirmado:
 		Fonte.centralizado(textos, "LANDING: " + str(locais[selecionado]["titulo"]), 160, 162, VERDE)
 	else:
-		Fonte.centralizado(textos, "LEFT/RIGHT OR MOUSE   E OR CLICK: LAND", 160, 162, BRANCO)
+		Fonte.centralizado_com_teclas(textos, "[A/D] OR MOUSE   [E] OR CLICK: LAND", 160, 162, BRANCO, Color("#cf573c"))
 
 
 func _desenhar_cartao(local: Dictionary, pos: Vector2, ativo: bool) -> void:
