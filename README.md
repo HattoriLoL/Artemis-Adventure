@@ -33,6 +33,7 @@
 11. [Under the hood](#under-the-hood)
 12. [Project structure](#project-structure)
 13. [Team and credits](#team-and-credits)
+14. [Use of Super Intelligence (SI) / AI tools](#use-of-super-intelligence-si--ai-tools)
 
 ---
 
@@ -387,3 +388,21 @@ Built by a small team during the NASA International Space Apps Challenge 2026.
 MELiSSA spirulina research.
 
 This project is not affiliated with or endorsed by NASA.
+
+---
+
+## Use of Super Intelligence (SI) / AI tools
+
+In compliance with the **NASA International Space Apps Challenge Super Intelligence (SI) Policy**, this section transparently describes where and how AI/SI tools were used to accelerate development and quality assurance:
+
+### Summary of SI Tool Usage
+
+| Category | SI Used? | Description & Disclosure |
+|---|---|---|
+| **Code & Programming** | **Yes** | LLM assistance (Google Antigravity / Gemini) was utilized to accelerate GDScript refactoring, automated QA unit test generation (`jogo/tests/`), mobile touch input architecture (`virtual_dpad.gd`, `touch_overlay.gd`, `mobile_manager.gd`), and continuous integration / export pipeline configuration. All core gameplay architecture, minigame mechanics, and state machines were designed, reviewed, and finalized by team developers. |
+| **Data & Scientific Curation** | **Yes** | LLM assistance was utilized to parse, summarize, and structure scientific references from public NASA open data (DONKI space weather catalogs, NASA Technical Reports Server - NTRS, and ESA MELiSSA publications) into structured JSON data files (`jogo/dados/`). |
+| **Images & Video** | **No** | All in-game pixel art, sprites, tilesets, UI elements, and promotional captures were hand-crafted by human team members using pixel art editors and procedural GDScript shaders adhering to the custom 46-color Apollo palette. No AI image generation or video synthesis models were used for visual assets. |
+| **Audio & Music** | **No** | In-game sound effects, alarms, ambient soundscapes, and opening music were composed and produced directly by human team members with synthesizers and digital audio workstations. |
+
+### NASA Branding & Compliance Notice
+In strict accordance with NASA Space Apps regulations, no generated content contains, modifies, or misrepresents official NASA logos, flags, seals, or mission identifiers. All educational references to NASA, DONKI, and the Artemis program are informational citations of publicly available scientific data.
