@@ -49,16 +49,14 @@ func _detectar_plataforma() -> void:
 	var eh_android: bool = OS.has_feature("android") or OS.has_feature("web_android")
 	var eh_ios: bool = OS.has_feature("ios") or OS.has_feature("web_ios")
 	is_mobile = eh_android or eh_ios
-	
-	# Detecção de capacidade touchscreen
 	has_touch = DisplayServer.is_touchscreen_available()
 	
 	# Dispositivo híbrido (ex: notebook touch, tablet com teclado conectado)
 	if has_touch and not is_mobile:
 		is_hybrid_device = true
 	
-	# Ativação inicial dos controles
-	if is_mobile or (has_touch and not is_hybrid_device) or force_touch_for_testing:
+	# Padrão: Celulares/Tablets iniciam com touch ATIVADO. Computadores/Desktop iniciam DESATIVADOS.
+	if is_mobile or force_touch_for_testing:
 		touch_controls_enabled = true
 		input_mode = "touch"
 	else:
@@ -71,15 +69,11 @@ func _detectar_plataforma() -> void:
 
 
 func _unhandled_input(ev: InputEvent) -> void:
-	# Observador dinâmico: se houver toque na tela pela primeira vez, ativa modo touch
-	if ev is InputEventScreenTouch or ev is InputEventScreenDrag:
+	if is_mobile and (ev is InputEventScreenTouch or ev is InputEventScreenDrag):
 		has_touch = true
 		if input_mode != "touch":
 			input_mode = "touch"
-		if not touch_controls_enabled:
-			touch_controls_enabled = true
 	elif ev is InputEventKey:
-		# Se tecla física for usada em dispositivo híbrido, registra modo teclado
 		if input_mode != "keyboard":
 			input_mode = "keyboard"
 
