@@ -383,6 +383,8 @@ Built by a small team during the NASA International Space Apps Challenge 2026.
 | [DKuhn29](https://github.com/DKuhn29) | Final mission report, first title screen, music, and the irrigation, crew vitals and solar panel cleaning minigames. |
 | [IltonBJSilva](https://github.com/IltonBJSilva) | Meteor shower emergency with wall levers, the cryogenic tanks minigame, the navigation computer with NASA DONKI events, and the original ideas for the shielding, meal and power balance minigames. |
 | [chinesdecroks](https://github.com/chinesdecroks) | The solar panel aiming, battery calibration and decontamination shower minigames. |
+| **Liby (Leo)** | Pixel art, character and environmental animations, and visual asset design. |
+| **Nicole Gaia** | Project pitch, video production and editing ([Pitch Video](https://youtu.be/gih1q3I8GMc)), narration / voiceover, and beta testing. |
 
 **Thanks to** NASA for the open data (DONKI, NTRS and the many public articles cited above), and to ESA for the
 MELiSSA spirulina research.
